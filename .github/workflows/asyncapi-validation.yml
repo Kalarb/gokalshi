@@ -1,0 +1,22 @@
+name: AsyncAPI Validation
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  asyncapi-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Validate WS channels against AsyncAPI spec
+        run: go test -tags spec_validation -run TestAsyncAPIWSChannelCoverage -v -count=1 -timeout 30s

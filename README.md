@@ -1,3 +1,9 @@
+![Unit Tests](https://github.com/Kalarb/gokalshi/actions/workflows/unit-tests.yml/badge.svg)
+![OpenAPI Validation](https://github.com/Kalarb/gokalshi/actions/workflows/openapi-validation.yml/badge.svg)
+![AsyncAPI Validation](https://github.com/Kalarb/gokalshi/actions/workflows/asyncapi-validation.yml/badge.svg)
+![HTTP Integration](https://github.com/Kalarb/gokalshi/actions/workflows/http-integration.yml/badge.svg)
+![WS Integration](https://github.com/Kalarb/gokalshi/actions/workflows/ws-integration.yml/badge.svg)
+
 # gokalshi
 
 Go SDK for the [Kalshi](https://kalshi.com) prediction market API.
