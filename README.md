@@ -199,6 +199,14 @@ go test ./... -v
 
 # With race detector
 go test -race ./... -v
+
+# Spec validation (no credentials needed, fetches live OpenAPI/AsyncAPI specs)
+go test -tags spec_validation -v -count=1 -timeout 30s
+
+# Integration tests (requires .env with credentials)
+# HTTP tests use DEMO: KALSHI_DEMO_API_KEY_ID, KALSHI_DEMO_PRIVATE_KEY_FILE
+# WS tests use PROD read-only: KALSHI_PROD_READ_ONLY_API_KEY_ID, KALSHI_PROD_READ_ONLY_PRIVATE_KEY_FILE
+go test -tags integration -v -count=1 -timeout 120s
 ```
 
 ## Architecture
