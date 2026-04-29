@@ -43,7 +43,7 @@ func main() {
     ctx := context.Background()
 
     // Markets
-    resp, err := client.GetMarkets(ctx, gokalshi.GetMarketsParams{Status: "active", Limit: 10})
+    resp, err := client.GetMarkets(ctx, gokalshi.GetMarketsParams{Status: "open", Limit: 10})
     if err != nil {
         log.Fatal(err)
     }
@@ -139,7 +139,7 @@ func main() {
 
 ## API Coverage
 
-### HTTP (36 methods)
+### HTTP (37 methods)
 
 | Domain | Methods |
 |---|---|
@@ -235,7 +235,7 @@ gokalshi/
   ws_types.go          ChannelState, WSMessage, MsgTypeToChannel
   ws_messages.go       WS command/response/data message types
 
-  api_*.go             One file per API domain (36 methods total)
+  api_*.go             One file per API domain (37 methods total)
   *_params.go          Query parameter structs
   *_responses.go       Response type structs
   *_requests.go        Request body structs

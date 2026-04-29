@@ -23,6 +23,7 @@ func (e *APIError) Error() string {
 }
 
 // newAPIError creates an APIError, attempting to parse code/message from the JSON body.
+// Kalshi wraps errors as {"error":{"code":"...","message":"..."}}.
 func newAPIError(statusCode int, method, path, body string) *APIError {
 	e := &APIError{
 		StatusCode: statusCode,
@@ -30,13 +31,26 @@ func newAPIError(statusCode int, method, path, body string) *APIError {
 		Path:       path,
 		Body:       body,
 	}
-	var parsed struct {
+	// Try nested: {"error":{"code":"...","message":"..."}}
+	var nested struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if json.Unmarshal([]byte(body), &nested) == nil && nested.Error.Code != "" {
+		e.Code = nested.Error.Code
+		e.Message = nested.Error.Message
+		return e
+	}
+	// Fallback: top-level {"code":"...","message":"..."}
+	var flat struct {
 		Code    string `json:"code"`
 		Message string `json:"message"`
 	}
-	if err := json.Unmarshal([]byte(body), &parsed); err == nil {
-		e.Code = parsed.Code
-		e.Message = parsed.Message
+	if json.Unmarshal([]byte(body), &flat) == nil {
+		e.Code = flat.Code
+		e.Message = flat.Message
 	}
 	return e
 }
