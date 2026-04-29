@@ -100,8 +100,11 @@ func (c *WSClient) Connect(ctx context.Context) error {
 // Safe for concurrent use.
 func (c *WSClient) Close() error {
 	c.closed.Store(true)
-	if c.conn != nil {
-		return c.conn.Close(websocket.StatusNormalClosure, "client closing")
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+	if conn != nil {
+		return conn.Close(websocket.StatusNormalClosure, "client closing")
 	}
 	return nil
 }
@@ -180,9 +183,10 @@ func (c *WSClient) handleIncoming(data []byte) {
 		return
 	}
 
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	// Process under lock, but never hold mu during the blocking msgCh send.
+	var dispatch []byte
 
+	c.mu.Lock()
 	switch msg.Type {
 	case "subscribed":
 		c.handleSubscribed(msg)
@@ -200,7 +204,14 @@ func (c *WSClient) handleIncoming(data []byte) {
 				slog.String("raw", string(data)))
 		}
 	default:
-		c.handleDataMessage(msg, data)
+		dispatch = c.handleDataMessage(msg, data)
+	}
+	c.mu.Unlock()
+
+	// Dispatch outside the lock — blocking send provides backpressure without
+	// holding mu, so AddMarkets/RemoveMarkets can still proceed.
+	if dispatch != nil {
+		c.msgCh <- dispatch
 	}
 }
 
@@ -276,12 +287,14 @@ func (c *WSClient) handleUnsubscribed(msg WSMessage) {
 	delete(c.sidMap, msg.SID)
 }
 
-func (c *WSClient) handleDataMessage(msg WSMessage, raw []byte) {
+// handleDataMessage processes a data message under mu and returns the raw bytes
+// to dispatch to msgCh (or nil if the message should be dropped).
+func (c *WSClient) handleDataMessage(msg WSMessage, raw []byte) []byte {
 	_, ok := MsgTypeToChannel[msg.Type]
 	if !ok {
 		c.logger.LogAttrs(context.Background(), slog.LevelDebug, "ws_unknown_message_type",
 			slog.String("type", string(msg.Type)))
-		return
+		return nil
 	}
 
 	state, ok := c.sidMap[msg.SID]
@@ -294,9 +307,7 @@ func (c *WSClient) handleDataMessage(msg WSMessage, raw []byte) {
 		state.Seq = msg.Seq
 	}
 
-	// Dispatch to FeedHandler (blocking — backpressure is preferable to
-	// silently dropping messages and trading on corrupt data).
-	c.msgCh <- raw
+	return raw
 }
 
 // AddMarkets subscribes to the given channels for the given tickers.
@@ -469,10 +480,13 @@ func (c *WSClient) writeJSON(ctx context.Context, v any) error {
 	if err != nil {
 		return fmt.Errorf("marshal WS command: %w", err)
 	}
-	if c.conn == nil {
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+	if conn == nil {
 		return fmt.Errorf("ws not connected")
 	}
-	return c.conn.Write(ctx, websocket.MessageText, data)
+	return conn.Write(ctx, websocket.MessageText, data)
 }
 
 func (c *WSClient) nextBackoff(current time.Duration) time.Duration {

@@ -172,6 +172,9 @@ func TestHTTPIntegration_Orders(t *testing.T) {
 	assert.NotEmpty(t, orderID)
 	t.Logf("created order %s on %s", orderID, ticker)
 
+	// Best-effort cleanup if test fails before CancelOrder.
+	t.Cleanup(func() { c.CancelOrder(context.Background(), orderID) })
+
 	// Small delay for propagation.
 	time.Sleep(1 * time.Second)
 

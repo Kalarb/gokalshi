@@ -15,12 +15,18 @@ func TestAPIError_ErrorMessage(t *testing.T) {
 	assert.Contains(t, err.Error(), "/test")
 }
 
-func TestAPIError_WithParsedJSON(t *testing.T) {
-	err := newAPIError(400, "POST", "/orders", `{"code":"invalid_ticker","message":"Ticker not found"}`)
+func TestAPIError_WithNestedJSON(t *testing.T) {
+	err := newAPIError(400, "POST", "/orders", `{"error":{"code":"invalid_ticker","message":"Ticker not found"}}`)
 	assert.Equal(t, "invalid_ticker", err.Code)
 	assert.Equal(t, "Ticker not found", err.Message)
 	assert.Contains(t, err.Error(), "Ticker not found")
 	assert.Contains(t, err.Error(), "invalid_ticker")
+}
+
+func TestAPIError_WithFlatJSON(t *testing.T) {
+	err := newAPIError(400, "POST", "/orders", `{"code":"invalid_ticker","message":"Ticker not found"}`)
+	assert.Equal(t, "invalid_ticker", err.Code)
+	assert.Equal(t, "Ticker not found", err.Message)
 }
 
 func TestAPIError_WithInvalidJSON(t *testing.T) {

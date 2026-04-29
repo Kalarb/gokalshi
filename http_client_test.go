@@ -162,9 +162,10 @@ func TestClient_Retry429_MaxExceeded(t *testing.T) {
 }
 
 func TestClient_4xxError(t *testing.T) {
+	// Real Kalshi API nests errors: {"error":{"code":"...","message":"..."}}
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, `{"code":"bad_request","message":"invalid ticker"}`)
+		fmt.Fprint(w, `{"error":{"code":"bad_request","message":"invalid ticker"}}`)
 	}))
 	defer srv.Close()
 
@@ -261,10 +262,16 @@ func TestAPIError_Error(t *testing.T) {
 	assert.Contains(t, err.Error(), "bad request")
 }
 
-func TestAPIError_WithCodeAndMessage(t *testing.T) {
-	err := newAPIError(400, "GET", "/test", `{"code":"invalid","message":"bad ticker"}`)
+func TestAPIError_WithNestedError(t *testing.T) {
+	err := newAPIError(400, "GET", "/test", `{"error":{"code":"invalid","message":"bad ticker"}}`)
 	assert.Equal(t, "invalid", err.Code)
 	assert.Equal(t, "bad ticker", err.Message)
 	assert.Contains(t, err.Error(), "bad ticker")
 	assert.Contains(t, err.Error(), "invalid")
+}
+
+func TestAPIError_WithFlatError(t *testing.T) {
+	err := newAPIError(400, "GET", "/test", `{"code":"flat_code","message":"flat msg"}`)
+	assert.Equal(t, "flat_code", err.Code)
+	assert.Equal(t, "flat msg", err.Message)
 }
