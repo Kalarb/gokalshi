@@ -97,7 +97,7 @@ func getActiveBTC15MTicker(t *testing.T, c *Client) string {
 	ctx := context.Background()
 
 	eventsResp, err := c.GetEvents(ctx, GetEventsParams{
-		Status:            MarketStatusActive,
+		Status:            "open",
 		SeriesTicker:      "KXBTC15M",
 		WithNestedMarkets: true,
 		Limit:             1,
@@ -117,7 +117,7 @@ func getActiveBTCDTicker(t *testing.T, c *Client) string {
 	ctx := context.Background()
 
 	eventsResp, err := c.GetEvents(ctx, GetEventsParams{
-		Status:            MarketStatusActive,
+		Status:            "open",
 		SeriesTicker:      "KXBTCD",
 		WithNestedMarkets: true,
 		Limit:             1,
@@ -223,40 +223,57 @@ func TestWSIntegration_MultiChannel(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestWSIntegration_SubscribeFill(t *testing.T) {
-	httpClient, wsClient, collector, ctx, cancel := wsTestSetup(t)
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
 	defer cancel()
 
 	ticker := getActiveBTC15MTicker(t, httpClient)
 	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"fill"})
 	require.NoError(t, err)
 
-	// Wait for subscribed confirmation (arrives as a parsed message).
-	collector.waitForType(t, "subscribed", 10*time.Second)
+	// "subscribed" is handled internally — poll for SID assignment.
+	waitForSID(t, wsClient, "fill", 10*time.Second)
 	t.Logf("fill channel subscribed for %s", ticker)
 }
 
 func TestWSIntegration_SubscribeUserOrders(t *testing.T) {
-	httpClient, wsClient, collector, ctx, cancel := wsTestSetup(t)
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
 	defer cancel()
 
 	ticker := getActiveBTC15MTicker(t, httpClient)
 	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"user_orders"})
 	require.NoError(t, err)
 
-	collector.waitForType(t, "subscribed", 10*time.Second)
+	waitForSID(t, wsClient, "user_orders", 10*time.Second)
 	t.Logf("user_orders channel subscribed for %s", ticker)
 }
 
 func TestWSIntegration_SubscribeMarketPositions(t *testing.T) {
-	httpClient, wsClient, collector, ctx, cancel := wsTestSetup(t)
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
 	defer cancel()
 
 	ticker := getActiveBTC15MTicker(t, httpClient)
 	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"market_positions"})
 	require.NoError(t, err)
 
-	collector.waitForType(t, "subscribed", 10*time.Second)
+	waitForSID(t, wsClient, "market_positions", 10*time.Second)
 	t.Logf("market_positions channel subscribed for %s", ticker)
+}
+
+// waitForSID polls until the given channel has a non-nil SID (subscription confirmed).
+func waitForSID(t *testing.T, ws *WSClient, channel string, timeout time.Duration) {
+	t.Helper()
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		ws.mu.Lock()
+		state, ok := ws.channels[channel]
+		hasSID := ok && state.SID != nil
+		ws.mu.Unlock()
+		if hasSID {
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	t.Fatalf("channel %s did not receive SID within %s", channel, timeout)
 }
 
 // ---------------------------------------------------------------------------

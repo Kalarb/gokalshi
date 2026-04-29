@@ -44,7 +44,7 @@ func TestHTTPIntegration_Markets(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("GetMarkets", func(t *testing.T) {
-		resp, err := c.GetMarkets(ctx, GetMarketsParams{Status: MarketStatusActive, Limit: 5})
+		resp, err := c.GetMarkets(ctx, GetMarketsParams{Status: "open", Limit: 5})
 		require.NoError(t, err)
 		if len(resp.Markets) == 0 {
 			t.Skip("no active markets available")
@@ -151,7 +151,7 @@ func TestHTTPIntegration_Orders(t *testing.T) {
 	ctx := context.Background()
 
 	// Find an active market to place a test order on.
-	markets, err := c.GetMarkets(ctx, GetMarketsParams{Status: MarketStatusActive, Limit: 5})
+	markets, err := c.GetMarkets(ctx, GetMarketsParams{Status: "open", Limit: 5})
 	require.NoError(t, err)
 	if len(markets.Markets) == 0 {
 		t.Skip("no active markets for order test")
