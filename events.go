@@ -142,14 +142,14 @@ type EventDetail struct {
 	SeriesTicker         string               `json:"series_ticker"`
 	SubTitle             string               `json:"sub_title"`
 	Title                string               `json:"title"`
-	CollateralReturnType CollateralReturnType  `json:"collateral_return_type"`
+	CollateralReturnType CollateralReturnType `json:"collateral_return_type"`
 	MutuallyExclusive    bool                 `json:"mutually_exclusive"`
 	AvailableOnBrokers   bool                 `json:"available_on_brokers"`
 	ProductMetadata      any                  `json:"product_metadata"`
 	Category             string               `json:"category"`
 	StrikeDate           string               `json:"strike_date"`
 	StrikePeriod         string               `json:"strike_period"`
-	Markets              []MarketDetail        `json:"markets"`
+	Markets              []MarketDetail       `json:"markets"`
 	LastUpdatedTs        string               `json:"last_updated_ts"`
 }
 

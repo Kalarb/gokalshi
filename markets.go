@@ -180,7 +180,7 @@ type GetMarketOrderbookResponse struct {
 
 // MarketOrderbookEntry is a single market's orderbook in a batch response.
 type MarketOrderbookEntry struct {
-	Ticker      string     `json:"ticker"`
+	Ticker      string      `json:"ticker"`
 	OrderbookFP OrderbookFP `json:"orderbook_fp"`
 }
 

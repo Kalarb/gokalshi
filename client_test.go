@@ -58,7 +58,7 @@ func newTestClient(t *testing.T, serverURL string) *Client {
 	t.Helper()
 	cfg := testClientConfig(t, serverURL)
 	limiter := NewReadWriteTokenBucket(TokenBucketConfig{
-		ReadRate:  100, WriteRate: 100,
+		ReadRate: 100, WriteRate: 100,
 		WindowSize: 1.0, SafetyPadding: 0,
 	})
 	return NewClient(cfg, WithRateLimiter(limiter), WithBaseDelay(1*time.Millisecond))

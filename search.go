@@ -23,7 +23,7 @@ type GetTagsByCategoriesResponse struct {
 
 // SportFilters holds filter details for a single sport.
 type SportFilters struct {
-	Scopes       []string                        `json:"scopes"`
+	Scopes       []string                         `json:"scopes"`
 	Competitions map[string]SportCompetitionScope `json:"competitions"`
 }
 
