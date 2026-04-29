@@ -1,6 +1,171 @@
 package gokalshi
 
-// Response types for market-related API endpoints.
+import (
+	"context"
+	"fmt"
+)
+
+const pathMarkets = "/trade-api/v2/markets"
+
+// GetMarketOrderbook retrieves the orderbook for a market.
+func (c *Client) GetMarketOrderbook(ctx context.Context, ticker string, params GetOrderbookParams) (GetMarketOrderbookResponse, error) {
+	path := fmt.Sprintf("%s/%s/orderbook", pathMarkets, ticker)
+	return getJSON[GetMarketOrderbookResponse](c, ctx, path, params.toMap())
+}
+
+// GetMarketOrderbooks retrieves orderbooks for multiple markets in a single request.
+func (c *Client) GetMarketOrderbooks(ctx context.Context, params GetMarketOrderbooksParams) (GetMarketOrderbooksResponse, error) {
+	return getJSON[GetMarketOrderbooksResponse](c, ctx, pathMarkets+"/orderbooks", params.toMap())
+}
+
+// GetTrades retrieves recent trades.
+func (c *Client) GetTrades(ctx context.Context, params GetTradesParams) (GetTradesResponse, error) {
+	return getJSON[GetTradesResponse](c, ctx, pathMarkets+"/trades", params.toMap())
+}
+
+// GetMarket retrieves details for a single market.
+func (c *Client) GetMarket(ctx context.Context, ticker string) (MarketResponse, error) {
+	path := fmt.Sprintf("%s/%s", pathMarkets, ticker)
+	return getJSON[MarketResponse](c, ctx, path, nil)
+}
+
+// GetMarkets retrieves markets matching the given parameters.
+func (c *Client) GetMarkets(ctx context.Context, params GetMarketsParams) (GetMarketsResponse, error) {
+	return getJSON[GetMarketsResponse](c, ctx, pathMarkets, params.toMap())
+}
+
+// GetMarketCandlesticks retrieves candlestick data for a single market.
+func (c *Client) GetMarketCandlesticks(ctx context.Context, seriesTicker, ticker string, params GetMarketCandlesticksParams) (GetMarketCandlesticksResponse, error) {
+	path := fmt.Sprintf("/trade-api/v2/series/%s/markets/%s/candlesticks", seriesTicker, ticker)
+	return getJSON[GetMarketCandlesticksResponse](c, ctx, path, params.toMap())
+}
+
+// GetBatchMarketCandlesticks retrieves candlestick data for multiple markets.
+func (c *Client) GetBatchMarketCandlesticks(ctx context.Context, params GetBatchMarketCandlesticksParams) (GetBatchMarketCandlesticksResponse, error) {
+	return getJSON[GetBatchMarketCandlesticksResponse](c, ctx, pathMarkets+"/candlesticks", params.toMap())
+}
+
+// ---------------------------------------------------------------------------
+// Query parameter types
+// ---------------------------------------------------------------------------
+
+// GetOrderbookParams holds optional query parameters for GetMarketOrderbook.
+type GetOrderbookParams struct {
+	Depth int
+}
+
+func (p GetOrderbookParams) toMap() map[string]string {
+	return NewQuery().
+		Int("depth", p.Depth).
+		Build()
+}
+
+// GetMarketOrderbooksParams holds query parameters for GetMarketOrderbooks.
+type GetMarketOrderbooksParams struct {
+	Tickers string // comma-separated, 1-100 tickers
+}
+
+func (p GetMarketOrderbooksParams) toMap() map[string]string {
+	return NewQuery().
+		String("tickers", p.Tickers).
+		Build()
+}
+
+// GetTradesParams holds optional query parameters for GetTrades.
+type GetTradesParams struct {
+	Ticker string
+	Limit  int
+	Cursor string
+	MinTs  int64
+	MaxTs  int64
+}
+
+func (p GetTradesParams) toMap() map[string]string {
+	return NewQuery().
+		String("ticker", p.Ticker).
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
+		Int64("min_ts", p.MinTs).
+		Int64("max_ts", p.MaxTs).
+		Build()
+}
+
+// GetMarketsParams holds optional query parameters for GetMarkets.
+type GetMarketsParams struct {
+	Limit        int
+	Cursor       string
+	EventTicker  string
+	SeriesTicker string
+	Status       MarketStatus
+	Tickers      string
+	MVEFilter    string
+	MinCreatedTs int64
+	MaxCreatedTs int64
+	MinUpdatedTs int64
+	MinCloseTs   int64
+	MaxCloseTs   int64
+	MinSettledTs int64
+	MaxSettledTs int64
+}
+
+func (p GetMarketsParams) toMap() map[string]string {
+	return NewQuery().
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
+		String("event_ticker", p.EventTicker).
+		String("series_ticker", p.SeriesTicker).
+		String("status", string(p.Status)).
+		String("tickers", p.Tickers).
+		String("mve_filter", p.MVEFilter).
+		Int64("min_created_ts", p.MinCreatedTs).
+		Int64("max_created_ts", p.MaxCreatedTs).
+		Int64("min_updated_ts", p.MinUpdatedTs).
+		Int64("min_close_ts", p.MinCloseTs).
+		Int64("max_close_ts", p.MaxCloseTs).
+		Int64("min_settled_ts", p.MinSettledTs).
+		Int64("max_settled_ts", p.MaxSettledTs).
+		Build()
+}
+
+// GetMarketCandlesticksParams holds query parameters for GetCandlesticks.
+type GetMarketCandlesticksParams struct {
+	StartTs                  int64
+	EndTs                    int64
+	PeriodInterval           int // 1, 60, or 1440
+	IncludeLatestBeforeStart bool
+}
+
+func (p GetMarketCandlesticksParams) toMap() map[string]string {
+	return NewQuery().
+		Int64("start_ts", p.StartTs).
+		Int64("end_ts", p.EndTs).
+		Int("period_interval", p.PeriodInterval).
+		Bool("include_latest_before_start", p.IncludeLatestBeforeStart).
+		Build()
+}
+
+// GetBatchMarketCandlesticksParams holds query parameters for GetBatchCandlesticks.
+type GetBatchMarketCandlesticksParams struct {
+	MarketTickers            string // comma-separated, max 100
+	StartTs                  int64
+	EndTs                    int64
+	PeriodInterval           int
+	IncludeLatestBeforeStart bool
+}
+
+func (p GetBatchMarketCandlesticksParams) toMap() map[string]string {
+	return NewQuery().
+		String("market_tickers", p.MarketTickers).
+		Int64("start_ts", p.StartTs).
+		Int64("end_ts", p.EndTs).
+		Int("period_interval", p.PeriodInterval).
+		Bool("include_latest_before_start", p.IncludeLatestBeforeStart).
+		Build()
+}
+
+// ---------------------------------------------------------------------------
+// Response types
+// ---------------------------------------------------------------------------
 
 // OrderbookFP is the fixed-point orderbook from GET /markets/{ticker}/orderbook.
 type OrderbookFP struct {
