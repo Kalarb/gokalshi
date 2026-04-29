@@ -1,6 +1,103 @@
 package gokalshi
 
-// Response types for portfolio-related API endpoints.
+import (
+	"context"
+)
+
+// GetBalance retrieves the account balance.
+func (c *Client) GetBalance(ctx context.Context) (BalanceResponse, error) {
+	return getJSON[BalanceResponse](c, ctx, pathPortfolio+"/balance", nil)
+}
+
+// GetPositions retrieves portfolio positions.
+func (c *Client) GetPositions(ctx context.Context, params GetPositionsParams) (GetPositionsResponse, error) {
+	return getJSON[GetPositionsResponse](c, ctx, pathPortfolio+"/positions", params.toMap())
+}
+
+// GetFills retrieves order fills with optional filtering and pagination.
+func (c *Client) GetFills(ctx context.Context, params GetFillsParams) (GetFillsResponse, error) {
+	return getJSON[GetFillsResponse](c, ctx, pathPortfolio+"/fills", params.toMap())
+}
+
+// GetSettlements retrieves settlement records.
+func (c *Client) GetSettlements(ctx context.Context, params GetSettlementsParams) (GetSettlementsResponse, error) {
+	return getJSON[GetSettlementsResponse](c, ctx, pathPortfolio+"/settlements", params.toMap())
+}
+
+// ---------------------------------------------------------------------------
+// Query parameter types
+// ---------------------------------------------------------------------------
+
+// GetPositionsParams holds optional query parameters for GetPositions.
+type GetPositionsParams struct {
+	Ticker      string
+	EventTicker string
+	CountFilter string
+	Limit       int
+	Cursor      string
+	Subaccount  int
+}
+
+func (p GetPositionsParams) toMap() map[string]string {
+	return NewQuery().
+		String("ticker", p.Ticker).
+		String("event_ticker", p.EventTicker).
+		String("count_filter", p.CountFilter).
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
+		Int("subaccount", p.Subaccount).
+		Build()
+}
+
+// GetFillsParams holds optional query parameters for GetFills.
+type GetFillsParams struct {
+	Ticker     string
+	OrderID    string
+	MinTs      int64
+	MaxTs      int64
+	Limit      int
+	Cursor     string
+	Subaccount int
+}
+
+func (p GetFillsParams) toMap() map[string]string {
+	return NewQuery().
+		String("ticker", p.Ticker).
+		String("order_id", p.OrderID).
+		Int64("min_ts", p.MinTs).
+		Int64("max_ts", p.MaxTs).
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
+		Int("subaccount", p.Subaccount).
+		Build()
+}
+
+// GetSettlementsParams holds optional query parameters for GetSettlements.
+type GetSettlementsParams struct {
+	Ticker      string
+	EventTicker string
+	MinTs       int64
+	MaxTs       int64
+	Limit       int
+	Cursor      string
+	Subaccount  int
+}
+
+func (p GetSettlementsParams) toMap() map[string]string {
+	return NewQuery().
+		String("ticker", p.Ticker).
+		String("event_ticker", p.EventTicker).
+		Int64("min_ts", p.MinTs).
+		Int64("max_ts", p.MaxTs).
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
+		Int("subaccount", p.Subaccount).
+		Build()
+}
+
+// ---------------------------------------------------------------------------
+// Response types
+// ---------------------------------------------------------------------------
 
 // BalanceResponse is the response from GET /portfolio/balance.
 type BalanceResponse struct {

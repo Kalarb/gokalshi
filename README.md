@@ -219,24 +219,29 @@ go test -tags integration -v -count=1 -timeout 120s
 
 ```
 gokalshi/
-  auth.go              Credentials (RSA-PSS signing)
-  config.go            Environment + ClientConfig (env vars)
-  errors.go            Typed error hierarchy
-  logger.go            slog discard handler + WithWSLogger option
-  interfaces.go        HTTPClient + WebSocketClient interfaces
+  Core:
+    client.go          Client (rate limiting, retry, auth)
+    ws_client.go       WSClient (subscriptions, reconnect, slog)
+    auth.go            Credentials (RSA-PSS signing)
+    config.go          Environment + ClientConfig (env vars)
+    errors.go          Typed error hierarchy
+    interfaces.go      HTTPClient + WebSocketClient interfaces
+    logger.go          slog discard handler
+    query.go           QueryBuilder for query params
+    ratelimit.go       ReadWriteTokenBucket (disjoint read/write)
+    enums.go           Typed string enums
 
-  http_client.go       Client (rate limiting, retry, auth)
-  ws_client.go         WSClient (subscriptions, reconnect, slog)
+  Domains (methods + params + responses per file):
+    account.go         Account API limits
+    events.go          Events, metadata, candlesticks, forecasts
+    exchange.go        Exchange status, schedule, announcements
+    markets.go         Markets, orderbooks, trades, candlesticks
+    orders.go          Orders CRUD, batch, amend, decrease, queue
+    portfolio.go       Balance, positions, fills, settlements
+    search.go          Tags, filters
+    series.go          Series, fee changes
 
-  enums.go             Typed string enums
-  query.go             QueryBuilder for query params
-  ratelimit.go         ReadWriteTokenBucket (disjoint read/write)
-
-  ws_types.go          ChannelState, WSMessage, MsgTypeToChannel
-  ws_messages.go       WS command/response/data message types
-
-  api_*.go             One file per API domain (37 methods total)
-  *_params.go          Query parameter structs
-  *_responses.go       Response type structs
-  *_requests.go        Request body structs
+  WebSocket:
+    ws_types.go        ChannelState, WSMessage, MsgTypeToChannel
+    ws_messages.go     WS command/response/data message types
 ```
