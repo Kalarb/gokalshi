@@ -28,6 +28,33 @@ const specURL = "https://docs.kalshi.com/openapi.yaml"
 // skipPrefixes are schema name prefixes to exclude from generation.
 var skipPrefixes = []string{"Subaccount", "IntraExchange", "Fcm"}
 
+// backwardCompatAliases maps our existing type names to the spec names.
+// Generated as `type OldName = SpecName` so existing code keeps working.
+var backwardCompatAliases = map[string]string{
+	"OrderResponse":          "Order",
+	"SingleCreateResponse":   "CreateOrderResponse",
+	"BatchCreateResponse":    "BatchCreateOrdersResponse",
+	"BatchCreateEntry":       "BatchCreateOrdersIndividualResponse",
+	"BatchCancelResponse":    "BatchCancelOrdersResponse",
+	"BatchCancelEntry":       "BatchCancelOrdersIndividualResponse",
+	"BatchCancelOrderEntry":  "BatchCancelOrdersRequestOrder",
+	"BatchCreateRequest":     "BatchCreateOrdersRequest",
+	"BatchCancelRequest":     "BatchCancelOrdersRequest",
+	"MarketDetail":           "Market",
+	"TradeResponse":          "Trade",
+	"FillResponse":           "Fill",
+	"SettlementResponse":     "Settlement",
+	"MarketPositionResponse": "MarketPosition",
+	"EventPositionResponse":  "EventPosition",
+	"CandlestickOHLC":        "BidAskDistribution",
+	"CandlestickPriceOHLC":   "PriceDistribution",
+	"Candlestick":            "MarketCandlestick",
+	"AnnouncementResponse":   "Announcement",
+	"SeriesDetail":           "Series",
+	"EventDetail":            "EventData",
+	"MveSelectedLeg":         "MveSelectedLeg", // same name but included for clarity
+}
+
 // typeAliases are schemas that map to simple Go types (not full structs).
 var typeAliases = map[string]string{
 	"FixedPointDollars": "string",
@@ -127,16 +154,17 @@ func main() {
 	fmt.Printf("Loaded %d schemas from spec\n", len(schemas))
 
 	enums, objects := categorize(schemas)
-	fmt.Printf("  Enums: %d, Objects: %d\n", len(enums), len(objects))
+	fmt.Printf("  Enums: %d (skipped — kept in enums.go), Objects: %d\n", len(enums), len(objects))
 
 	outDir := findPackageRoot()
 
-	// Generate enums
-	enumCode := generateEnums(enums, schemas)
-	writeFile(outDir, "enums_generated.go", enumCode)
+	// Skip enum generation — our hand-written enums.go has a superset
+	// (includes Side, Action, OrderType, TimeInForce, MarketStatus, etc.
+	// that are inline enums in the spec, not named schemas).
 
 	// Generate object types (core, requests, responses all in one file)
 	objectCode := generateObjects(objects, schemas)
+	objectCode += generateAliases()
 	writeFile(outDir, "types_generated.go", objectCode)
 
 	fmt.Println("Done!")
@@ -436,6 +464,32 @@ func generateObjects(names []string, schemas map[string]*Schema) string {
 	return buf.String()
 }
 
+func generateAliases() string {
+	var buf bytes.Buffer
+	buf.WriteString("// ---------------------------------------------------------------------------\n")
+	buf.WriteString("// Backward-compatibility type aliases.\n")
+	buf.WriteString("// These map our existing type names to the spec-canonical names above.\n")
+	buf.WriteString("// ---------------------------------------------------------------------------\n\n")
+
+	// Sort for deterministic output
+	aliases := make([][2]string, 0, len(backwardCompatAliases))
+	for oldName, specName := range backwardCompatAliases {
+		if oldName != specName {
+			aliases = append(aliases, [2]string{oldName, specName})
+		}
+	}
+	sort.Slice(aliases, func(i, j int) bool { return aliases[i][0] < aliases[j][0] })
+
+	buf.WriteString("type (\n")
+	for _, pair := range aliases {
+		buf.WriteString(fmt.Sprintf("\t// %s is an alias for %s (backward compatibility).\n", pair[0], pair[1]))
+		buf.WriteString(fmt.Sprintf("\t%s = %s\n", pair[0], pair[1]))
+	}
+	buf.WriteString(")\n")
+
+	return buf.String()
+}
+
 func topologicalSort(names []string, schemas map[string]*Schema) []string {
 	nameSet := make(map[string]bool)
 	for _, n := range names {
@@ -467,7 +521,13 @@ func topologicalSort(names []string, schemas map[string]*Schema) []string {
 			return // circular dependency — break
 		}
 		visiting[name] = true
+		// Sort deps for deterministic output
+		sortedDeps := make([]string, 0, len(deps[name]))
 		for dep := range deps[name] {
+			sortedDeps = append(sortedDeps, dep)
+		}
+		sort.Strings(sortedDeps)
+		for _, dep := range sortedDeps {
 			visit(dep)
 		}
 		delete(visiting, name)

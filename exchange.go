@@ -6,27 +6,60 @@ import (
 
 const pathExchange = "/trade-api/v2/exchange"
 
-// GetExchangeStatus returns the current exchange status.
+// GetExchangeStatus — Get Exchange Status
+//
+// GET /trade-api/v2/exchange/status
+//
+// Endpoint for getting the exchange status.
+//
+// See https://trading-api.readme.io/reference/getexchangestatus
 func (c *Client) GetExchangeStatus(ctx context.Context) (GetExchangeStatusResponse, error) {
 	return getJSON[GetExchangeStatusResponse](c, ctx, pathExchange+"/status", nil)
 }
 
-// GetExchangeAnnouncements returns all exchange-wide announcements.
+// GetExchangeAnnouncements — Get Exchange Announcements
+//
+// GET /trade-api/v2/exchange/announcements
+//
+// Endpoint for getting all exchange-wide announcements.
+//
+// See https://trading-api.readme.io/reference/getexchangeannouncements
 func (c *Client) GetExchangeAnnouncements(ctx context.Context) (GetExchangeAnnouncementsResponse, error) {
 	return getJSON[GetExchangeAnnouncementsResponse](c, ctx, pathExchange+"/announcements", nil)
 }
 
-// GetExchangeSchedule returns the exchange trading schedule.
+// GetExchangeSchedule — Get Exchange Schedule
+//
+// GET /trade-api/v2/exchange/schedule
+//
+// Endpoint for getting the exchange schedule.
+//
+// See https://trading-api.readme.io/reference/getexchangeschedule
 func (c *Client) GetExchangeSchedule(ctx context.Context) (GetExchangeScheduleResponse, error) {
 	return getJSON[GetExchangeScheduleResponse](c, ctx, pathExchange+"/schedule", nil)
 }
 
-// GetUserDataTimestamp returns when user data was last updated.
+// GetUserDataTimestamp — Get User Data Timestamp
+//
+// GET /trade-api/v2/exchange/user_data_timestamp
+//
+// There is typically a short delay before exchange events are reflected in the
+// API endpoints. Whenever possible, combine API responses to PUT/POST/DELETE
+// requests with websocket data to obtain the most accurate view of the
+// exchange state. This endpoint provides an approximate indication of when the
+// data from the following endpoints was last validated: GetBalance,
+// GetOrder(s), GetFills, GetPositions
+//
+// See https://trading-api.readme.io/reference/getuserdatatimestamp
 func (c *Client) GetUserDataTimestamp(ctx context.Context) (GetUserDataTimestampResponse, error) {
 	return getJSON[GetUserDataTimestampResponse](c, ctx, pathExchange+"/user_data_timestamp", nil)
 }
 
-// GetSeriesFeeChanges returns fee change records for series.
+// GetSeriesFeeChanges — Get Series Fee Changes
+//
+// GET /trade-api/v2/series/fee_changes
+//
+// See https://trading-api.readme.io/reference/getseriesfeechanges
 func (c *Client) GetSeriesFeeChanges(ctx context.Context, params GetSeriesFeeChangesParams) (GetSeriesFeeChangesResponse, error) {
 	return getJSON[GetSeriesFeeChangesResponse](c, ctx, pathSeries+"/fee_changes", params.toMap())
 }
@@ -49,7 +82,7 @@ func (p GetSeriesFeeChangesParams) toMap() map[string]string {
 }
 
 // ---------------------------------------------------------------------------
-// Response types
+// Types not in types_generated.go
 // ---------------------------------------------------------------------------
 
 // GetExchangeStatusResponse is the response from GET /exchange/status.
@@ -57,33 +90,6 @@ type GetExchangeStatusResponse struct {
 	ExchangeActive              bool   `json:"exchange_active"`
 	TradingActive               bool   `json:"trading_active"`
 	ExchangeEstimatedResumeTime string `json:"exchange_estimated_resume_time"`
-}
-
-// AnnouncementResponse is a single exchange announcement.
-type AnnouncementResponse struct {
-	Type         AnnouncementType   `json:"type"`
-	Message      string             `json:"message"`
-	DeliveryTime string             `json:"delivery_time"`
-	Status       AnnouncementStatus `json:"status"`
-}
-
-// GetExchangeAnnouncementsResponse is the response from GET /exchange/announcements.
-type GetExchangeAnnouncementsResponse struct {
-	Announcements []AnnouncementResponse `json:"announcements"`
-}
-
-// SeriesFeeChange is a single fee change record.
-type SeriesFeeChange struct {
-	ID            string  `json:"id"`
-	SeriesTicker  string  `json:"series_ticker"`
-	FeeType       FeeType `json:"fee_type"`
-	FeeMultiplier float64 `json:"fee_multiplier"`
-	ScheduledTs   string  `json:"scheduled_ts"`
-}
-
-// GetSeriesFeeChangesResponse is the response from GET /series/fee_changes.
-type GetSeriesFeeChangesResponse struct {
-	SeriesFeeChangeArr []SeriesFeeChange `json:"series_fee_change_arr"`
 }
 
 // TradingSession is a single open/close time window.
@@ -105,24 +111,8 @@ type StandardHoursWeek struct {
 	Sunday    []TradingSession `json:"sunday"`
 }
 
-// MaintenanceWindow is a scheduled maintenance period.
-type MaintenanceWindow struct {
-	StartDatetime string `json:"start_datetime"`
-	EndDatetime   string `json:"end_datetime"`
-}
-
 // ExchangeSchedule is the full exchange schedule.
 type ExchangeSchedule struct {
 	StandardHours      []StandardHoursWeek `json:"standard_hours"`
 	MaintenanceWindows []MaintenanceWindow `json:"maintenance_windows"`
-}
-
-// GetExchangeScheduleResponse is the response from GET /exchange/schedule.
-type GetExchangeScheduleResponse struct {
-	Schedule ExchangeSchedule `json:"schedule"`
-}
-
-// GetUserDataTimestampResponse is the response from GET /exchange/user_data_timestamp.
-type GetUserDataTimestampResponse struct {
-	AsOfTime string `json:"as_of_time"`
 }

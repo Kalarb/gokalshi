@@ -10,60 +10,145 @@ const (
 	pathOrders    = pathPortfolio + "/orders"
 )
 
-// CreateOrder submits a new order.
+// CreateOrder — Create Order
+//
+// POST /trade-api/v2/portfolio/orders
+//
+// Endpoint for submitting orders in a market. Each user is limited to 200 000
+// open orders at a time.
+//
+// See https://trading-api.readme.io/reference/createorder
 func (c *Client) CreateOrder(ctx context.Context, req CreateOrderRequest) (SingleCreateResponse, error) {
 	return postJSON[SingleCreateResponse](c, ctx, pathOrders, req, 1.0)
 }
 
-// CancelOrder cancels an existing order by ID.
+// CancelOrder — Cancel Order
+//
+// DELETE /trade-api/v2/portfolio/orders/{order_id}
+//
+// Endpoint for canceling orders. The value for the orderId should match the id
+// field of the order you want to decrease. Commonly, DELETE-type endpoints
+// return 204 status with no body content on success. But we can't completely
+// delete the order, as it may be partially filled already. Instead, the
+// DeleteOrder endpoint reduce the order completely, essentially zeroing the
+// remaining resting contracts on it. The zeroed order is returned on the
+// response payload as a form of validation for the client.
+//
+// See https://trading-api.readme.io/reference/cancelorder
 func (c *Client) CancelOrder(ctx context.Context, orderID string) (CancelOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathOrders, orderID)
 	return deleteJSON[CancelOrderResponse](c, ctx, path, nil, 0.2)
 }
 
-// GetOrder retrieves a single order by ID.
+// GetOrder — Get Order
+//
+// GET /trade-api/v2/portfolio/orders/{order_id}
+//
+// Endpoint for getting a single order.
+//
+// See https://trading-api.readme.io/reference/getorder
 func (c *Client) GetOrder(ctx context.Context, orderID string) (SingleCreateResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathOrders, orderID)
 	return getJSON[SingleCreateResponse](c, ctx, path, nil)
 }
 
-// GetOrders retrieves orders matching the given parameters.
+// GetOrders — Get Orders
+//
+// GET /trade-api/v2/portfolio/orders
+//
+// Restricts the response to orders that have a certain status: resting,
+// canceled, or executed. Orders that have been canceled or fully executed
+// before the historical cutoff are only available via `GET
+// /historical/orders`. Resting orders will always be available through this
+// endpoint. See [Historical
+// Data](https://kalshi.com/docs/getting_started/historical_data) for details.
+//
+// See https://trading-api.readme.io/reference/getorders
 func (c *Client) GetOrders(ctx context.Context, params GetOrdersParams) (GetOrdersResponse, error) {
 	return getJSON[GetOrdersResponse](c, ctx, pathOrders, params.toMap())
 }
 
-// BatchCreateOrders submits multiple orders in a single API call (max 20).
+// BatchCreateOrders — Batch Create Orders
+//
+// POST /trade-api/v2/portfolio/orders/batched
+//
+// Endpoint for submitting a batch of orders. The maximum batch size scales
+// with your tier's write budget — see [Rate Limits and
+// Tiers](/getting_started/rate_limits).
+//
+// See https://trading-api.readme.io/reference/batchcreateorders
 func (c *Client) BatchCreateOrders(ctx context.Context, orders []CreateOrderRequest) (BatchCreateResponse, error) {
 	body := BatchCreateRequest{Orders: orders}
 	cost := float64(len(orders))
 	return postJSON[BatchCreateResponse](c, ctx, pathOrders+"/batched", body, cost)
 }
 
-// BatchCancelOrders cancels multiple orders in a single API call (max 20).
+// BatchCancelOrders — Batch Cancel Orders
+//
+// DELETE /trade-api/v2/portfolio/orders/batched
+//
+// Endpoint for cancelling a batch of orders. The maximum batch size scales
+// with your tier's write budget — see [Rate Limits and
+// Tiers](/getting_started/rate_limits).
+//
+// See https://trading-api.readme.io/reference/batchcancelorders
 func (c *Client) BatchCancelOrders(ctx context.Context, orders []BatchCancelOrderEntry) (BatchCancelResponse, error) {
 	body := BatchCancelRequest{Orders: orders}
 	cost := float64(len(orders)) * 0.2
 	return deleteJSON[BatchCancelResponse](c, ctx, pathOrders+"/batched", body, cost)
 }
 
-// AmendOrder modifies an existing order's price and/or quantity.
+// AmendOrder — Amend Order
+//
+// POST /trade-api/v2/portfolio/orders/{order_id}/amend
+//
+// Endpoint for amending the max number of fillable contracts and/or price in
+// an existing order. Max fillable contracts is `remaining_count` +
+// `fill_count`.
+//
+// See https://trading-api.readme.io/reference/amendorder
 func (c *Client) AmendOrder(ctx context.Context, orderID string, req AmendOrderRequest) (AmendOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s/amend", pathOrders, orderID)
 	return postJSON[AmendOrderResponse](c, ctx, path, req, 1.0)
 }
 
-// DecreaseOrder reduces the size of an existing order.
+// DecreaseOrder — Decrease Order
+//
+// POST /trade-api/v2/portfolio/orders/{order_id}/decrease
+//
+// Endpoint for decreasing the number of contracts in an existing order. This
+// is the only kind of edit available on order quantity. Cancelling an order is
+// equivalent to decreasing an order amount to zero.
+//
+// See https://trading-api.readme.io/reference/decreaseorder
 func (c *Client) DecreaseOrder(ctx context.Context, orderID string, req DecreaseOrderRequest) (SingleCreateResponse, error) {
 	path := fmt.Sprintf("%s/%s/decrease", pathOrders, orderID)
 	return postJSON[SingleCreateResponse](c, ctx, path, req, 1.0)
 }
 
-// GetQueuePositions retrieves queue positions for matching orders.
+// GetQueuePositions — Get Queue Positions for Orders
+//
+// GET /trade-api/v2/portfolio/orders/queue_positions
+//
+// Endpoint for getting queue positions for all resting orders. Queue position
+// represents the number of contracts that need to be matched before an order
+// receives a partial or full match, determined using price-time priority.
+//
+// See https://trading-api.readme.io/reference/getorderqueuepositions
 func (c *Client) GetQueuePositions(ctx context.Context, params GetQueuePositionsParams) (GetQueuePositionsResponse, error) {
 	return getJSON[GetQueuePositionsResponse](c, ctx, pathOrders+"/queue_positions", params.toMap())
 }
 
-// GetQueuePosition retrieves the queue position for a single order.
+// GetQueuePosition — Get Order Queue Position
+//
+// GET /trade-api/v2/portfolio/orders/{order_id}/queue_position
+//
+// Endpoint for getting an order's queue position in the order book. This
+// represents the amount of orders that need to be matched before this order
+// receives a partial or full match. Queue position is determined using a
+// price-time priority.
+//
+// See https://trading-api.readme.io/reference/getorderqueueposition
 func (c *Client) GetQueuePosition(ctx context.Context, orderID string) (GetQueuePositionResponse, error) {
 	path := fmt.Sprintf("%s/%s/queue_position", pathOrders, orderID)
 	return getJSON[GetQueuePositionResponse](c, ctx, path, nil)
@@ -114,122 +199,8 @@ func (p GetQueuePositionsParams) toMap() map[string]string {
 }
 
 // ---------------------------------------------------------------------------
-// Request types
+// Types not in types_generated.go
 // ---------------------------------------------------------------------------
-
-// CreateOrderRequest is the request body for a single order entry.
-type CreateOrderRequest struct {
-	Ticker                  string      `json:"ticker"`
-	Side                    Side        `json:"side"`
-	Action                  Action      `json:"action"`
-	ClientOrderID           string      `json:"client_order_id,omitempty"`
-	CountFP                 string      `json:"count_fp,omitempty"`
-	YesPriceDollars         string      `json:"yes_price_dollars,omitempty"`
-	NoPriceDollars          string      `json:"no_price_dollars,omitempty"`
-	ExpirationTs            int64       `json:"expiration_ts,omitempty"`
-	TimeInForce             TimeInForce `json:"time_in_force,omitempty"`
-	BuyMaxCost              int         `json:"buy_max_cost,omitempty"`
-	PostOnly                bool        `json:"post_only,omitempty"`
-	ReduceOnly              bool        `json:"reduce_only,omitempty"`
-	SellPositionFloor       int         `json:"sell_position_floor,omitempty"`
-	SelfTradePreventionType STPType     `json:"self_trade_prevention_type,omitempty"`
-	OrderGroupID            string      `json:"order_group_id,omitempty"`
-	CancelOrderOnPause      bool        `json:"cancel_order_on_pause,omitempty"`
-	Subaccount              int         `json:"subaccount,omitempty"`
-}
-
-// BatchCreateRequest is the request body for POST /portfolio/orders/batched.
-type BatchCreateRequest struct {
-	Orders []CreateOrderRequest `json:"orders"`
-}
-
-// BatchCancelOrderEntry is a single entry in a batch cancel request.
-type BatchCancelOrderEntry struct {
-	OrderID    string `json:"order_id"`
-	Subaccount int    `json:"subaccount,omitempty"`
-}
-
-// BatchCancelRequest is the request body for DELETE /portfolio/orders/batched.
-type BatchCancelRequest struct {
-	Orders []BatchCancelOrderEntry `json:"orders"`
-}
-
-// AmendOrderRequest is the request body for POST /portfolio/orders/{id}/amend.
-type AmendOrderRequest struct {
-	Ticker               string `json:"ticker"`
-	Side                 Side   `json:"side"`
-	Action               Action `json:"action"`
-	Subaccount           int    `json:"subaccount,omitempty"`
-	ClientOrderID        string `json:"client_order_id,omitempty"`
-	UpdatedClientOrderID string `json:"updated_client_order_id,omitempty"`
-	YesPriceDollars      string `json:"yes_price_dollars,omitempty"`
-	NoPriceDollars       string `json:"no_price_dollars,omitempty"`
-	CountFP              string `json:"count_fp,omitempty"`
-}
-
-// DecreaseOrderRequest is the request body for POST /portfolio/orders/{id}/decrease.
-type DecreaseOrderRequest struct {
-	Subaccount int    `json:"subaccount,omitempty"`
-	ReduceByFP string `json:"reduce_by_fp,omitempty"`
-	ReduceToFP string `json:"reduce_to_fp,omitempty"`
-}
-
-// ---------------------------------------------------------------------------
-// Response types
-// ---------------------------------------------------------------------------
-
-// OrderResponse is the full order object returned by the Kalshi API.
-type OrderResponse struct {
-	OrderID                 string      `json:"order_id"`
-	UserID                  string      `json:"user_id"`
-	ClientOrderID           string      `json:"client_order_id"`
-	Ticker                  string      `json:"ticker"`
-	Side                    Side        `json:"side"`
-	Action                  Action      `json:"action"`
-	Type                    OrderType   `json:"type"`
-	Status                  OrderStatus `json:"status"`
-	YesPriceDollars         string      `json:"yes_price_dollars"`
-	NoPriceDollars          string      `json:"no_price_dollars"`
-	FillCountFP             string      `json:"fill_count_fp"`
-	RemainingCountFP        string      `json:"remaining_count_fp"`
-	InitialCountFP          string      `json:"initial_count_fp"`
-	TakerFillCostDollars    string      `json:"taker_fill_cost_dollars"`
-	MakerFillCostDollars    string      `json:"maker_fill_cost_dollars"`
-	TakerFeesDollars        string      `json:"taker_fees_dollars"`
-	MakerFeesDollars        string      `json:"maker_fees_dollars"`
-	ExpirationTime          string      `json:"expiration_time"`
-	CreatedTime             string      `json:"created_time"`
-	LastUpdateTime          string      `json:"last_update_time"`
-	SelfTradePreventionType STPType     `json:"self_trade_prevention_type"`
-	OrderGroupID            string      `json:"order_group_id"`
-	CancelOrderOnPause      bool        `json:"cancel_order_on_pause"`
-	SubaccountNumber        int         `json:"subaccount_number"`
-}
-
-// BatchCreateEntry is a single entry in the batch create orders response.
-type BatchCreateEntry struct {
-	ClientOrderID string         `json:"client_order_id"`
-	Order         *OrderResponse `json:"order"`
-	Error         *APIErrorBody  `json:"error"`
-}
-
-// BatchCreateResponse is the response from POST /portfolio/orders/batched.
-type BatchCreateResponse struct {
-	Orders []BatchCreateEntry `json:"orders"`
-}
-
-// BatchCancelEntry is a single entry in the batch cancel orders response.
-type BatchCancelEntry struct {
-	OrderID     string         `json:"order_id"`
-	ReducedByFP string         `json:"reduced_by_fp"`
-	Order       *OrderResponse `json:"order"`
-	Error       *APIErrorBody  `json:"error"`
-}
-
-// BatchCancelResponse is the response from DELETE /portfolio/orders/batched.
-type BatchCancelResponse struct {
-	Orders []BatchCancelEntry `json:"orders"`
-}
 
 // APIErrorBody is the error object returned inside batch responses.
 type APIErrorBody struct {
@@ -237,24 +208,6 @@ type APIErrorBody struct {
 	Message string `json:"message"`
 	Details string `json:"details"`
 	Service string `json:"service"`
-}
-
-// SingleCreateResponse is the response from POST /portfolio/orders (single order)
-// and GET /portfolio/orders/{id}.
-type SingleCreateResponse struct {
-	Order OrderResponse `json:"order"`
-}
-
-// CancelOrderResponse is the response from DELETE /portfolio/orders/{id}.
-type CancelOrderResponse struct {
-	Order       OrderResponse `json:"order"`
-	ReducedByFP string        `json:"reduced_by_fp"`
-}
-
-// AmendOrderResponse is the response from POST /portfolio/orders/{id}/amend.
-type AmendOrderResponse struct {
-	OldOrder OrderResponse `json:"old_order"`
-	Order    OrderResponse `json:"order"`
 }
 
 // QueuePositionEntry is a single entry in the queue positions response.
@@ -272,10 +225,4 @@ type GetQueuePositionsResponse struct {
 // GetQueuePositionResponse is the response from GET /portfolio/orders/{id}/queue_position.
 type GetQueuePositionResponse struct {
 	QueuePositionFP string `json:"queue_position_fp"`
-}
-
-// GetOrdersResponse is the paginated response from GET /portfolio/orders.
-type GetOrdersResponse struct {
-	Orders []OrderResponse `json:"orders"`
-	Cursor string          `json:"cursor"`
 }

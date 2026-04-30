@@ -7,35 +7,84 @@ import (
 
 const pathEvents = "/trade-api/v2/events"
 
-// GetEvent retrieves details for a single event.
+// GetEvent — Get Event
+//
+// GET /trade-api/v2/events/{event_ticker}
+//
+// Endpoint for getting data about an event by its ticker. An event represents
+// a real-world occurrence that can be traded on, such as an election, sports
+// game, or economic indicator release. Events contain one or more markets
+// where users can place trades on different outcomes. All events are
+// accessible through this endpoint, even if their associated markets are older
+// than the historical cutoff.
+//
+// See https://trading-api.readme.io/reference/getevent
 func (c *Client) GetEvent(ctx context.Context, eventTicker string, params GetEventParams) (GetEventResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathEvents, eventTicker)
 	return getJSON[GetEventResponse](c, ctx, path, params.toMap())
 }
 
-// GetEvents retrieves events matching the given parameters.
+// GetEvents — Get Events
+//
+// GET /trade-api/v2/events
+//
+// Get all events. This endpoint excludes multivariate events. To retrieve
+// multivariate events, use the GET /events/multivariate endpoint. All events
+// are accessible through this endpoint, even if their associated markets are
+// older than the historical cutoff.
+//
+// See https://trading-api.readme.io/reference/getevents
 func (c *Client) GetEvents(ctx context.Context, params GetEventsParams) (GetEventsResponse, error) {
 	return getJSON[GetEventsResponse](c, ctx, pathEvents, params.toMap())
 }
 
-// GetEventMetadata retrieves metadata for a single event.
+// GetEventMetadata — Get Event Metadata
+//
+// GET /trade-api/v2/events/{event_ticker}/metadata
+//
+// Endpoint for getting metadata about an event by its ticker. Returns only the
+// metadata information for an event.
+//
+// See https://trading-api.readme.io/reference/geteventmetadata
 func (c *Client) GetEventMetadata(ctx context.Context, eventTicker string) (GetEventMetadataResponse, error) {
 	path := fmt.Sprintf("%s/%s/metadata", pathEvents, eventTicker)
 	return getJSON[GetEventMetadataResponse](c, ctx, path, nil)
 }
 
-// GetMultivariateEvents retrieves multivariate (combo) events.
+// GetMultivariateEvents — Get Multivariate Events
+//
+// GET /trade-api/v2/events/multivariate
+//
+// Retrieve multivariate (combo) events. These are dynamically created events
+// from multivariate event collections. Supports filtering by series and
+// collection ticker.
+//
+// See https://trading-api.readme.io/reference/getmultivariateevents
 func (c *Client) GetMultivariateEvents(ctx context.Context, params GetMultivariateEventsParams) (GetMultivariateEventsResponse, error) {
 	return getJSON[GetMultivariateEventsResponse](c, ctx, pathEvents+"/multivariate", params.toMap())
 }
 
-// GetEventCandlesticks retrieves aggregated candlestick data for all markets in an event.
+// GetEventCandlesticks — Get Event Candlesticks
+//
+// GET /trade-api/v2/series/{series_ticker}/events/{ticker}/candlesticks
+//
+// End-point for returning aggregated data across all markets corresponding to
+// an event.
+//
+// See https://trading-api.readme.io/reference/getmarketcandlesticksbyevent
 func (c *Client) GetEventCandlesticks(ctx context.Context, seriesTicker, eventTicker string, params GetEventCandlesticksParams) (GetEventCandlesticksResponse, error) {
 	path := fmt.Sprintf("/trade-api/v2/series/%s/events/%s/candlesticks", seriesTicker, eventTicker)
 	return getJSON[GetEventCandlesticksResponse](c, ctx, path, params.toMap())
 }
 
-// GetEventForecastPercentileHistory retrieves historical forecast percentile data for an event.
+// GetEventForecastPercentileHistory — Get Event Forecast Percentile History
+//
+// GET /trade-api/v2/series/{series_ticker}/events/{ticker}/forecast_percentile_history
+//
+// Endpoint for getting the historical raw and formatted forecast numbers for
+// an event at specific percentiles.
+//
+// See https://trading-api.readme.io/reference/geteventforecastpercentileshistory
 func (c *Client) GetEventForecastPercentileHistory(ctx context.Context, seriesTicker, eventTicker string, params GetEventForecastPercentileHistoryParams) (GetEventForecastPercentileHistoryResponse, error) {
 	path := fmt.Sprintf("/trade-api/v2/series/%s/events/%s/forecast_percentile_history", seriesTicker, eventTicker)
 	return getJSON[GetEventForecastPercentileHistoryResponse](c, ctx, path, params.toMap())
@@ -133,85 +182,8 @@ func (p GetEventForecastPercentileHistoryParams) toMap() map[string]string {
 }
 
 // ---------------------------------------------------------------------------
-// Response types
+// Types not in types_generated.go
 // ---------------------------------------------------------------------------
-
-// EventDetail is the full event object returned by the Kalshi API.
-type EventDetail struct {
-	EventTicker          string               `json:"event_ticker"`
-	SeriesTicker         string               `json:"series_ticker"`
-	SubTitle             string               `json:"sub_title"`
-	Title                string               `json:"title"`
-	CollateralReturnType CollateralReturnType `json:"collateral_return_type"`
-	MutuallyExclusive    bool                 `json:"mutually_exclusive"`
-	AvailableOnBrokers   bool                 `json:"available_on_brokers"`
-	ProductMetadata      any                  `json:"product_metadata"`
-	Category             string               `json:"category"`
-	StrikeDate           string               `json:"strike_date"`
-	StrikePeriod         string               `json:"strike_period"`
-	Markets              []MarketDetail       `json:"markets"`
-	LastUpdatedTs        string               `json:"last_updated_ts"`
-}
-
-// Milestone is a milestone related to events.
-type Milestone struct {
-	ID                  string   `json:"id"`
-	Category            string   `json:"category"`
-	Type                string   `json:"type"`
-	StartDate           string   `json:"start_date"`
-	EndDate             string   `json:"end_date"`
-	RelatedEventTickers []string `json:"related_event_tickers"`
-	Title               string   `json:"title"`
-	NotificationMessage string   `json:"notification_message"`
-	Details             any      `json:"details"`
-	PrimaryEventTickers []string `json:"primary_event_tickers"`
-	LastUpdatedTs       string   `json:"last_updated_ts"`
-	SourceID            string   `json:"source_id"`
-	SourceIDs           any      `json:"source_ids"`
-}
-
-// GetEventResponse is the response from GET /events/{ticker}.
-type GetEventResponse struct {
-	Event   EventDetail    `json:"event"`
-	Markets []MarketDetail `json:"markets"`
-}
-
-// GetEventsResponse is the paginated response from GET /events.
-type GetEventsResponse struct {
-	Events     []EventDetail `json:"events"`
-	Cursor     string        `json:"cursor"`
-	Milestones []Milestone   `json:"milestones"`
-}
-
-// MarketMetadata is metadata for a single market within an event.
-type MarketMetadata struct {
-	MarketTicker string `json:"market_ticker"`
-	ImageURL     string `json:"image_url"`
-	ColorCode    string `json:"color_code"`
-}
-
-// GetEventMetadataResponse is the response from GET /events/{ticker}/metadata.
-type GetEventMetadataResponse struct {
-	ImageURL          string             `json:"image_url"`
-	MarketDetails     []MarketMetadata   `json:"market_details"`
-	SettlementSources []SettlementSource `json:"settlement_sources"`
-	FeaturedImageURL  string             `json:"featured_image_url"`
-	Competition       string             `json:"competition"`
-	CompetitionScope  string             `json:"competition_scope"`
-}
-
-// GetMultivariateEventsResponse is the response from GET /events/multivariate.
-type GetMultivariateEventsResponse struct {
-	Events []EventDetail `json:"events"`
-	Cursor string        `json:"cursor"`
-}
-
-// GetEventCandlesticksResponse is the response from GET /series/{s}/events/{t}/candlesticks.
-type GetEventCandlesticksResponse struct {
-	MarketTickers      []string        `json:"market_tickers"`
-	MarketCandlesticks [][]Candlestick `json:"market_candlesticks"`
-	AdjustedEndTs      int64           `json:"adjusted_end_ts"`
-}
 
 // ForecastPercentilePoint is a single percentile data point.
 type ForecastPercentilePoint struct {

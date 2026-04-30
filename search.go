@@ -6,12 +6,24 @@ import (
 
 const pathSearch = "/trade-api/v2/search"
 
-// GetTagsByCategories retrieves tags organized by series categories.
+// GetTagsByCategories — Get Tags for Series Categories
+//
+// GET /trade-api/v2/search/tags_by_categories
+//
+// Retrieve tags organized by series categories.
+//
+// See https://trading-api.readme.io/reference/gettagsforseriescategories
 func (c *Client) GetTagsByCategories(ctx context.Context) (GetTagsByCategoriesResponse, error) {
 	return getJSON[GetTagsByCategoriesResponse](c, ctx, pathSearch+"/tags_by_categories", nil)
 }
 
-// GetFiltersBySport retrieves available filters organized by sport.
+// GetFiltersBySport — Get Filters for Sports
+//
+// GET /trade-api/v2/search/filters_by_sport
+//
+// Retrieve available filters organized by sport.
+//
+// See https://trading-api.readme.io/reference/getfiltersforsports
 func (c *Client) GetFiltersBySport(ctx context.Context) (GetFiltersBySportResponse, error) {
 	return getJSON[GetFiltersBySportResponse](c, ctx, pathSearch+"/filters_by_sport", nil)
 }

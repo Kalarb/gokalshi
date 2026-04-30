@@ -26,6 +26,9 @@ import (
 // Test helpers
 // ---------------------------------------------------------------------------
 
+// ptr returns a pointer to v. Used for nullable fields in generated types.
+func ptr[T any](v T) *T { return &v }
+
 // testClientConfig creates a ClientConfig pointing at the given test server.
 func testClientConfig(t *testing.T, serverURL string) *ClientConfig {
 	t.Helper()
@@ -625,7 +628,7 @@ func TestAmendOrder_Path(t *testing.T) {
 
 	c := newTestClient(t, srv.URL)
 	_, err := c.AmendOrder(context.Background(), "ord-1", AmendOrderRequest{
-		Ticker: "TEST", Side: "yes", Action: "buy", CountFP: "5.00",
+		Ticker: "TEST", Side: "yes", Action: "buy", CountFP: ptr("5.00"),
 	})
 	require.NoError(t, err)
 }
@@ -640,7 +643,7 @@ func TestDecreaseOrder_Path(t *testing.T) {
 
 	c := newTestClient(t, srv.URL)
 	_, err := c.DecreaseOrder(context.Background(), "ord-2", DecreaseOrderRequest{
-		ReduceByFP: "3.00",
+		ReduceByFP: ptr("3.00"),
 	})
 	require.NoError(t, err)
 }
