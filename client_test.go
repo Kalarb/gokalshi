@@ -612,7 +612,7 @@ func TestBatchCancelOrders_BodyFormat(t *testing.T) {
 	defer srv.Close()
 
 	c := newTestClient(t, srv.URL)
-	_, err := c.BatchCancelOrders(context.Background(), []BatchCancelOrderEntry{
+	_, err := c.BatchCancelOrders(context.Background(), []BatchCancelOrdersRequestOrder{
 		{OrderID: "a"}, {OrderID: "b"}, {OrderID: "c"},
 	})
 	require.NoError(t, err)

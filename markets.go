@@ -72,9 +72,9 @@ func (c *Client) GetTrades(ctx context.Context, params GetTradesParams) (GetTrad
 // prices, volume, and settlement rules.
 //
 // See https://trading-api.readme.io/reference/getmarket
-func (c *Client) GetMarket(ctx context.Context, ticker string) (MarketResponse, error) {
+func (c *Client) GetMarket(ctx context.Context, ticker string) (GetMarketResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathMarkets, ticker)
-	return getJSON[MarketResponse](c, ctx, path, nil)
+	return getJSON[GetMarketResponse](c, ctx, path, nil)
 }
 
 // GetMarkets — Get Markets
@@ -114,8 +114,8 @@ func (c *Client) GetMarketCandlesticks(ctx context.Context, seriesTicker, ticker
 // Endpoint for retrieving candlestick data for multiple markets.
 //
 // See https://trading-api.readme.io/reference/batchgetmarketcandlesticks
-func (c *Client) GetBatchMarketCandlesticks(ctx context.Context, params GetBatchMarketCandlesticksParams) (GetBatchMarketCandlesticksResponse, error) {
-	return getJSON[GetBatchMarketCandlesticksResponse](c, ctx, pathMarkets+"/candlesticks", params.toMap())
+func (c *Client) GetBatchMarketCandlesticks(ctx context.Context, params GetBatchMarketCandlesticksParams) (BatchGetMarketCandlesticksResponse, error) {
+	return getJSON[BatchGetMarketCandlesticksResponse](c, ctx, pathMarkets+"/candlesticks", params.toMap())
 }
 
 // ---------------------------------------------------------------------------
@@ -240,38 +240,10 @@ func (p GetBatchMarketCandlesticksParams) toMap() map[string]string {
 // Types not in types_generated.go
 // ---------------------------------------------------------------------------
 
-// OrderbookFP is the fixed-point orderbook from GET /markets/{ticker}/orderbook.
-type OrderbookFP struct {
-	YesDollars [][]string `json:"yes_dollars"`
-	NoDollars  [][]string `json:"no_dollars"`
-}
-
-// MarketOrderbookEntry is a single market's orderbook in a batch response.
-type MarketOrderbookEntry struct {
-	Ticker      string      `json:"ticker"`
-	OrderbookFP OrderbookFP `json:"orderbook_fp"`
-}
-
 // MVESelectedLeg is a leg in a multivariate event market.
 type MVESelectedLeg struct {
 	EventTicker               string `json:"event_ticker"`
 	MarketTicker              string `json:"market_ticker"`
 	Side                      Side   `json:"side"`
 	YesSettlementValueDollars string `json:"yes_settlement_value_dollars"`
-}
-
-// MarketResponse is the response from GET /markets/{ticker}.
-type MarketResponse struct {
-	Market MarketDetail `json:"market"`
-}
-
-// MarketCandlesticks groups candlestick data for a single market in a batch response.
-type MarketCandlesticks struct {
-	MarketTicker string        `json:"market_ticker"`
-	Candlesticks []Candlestick `json:"candlesticks"`
-}
-
-// GetBatchMarketCandlesticksResponse is the response from GET /markets/candlesticks.
-type GetBatchMarketCandlesticksResponse struct {
-	Markets []MarketCandlesticks `json:"markets"`
 }

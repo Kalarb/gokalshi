@@ -13,8 +13,8 @@ const pathExchange = "/trade-api/v2/exchange"
 // Endpoint for getting the exchange status.
 //
 // See https://trading-api.readme.io/reference/getexchangestatus
-func (c *Client) GetExchangeStatus(ctx context.Context) (GetExchangeStatusResponse, error) {
-	return getJSON[GetExchangeStatusResponse](c, ctx, pathExchange+"/status", nil)
+func (c *Client) GetExchangeStatus(ctx context.Context) (ExchangeStatus, error) {
+	return getJSON[ExchangeStatus](c, ctx, pathExchange+"/status", nil)
 }
 
 // GetExchangeAnnouncements — Get Exchange Announcements
@@ -79,40 +79,4 @@ func (p GetSeriesFeeChangesParams) toMap() map[string]string {
 		String("series_ticker", p.SeriesTicker).
 		Bool("show_historical", p.ShowHistorical).
 		Build()
-}
-
-// ---------------------------------------------------------------------------
-// Types not in types_generated.go
-// ---------------------------------------------------------------------------
-
-// GetExchangeStatusResponse is the response from GET /exchange/status.
-type GetExchangeStatusResponse struct {
-	ExchangeActive              bool   `json:"exchange_active"`
-	TradingActive               bool   `json:"trading_active"`
-	ExchangeEstimatedResumeTime string `json:"exchange_estimated_resume_time"`
-}
-
-// TradingSession is a single open/close time window.
-type TradingSession struct {
-	OpenTime  string `json:"open_time"`
-	CloseTime string `json:"close_time"`
-}
-
-// StandardHoursWeek is the weekly trading schedule.
-type StandardHoursWeek struct {
-	StartTime string           `json:"start_time"`
-	EndTime   string           `json:"end_time"`
-	Monday    []TradingSession `json:"monday"`
-	Tuesday   []TradingSession `json:"tuesday"`
-	Wednesday []TradingSession `json:"wednesday"`
-	Thursday  []TradingSession `json:"thursday"`
-	Friday    []TradingSession `json:"friday"`
-	Saturday  []TradingSession `json:"saturday"`
-	Sunday    []TradingSession `json:"sunday"`
-}
-
-// ExchangeSchedule is the full exchange schedule.
-type ExchangeSchedule struct {
-	StandardHours      []StandardHoursWeek `json:"standard_hours"`
-	MaintenanceWindows []MaintenanceWindow `json:"maintenance_windows"`
 }

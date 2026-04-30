@@ -6,29 +6,29 @@ import "context"
 // Consumers should type-annotate against this interface, not *Client directly.
 type HTTPClient interface {
 	// Account
-	GetAccountAPILimits(ctx context.Context) (GetAccountAPILimitsResponse, error)
+	GetAccountAPILimits(ctx context.Context) (GetAccountApiLimitsResponse, error)
 
 	// Exchange
-	GetExchangeStatus(ctx context.Context) (GetExchangeStatusResponse, error)
+	GetExchangeStatus(ctx context.Context) (ExchangeStatus, error)
 	GetExchangeAnnouncements(ctx context.Context) (GetExchangeAnnouncementsResponse, error)
 	GetExchangeSchedule(ctx context.Context) (GetExchangeScheduleResponse, error)
 	GetUserDataTimestamp(ctx context.Context) (GetUserDataTimestampResponse, error)
 	GetSeriesFeeChanges(ctx context.Context, params GetSeriesFeeChangesParams) (GetSeriesFeeChangesResponse, error)
 
 	// Orders
-	CreateOrder(ctx context.Context, req CreateOrderRequest) (SingleCreateResponse, error)
+	CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error)
 	CancelOrder(ctx context.Context, orderID string) (CancelOrderResponse, error)
-	GetOrder(ctx context.Context, orderID string) (SingleCreateResponse, error)
+	GetOrder(ctx context.Context, orderID string) (CreateOrderResponse, error)
 	GetOrders(ctx context.Context, params GetOrdersParams) (GetOrdersResponse, error)
-	BatchCreateOrders(ctx context.Context, orders []CreateOrderRequest) (BatchCreateResponse, error)
-	BatchCancelOrders(ctx context.Context, orders []BatchCancelOrderEntry) (BatchCancelResponse, error)
+	BatchCreateOrders(ctx context.Context, orders []CreateOrderRequest) (BatchCreateOrdersResponse, error)
+	BatchCancelOrders(ctx context.Context, orders []BatchCancelOrdersRequestOrder) (BatchCancelOrdersResponse, error)
 	AmendOrder(ctx context.Context, orderID string, req AmendOrderRequest) (AmendOrderResponse, error)
-	DecreaseOrder(ctx context.Context, orderID string, req DecreaseOrderRequest) (SingleCreateResponse, error)
-	GetQueuePositions(ctx context.Context, params GetQueuePositionsParams) (GetQueuePositionsResponse, error)
-	GetQueuePosition(ctx context.Context, orderID string) (GetQueuePositionResponse, error)
+	DecreaseOrder(ctx context.Context, orderID string, req DecreaseOrderRequest) (CreateOrderResponse, error)
+	GetQueuePositions(ctx context.Context, params GetQueuePositionsParams) (GetOrderQueuePositionsResponse, error)
+	GetQueuePosition(ctx context.Context, orderID string) (GetOrderQueuePositionResponse, error)
 
 	// Portfolio
-	GetBalance(ctx context.Context) (BalanceResponse, error)
+	GetBalance(ctx context.Context) (GetBalanceResponse, error)
 	GetPositions(ctx context.Context, params GetPositionsParams) (GetPositionsResponse, error)
 	GetFills(ctx context.Context, params GetFillsParams) (GetFillsResponse, error)
 	GetSettlements(ctx context.Context, params GetSettlementsParams) (GetSettlementsResponse, error)
@@ -37,10 +37,10 @@ type HTTPClient interface {
 	GetMarketOrderbook(ctx context.Context, ticker string, params GetOrderbookParams) (GetMarketOrderbookResponse, error)
 	GetMarketOrderbooks(ctx context.Context, params GetMarketOrderbooksParams) (GetMarketOrderbooksResponse, error)
 	GetTrades(ctx context.Context, params GetTradesParams) (GetTradesResponse, error)
-	GetMarket(ctx context.Context, ticker string) (MarketResponse, error)
+	GetMarket(ctx context.Context, ticker string) (GetMarketResponse, error)
 	GetMarkets(ctx context.Context, params GetMarketsParams) (GetMarketsResponse, error)
 	GetMarketCandlesticks(ctx context.Context, seriesTicker, ticker string, params GetMarketCandlesticksParams) (GetMarketCandlesticksResponse, error)
-	GetBatchMarketCandlesticks(ctx context.Context, params GetBatchMarketCandlesticksParams) (GetBatchMarketCandlesticksResponse, error)
+	GetBatchMarketCandlesticks(ctx context.Context, params GetBatchMarketCandlesticksParams) (BatchGetMarketCandlesticksResponse, error)
 
 	// Events
 	GetEvent(ctx context.Context, eventTicker string, params GetEventParams) (GetEventResponse, error)
@@ -48,15 +48,15 @@ type HTTPClient interface {
 	GetEventMetadata(ctx context.Context, eventTicker string) (GetEventMetadataResponse, error)
 	GetMultivariateEvents(ctx context.Context, params GetMultivariateEventsParams) (GetMultivariateEventsResponse, error)
 	GetEventCandlesticks(ctx context.Context, seriesTicker, eventTicker string, params GetEventCandlesticksParams) (GetEventCandlesticksResponse, error)
-	GetEventForecastPercentileHistory(ctx context.Context, seriesTicker, eventTicker string, params GetEventForecastPercentileHistoryParams) (GetEventForecastPercentileHistoryResponse, error)
+	GetEventForecastPercentileHistory(ctx context.Context, seriesTicker, eventTicker string, params GetEventForecastPercentileHistoryParams) (GetEventForecastPercentilesHistoryResponse, error)
 
 	// Series
 	GetSeries(ctx context.Context, seriesTicker string, params GetSeriesParams) (GetSeriesResponse, error)
 	GetSeriesList(ctx context.Context, params GetSeriesListParams) (GetSeriesListResponse, error)
 
 	// Search
-	GetTagsByCategories(ctx context.Context) (GetTagsByCategoriesResponse, error)
-	GetFiltersBySport(ctx context.Context) (GetFiltersBySportResponse, error)
+	GetTagsByCategories(ctx context.Context) (GetTagsForSeriesCategoriesResponse, error)
+	GetFiltersBySport(ctx context.Context) (GetFiltersBySportsResponse, error)
 
 	// Lifecycle
 	Close()

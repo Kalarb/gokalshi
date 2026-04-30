@@ -12,8 +12,8 @@ import (
 // values are returned in cents.
 //
 // See https://trading-api.readme.io/reference/getbalance
-func (c *Client) GetBalance(ctx context.Context) (BalanceResponse, error) {
-	return getJSON[BalanceResponse](c, ctx, pathPortfolio+"/balance", nil)
+func (c *Client) GetBalance(ctx context.Context) (GetBalanceResponse, error) {
+	return getJSON[GetBalanceResponse](c, ctx, pathPortfolio+"/balance", nil)
 }
 
 // GetPositions — Get Positions
@@ -123,15 +123,4 @@ func (p GetSettlementsParams) toMap() map[string]string {
 		String("cursor", p.Cursor).
 		Int("subaccount", p.Subaccount).
 		Build()
-}
-
-// ---------------------------------------------------------------------------
-// Types not in types_generated.go
-// ---------------------------------------------------------------------------
-
-// BalanceResponse is the response from GET /portfolio/balance.
-type BalanceResponse struct {
-	Balance        int64 `json:"balance"`
-	PortfolioValue int64 `json:"portfolio_value"`
-	UpdatedTs      int64 `json:"updated_ts"`
 }

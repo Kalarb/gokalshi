@@ -18,8 +18,8 @@ const (
 // open orders at a time.
 //
 // See https://trading-api.readme.io/reference/createorder
-func (c *Client) CreateOrder(ctx context.Context, req CreateOrderRequest) (SingleCreateResponse, error) {
-	return postJSON[SingleCreateResponse](c, ctx, pathOrders, req, 1.0)
+func (c *Client) CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error) {
+	return postJSON[CreateOrderResponse](c, ctx, pathOrders, req, 1.0)
 }
 
 // CancelOrder — Cancel Order
@@ -47,9 +47,9 @@ func (c *Client) CancelOrder(ctx context.Context, orderID string) (CancelOrderRe
 // Endpoint for getting a single order.
 //
 // See https://trading-api.readme.io/reference/getorder
-func (c *Client) GetOrder(ctx context.Context, orderID string) (SingleCreateResponse, error) {
+func (c *Client) GetOrder(ctx context.Context, orderID string) (CreateOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathOrders, orderID)
-	return getJSON[SingleCreateResponse](c, ctx, path, nil)
+	return getJSON[CreateOrderResponse](c, ctx, path, nil)
 }
 
 // GetOrders — Get Orders
@@ -77,10 +77,10 @@ func (c *Client) GetOrders(ctx context.Context, params GetOrdersParams) (GetOrde
 // Tiers](/getting_started/rate_limits).
 //
 // See https://trading-api.readme.io/reference/batchcreateorders
-func (c *Client) BatchCreateOrders(ctx context.Context, orders []CreateOrderRequest) (BatchCreateResponse, error) {
-	body := BatchCreateRequest{Orders: orders}
+func (c *Client) BatchCreateOrders(ctx context.Context, orders []CreateOrderRequest) (BatchCreateOrdersResponse, error) {
+	body := BatchCreateOrdersRequest{Orders: orders}
 	cost := float64(len(orders))
-	return postJSON[BatchCreateResponse](c, ctx, pathOrders+"/batched", body, cost)
+	return postJSON[BatchCreateOrdersResponse](c, ctx, pathOrders+"/batched", body, cost)
 }
 
 // BatchCancelOrders — Batch Cancel Orders
@@ -92,10 +92,10 @@ func (c *Client) BatchCreateOrders(ctx context.Context, orders []CreateOrderRequ
 // Tiers](/getting_started/rate_limits).
 //
 // See https://trading-api.readme.io/reference/batchcancelorders
-func (c *Client) BatchCancelOrders(ctx context.Context, orders []BatchCancelOrderEntry) (BatchCancelResponse, error) {
-	body := BatchCancelRequest{Orders: orders}
+func (c *Client) BatchCancelOrders(ctx context.Context, orders []BatchCancelOrdersRequestOrder) (BatchCancelOrdersResponse, error) {
+	body := BatchCancelOrdersRequest{Orders: orders}
 	cost := float64(len(orders)) * 0.2
-	return deleteJSON[BatchCancelResponse](c, ctx, pathOrders+"/batched", body, cost)
+	return deleteJSON[BatchCancelOrdersResponse](c, ctx, pathOrders+"/batched", body, cost)
 }
 
 // AmendOrder — Amend Order
@@ -121,9 +121,9 @@ func (c *Client) AmendOrder(ctx context.Context, orderID string, req AmendOrderR
 // equivalent to decreasing an order amount to zero.
 //
 // See https://trading-api.readme.io/reference/decreaseorder
-func (c *Client) DecreaseOrder(ctx context.Context, orderID string, req DecreaseOrderRequest) (SingleCreateResponse, error) {
+func (c *Client) DecreaseOrder(ctx context.Context, orderID string, req DecreaseOrderRequest) (CreateOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s/decrease", pathOrders, orderID)
-	return postJSON[SingleCreateResponse](c, ctx, path, req, 1.0)
+	return postJSON[CreateOrderResponse](c, ctx, path, req, 1.0)
 }
 
 // GetQueuePositions — Get Queue Positions for Orders
@@ -135,8 +135,8 @@ func (c *Client) DecreaseOrder(ctx context.Context, orderID string, req Decrease
 // receives a partial or full match, determined using price-time priority.
 //
 // See https://trading-api.readme.io/reference/getorderqueuepositions
-func (c *Client) GetQueuePositions(ctx context.Context, params GetQueuePositionsParams) (GetQueuePositionsResponse, error) {
-	return getJSON[GetQueuePositionsResponse](c, ctx, pathOrders+"/queue_positions", params.toMap())
+func (c *Client) GetQueuePositions(ctx context.Context, params GetQueuePositionsParams) (GetOrderQueuePositionsResponse, error) {
+	return getJSON[GetOrderQueuePositionsResponse](c, ctx, pathOrders+"/queue_positions", params.toMap())
 }
 
 // GetQueuePosition — Get Order Queue Position
@@ -149,9 +149,9 @@ func (c *Client) GetQueuePositions(ctx context.Context, params GetQueuePositions
 // price-time priority.
 //
 // See https://trading-api.readme.io/reference/getorderqueueposition
-func (c *Client) GetQueuePosition(ctx context.Context, orderID string) (GetQueuePositionResponse, error) {
+func (c *Client) GetQueuePosition(ctx context.Context, orderID string) (GetOrderQueuePositionResponse, error) {
 	path := fmt.Sprintf("%s/%s/queue_position", pathOrders, orderID)
-	return getJSON[GetQueuePositionResponse](c, ctx, path, nil)
+	return getJSON[GetOrderQueuePositionResponse](c, ctx, path, nil)
 }
 
 // ---------------------------------------------------------------------------
@@ -196,33 +196,4 @@ func (p GetQueuePositionsParams) toMap() map[string]string {
 		String("event_ticker", p.EventTicker).
 		Int("subaccount", p.Subaccount).
 		Build()
-}
-
-// ---------------------------------------------------------------------------
-// Types not in types_generated.go
-// ---------------------------------------------------------------------------
-
-// APIErrorBody is the error object returned inside batch responses.
-type APIErrorBody struct {
-	Code    string `json:"code"`
-	Message string `json:"message"`
-	Details string `json:"details"`
-	Service string `json:"service"`
-}
-
-// QueuePositionEntry is a single entry in the queue positions response.
-type QueuePositionEntry struct {
-	OrderID         string `json:"order_id"`
-	MarketTicker    string `json:"market_ticker"`
-	QueuePositionFP string `json:"queue_position_fp"`
-}
-
-// GetQueuePositionsResponse is the response from GET /portfolio/orders/queue_positions.
-type GetQueuePositionsResponse struct {
-	QueuePositions []QueuePositionEntry `json:"queue_positions"`
-}
-
-// GetQueuePositionResponse is the response from GET /portfolio/orders/{id}/queue_position.
-type GetQueuePositionResponse struct {
-	QueuePositionFP string `json:"queue_position_fp"`
 }

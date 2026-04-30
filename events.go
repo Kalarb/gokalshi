@@ -85,9 +85,9 @@ func (c *Client) GetEventCandlesticks(ctx context.Context, seriesTicker, eventTi
 // an event at specific percentiles.
 //
 // See https://trading-api.readme.io/reference/geteventforecastpercentileshistory
-func (c *Client) GetEventForecastPercentileHistory(ctx context.Context, seriesTicker, eventTicker string, params GetEventForecastPercentileHistoryParams) (GetEventForecastPercentileHistoryResponse, error) {
+func (c *Client) GetEventForecastPercentileHistory(ctx context.Context, seriesTicker, eventTicker string, params GetEventForecastPercentileHistoryParams) (GetEventForecastPercentilesHistoryResponse, error) {
 	path := fmt.Sprintf("/trade-api/v2/series/%s/events/%s/forecast_percentile_history", seriesTicker, eventTicker)
-	return getJSON[GetEventForecastPercentileHistoryResponse](c, ctx, path, params.toMap())
+	return getJSON[GetEventForecastPercentilesHistoryResponse](c, ctx, path, params.toMap())
 }
 
 // ---------------------------------------------------------------------------
@@ -179,30 +179,4 @@ func (p GetEventForecastPercentileHistoryParams) toMap() map[string]string {
 		Int64("end_ts", p.EndTs).
 		Int("period_interval", p.PeriodInterval).
 		Build()
-}
-
-// ---------------------------------------------------------------------------
-// Types not in types_generated.go
-// ---------------------------------------------------------------------------
-
-// ForecastPercentilePoint is a single percentile data point.
-type ForecastPercentilePoint struct {
-	Percentile           int     `json:"percentile"`
-	RawNumericalForecast float64 `json:"raw_numerical_forecast"`
-	NumericalForecast    float64 `json:"numerical_forecast"`
-	FormattedForecast    string  `json:"formatted_forecast"`
-}
-
-// ForecastHistoryEntry is a single time-period forecast entry.
-type ForecastHistoryEntry struct {
-	EventTicker      string                    `json:"event_ticker"`
-	EndPeriodTs      int64                     `json:"end_period_ts"`
-	PeriodInterval   int                       `json:"period_interval"`
-	PercentilePoints []ForecastPercentilePoint `json:"percentile_points"`
-}
-
-// GetEventForecastPercentileHistoryResponse is the response from
-// GET /series/{s}/events/{t}/forecast_percentile_history.
-type GetEventForecastPercentileHistoryResponse struct {
-	ForecastHistory []ForecastHistoryEntry `json:"forecast_history"`
 }
