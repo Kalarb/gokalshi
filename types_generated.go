@@ -730,7 +730,7 @@ type EventData struct {
 	// Deprecated.
 	Category string `json:"category,omitempty"`
 	// Specifies how collateral is returned when markets settle (e.g., 'binary' for standard yes/no mark...
-	CollateralReturnType string `json:"collateral_return_type"`
+	CollateralReturnType CollateralReturnType `json:"collateral_return_type"`
 	// Unique identifier for this event.
 	EventTicker string `json:"event_ticker"`
 	// Timestamp of when this event's metadata was last updated.
@@ -1516,7 +1516,7 @@ type SeriesFeeChange struct {
 	// New fee multiplier for the series
 	FeeMultiplier float64 `json:"fee_multiplier"`
 	// New fee type for the series
-	FeeType string `json:"fee_type"`
+	FeeType FeeType `json:"fee_type"`
 	// Unique identifier for this fee change
 	ID string `json:"id"`
 	// Timestamp when this fee change is scheduled to take effect
@@ -1543,7 +1543,7 @@ type Series struct {
 	// FeeMultiplier is a floating point multiplier applied to the fee calculations.
 	FeeMultiplier float64 `json:"fee_multiplier"`
 	// FeeType is a string representing the series' fee structure. Fee structures can be found at https:...
-	FeeType string `json:"fee_type"`
+	FeeType FeeType `json:"fee_type"`
 	// Description of the frequency of the series. There is no fixed value set here, but will be somethi...
 	Frequency string `json:"frequency"`
 	// Timestamp of when this series' metadata was last updated.

@@ -36,14 +36,11 @@ var typeAliases = map[string]string{
 
 // nullableOverrides are (schema, field) pairs where the spec says required
 // but the real API returns null. Discovered via pykalshi's production testing.
+// Note: array/map fields are not listed here because Go's json.Unmarshal
+// already handles null → nil slice/map without needing pointer types.
 var nullableOverrides = map[[2]string]bool{
-	{"Series", "tags"}:                                   true,
-	{"Series", "settlement_sources"}:                     true,
-	{"Series", "contract_url"}:                           true,
-	{"Series", "contract_terms_url"}:                     true,
-	{"Series", "additional_prohibitions"}:                true,
-	{"GetOrderQueuePositionsResponse", "queue_positions"}: true,
-	{"GetLiveDatasResponse", "live_datas"}:                true,
+	{"Series", "contract_url"}:      true,
+	{"Series", "contract_terms_url"}: true,
 }
 
 // fieldTypeOverrides map (schema_name, field_name) to a Go type override.
@@ -83,6 +80,13 @@ var fieldTypeOverrides = map[[2]string]string{
 	// AnnouncementType / AnnouncementStatus
 	{"Announcement", "type"}:   "AnnouncementType",
 	{"Announcement", "status"}: "AnnouncementStatus",
+
+	// FeeType
+	{"Series", "fee_type"}:          "FeeType",
+	{"SeriesFeeChange", "fee_type"}: "FeeType",
+
+	// CollateralReturnType
+	{"EventData", "collateral_return_type"}: "CollateralReturnType",
 }
 
 // Spec is a minimal representation of the OpenAPI spec.

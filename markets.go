@@ -235,15 +235,3 @@ func (p GetBatchMarketCandlesticksParams) toMap() map[string]string {
 		Bool("include_latest_before_start", p.IncludeLatestBeforeStart).
 		Build()
 }
-
-// ---------------------------------------------------------------------------
-// Types not in types_generated.go
-// ---------------------------------------------------------------------------
-
-// MVESelectedLeg is a leg in a multivariate event market.
-type MVESelectedLeg struct {
-	EventTicker               string `json:"event_ticker"`
-	MarketTicker              string `json:"market_ticker"`
-	Side                      Side   `json:"side"`
-	YesSettlementValueDollars string `json:"yes_settlement_value_dollars"`
-}

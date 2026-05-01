@@ -266,7 +266,7 @@ type RFQCreatedData struct {
 	TargetCostDollars   string           `json:"target_cost_dollars,omitempty"`
 	CreatedTs           string           `json:"created_ts"`
 	MVECollectionTicker string           `json:"mve_collection_ticker,omitempty"`
-	MVESelectedLegs     []MVESelectedLeg `json:"mve_selected_legs,omitempty"`
+	MveSelectedLegs     []MveSelectedLeg `json:"mve_selected_legs,omitempty"`
 }
 
 // RFQDeletedData is the msg body for an "rfq_deleted" message.

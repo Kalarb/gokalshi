@@ -179,7 +179,7 @@ func buildEndpointMap(spec *Spec) map[string]*EndpointInfo {
 
 		for method, op := range methods {
 			httpMethod := strings.ToUpper(method)
-			if httpMethod != "GET" && httpMethod != "POST" && httpMethod != "PUT" && httpMethod != "DELETE" {
+			if httpMethod != "GET" && httpMethod != "POST" && httpMethod != "PUT" && httpMethod != "DELETE" && httpMethod != "PATCH" {
 				continue
 			}
 			result[op.OperationID] = &EndpointInfo{
