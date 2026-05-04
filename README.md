@@ -137,31 +137,117 @@ func main() {
 | `WithWSBackoff(min, max)` | 1s / 32s | Reconnection backoff |
 | `WithWSLogger(*slog.Logger)` | discard | Structured logger for lifecycle events |
 
-## API Coverage
+## API Coverage & Tests
+
+Every implemented endpoint has a unit test (mock HTTP server). Integration tests hit the real Kalshi DEMO API (HTTP) or PROD API (WebSocket, read-only).
 
 ### HTTP (37 methods)
 
-| Domain | Methods |
-|---|---|
-| Account | `GetAccountAPILimits` |
-| Exchange | `GetExchangeStatus`, `GetExchangeAnnouncements`, `GetExchangeSchedule`, `GetUserDataTimestamp`, `GetSeriesFeeChanges` |
-| Orders | `CreateOrder`, `CancelOrder`, `GetOrder`, `GetOrders`, `BatchCreateOrders`, `BatchCancelOrders`, `AmendOrder`, `DecreaseOrder`, `GetQueuePositions`, `GetQueuePosition` |
-| Portfolio | `GetBalance`, `GetPositions`, `GetFills`, `GetSettlements` |
-| Markets | `GetMarketOrderbook`, `GetMarketOrderbooks`, `GetTrades`, `GetMarket`, `GetMarkets`, `GetMarketCandlesticks`, `GetBatchMarketCandlesticks` |
-| Events | `GetEvent`, `GetEvents`, `GetEventMetadata`, `GetMultivariateEvents`, `GetEventCandlesticks`, `GetEventForecastPercentileHistory` |
-| Series | `GetSeries`, `GetSeriesList` |
-| Search | `GetTagsByCategories`, `GetFiltersBySport` |
+#### Account
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetAccountAPILimits` | Y | | Y | |
+
+#### Exchange
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetExchangeStatus` | Y | Y | Y | |
+| `GetExchangeAnnouncements` | Y | | Y | |
+| `GetExchangeSchedule` | Y | | Y | |
+| `GetUserDataTimestamp` | Y | | Y | |
+| `GetSeriesFeeChanges` | Y | | | |
+
+#### Orders
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetOrders` | Y | Y | | |
+| `GetOrder` | Y | Y | Y | via create+cancel lifecycle |
+| `CreateOrder` | Y | Y | Y | places at 1c, won't fill |
+| `CancelOrder` | Y | Y | Y | cleans up created order |
+| `AmendOrder` | Y | Y | | |
+| `DecreaseOrder` | Y | Y | | |
+| `BatchCreateOrders` | Y | Y | | |
+| `BatchCancelOrders` | Y | Y | | |
+| `GetQueuePositions` | Y | | | |
+| `GetQueuePosition` | Y | | | |
+
+#### Portfolio
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetBalance` | Y | Y | Y | |
+| `GetPositions` | Y | Y | Y | |
+| `GetFills` | Y | Y | Y | |
+| `GetSettlements` | Y | | Y | |
+
+#### Markets
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetMarket` | Y | Y | Y | |
+| `GetMarkets` | Y | Y | Y | |
+| `GetMarketOrderbook` | Y | Y | Y | |
+| `GetMarketOrderbooks` | Y | | | batch, multiple tickers |
+| `GetTrades` | Y | Y | Y | |
+| `GetMarketCandlesticks` | Y | | | via series + market ticker |
+| `GetBatchMarketCandlesticks` | Y | | | |
+
+#### Events
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetEvent` | Y | Y | Y | |
+| `GetEvents` | Y | Y | Y | |
+| `GetEventMetadata` | Y | | Y | |
+| `GetMultivariateEvents` | Y | | | |
+| `GetEventCandlesticks` | Y | | | via series + event ticker |
+| `GetEventForecastPercentileHistory` | Y | | | |
+
+#### Series
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetSeries` | Y | Y | Y | |
+| `GetSeriesList` | Y | Y | Y | |
+
+#### Search
+
+| Method | Impl | Unit | Integration | Notes |
+|---|:---:|:---:|:---:|---|
+| `GetTagsByCategories` | Y | | | |
+| `GetFiltersBySport` | Y | | | |
 
 ### WebSocket
 
-| Method | Description |
-|---|---|
-| `Connect` | Establish authenticated WS connection |
-| `Close` | Graceful close |
-| `ListenLoop` | Read loop with auto-reconnect |
-| `MsgCh` | Channel for incoming messages |
-| `AddMarkets` | Subscribe tickers to channels |
-| `RemoveMarkets` | Unsubscribe tickers from channels |
+#### Channels
+
+| Channel | Auth | Message Types | Impl | Unit | Integration | Notes |
+|---|:---:|---|:---:|:---:|:---:|---|
+| `orderbook_delta` | | `orderbook_snapshot`, `orderbook_delta` | Y | Y | Y | sequence tracking |
+| `ticker` | | `ticker` | Y | Y | Y | price/volume/OI updates |
+| `trade` | | `trade` | Y | Y | Y | public trade notifications |
+| `fill` | Y | `fill` | Y | Y | Y | subscription-only in integration |
+| `market_positions` | Y | `market_position` | Y | Y | Y | subscription-only in integration |
+| `user_orders` | Y | `user_order` | Y | Y | Y | subscription-only in integration |
+| `market_lifecycle_v2` | | `market_lifecycle_v2`, `event_lifecycle` | Y | Y | | |
+| `multivariate_market_lifecycle` | | `multivariate_market_lifecycle`, `event_lifecycle` | Y | Y | | |
+| `multivariate` | | `multivariate_lookup` | Y | Y | | |
+| `communications` | Y | `rfq_created`, `rfq_deleted`, `quote_created`, `quote_accepted`, `quote_executed` | Y | Y | | |
+| `order_group_updates` | Y | `order_group_updates` | Y | Y | | |
+
+#### Client Operations
+
+| Method | Purpose | Impl | Unit | Integration | Notes |
+|---|---|:---:|:---:|:---:|---|
+| `Connect` | Establish authenticated WS connection | Y | Y | Y | |
+| `Close` | Graceful close | Y | Y | Y | |
+| `ListenLoop` | Read loop with auto-reconnect | Y | Y | Y | exponential backoff |
+| `MsgCh` | Channel for incoming messages | Y | Y | Y | |
+| `AddMarkets` | Subscribe tickers to channels | Y | Y | Y | |
+| `RemoveMarkets` | Unsubscribe tickers from channels | Y | Y | Y | |
 
 ## Typed Errors
 
