@@ -57,6 +57,17 @@ const (
 	STPMaker        STPType = "maker"
 )
 
+// SelfTradePreventionType is an alias for STPType (spec-canonical name).
+type SelfTradePreventionType = STPType
+
+// BookSide represents the side of the order book.
+type BookSide string
+
+const (
+	BookSideBid BookSide = "bid"
+	BookSideAsk BookSide = "ask"
+)
+
 // ---------------------------------------------------------------------------
 // Market enums
 // ---------------------------------------------------------------------------

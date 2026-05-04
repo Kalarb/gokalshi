@@ -241,17 +241,27 @@ func (c *WSClient) handleSubscribed(msg WSMessage) {
 	state.SID = &sid
 	c.sidMap[sid] = state
 
-	// Flush pending markets.
-	if len(state.PendingMarkets) > 0 {
+	// Flush pending markets. Loop handles tickers queued by concurrent
+	// AddMarkets calls during the unlock window.
+	for len(state.PendingMarkets) > 0 {
 		tickers := make([]string, 0, len(state.PendingMarkets))
 		for t := range state.PendingMarkets {
 			tickers = append(tickers, t)
 		}
 		state.PendingMarkets = make(map[string]struct{})
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		// Must release lock before sending on WS.
 		c.mu.Unlock()
-		_ = c.sendUpdateSub(context.Background(), sid, tickers, WSUpdateAddMarkets)
+		err := c.sendUpdateSub(ctx, sid, tickers, WSUpdateAddMarkets)
+		cancel()
 		c.mu.Lock()
+		if err != nil {
+			c.logger.LogAttrs(context.Background(), slog.LevelError, "ws_pending_flush_failed",
+				slog.String("error", err.Error()))
+			c.forceReconnect.Store(true)
+			break
+		}
 	}
 
 	c.logger.LogAttrs(context.Background(), slog.LevelInfo, "ws_subscribed",
@@ -335,14 +345,15 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 
 		if state.SID != nil {
 			// Channel has a SID — send update_subscription.
-			for _, t := range newTickers {
-				state.Markets[t] = struct{}{}
-			}
+			sid := *state.SID
 			c.mu.Unlock()
-			err := c.sendUpdateSub(ctx, *state.SID, newTickers, WSUpdateAddMarkets)
+			err := c.sendUpdateSub(ctx, sid, newTickers, WSUpdateAddMarkets)
 			c.mu.Lock()
 			if err != nil {
 				return err
+			}
+			for _, t := range newTickers {
+				state.Markets[t] = struct{}{}
 			}
 		} else if _, pending := c.pendingInitForChannel(ch); pending {
 			// Subscribe in progress — queue tickers.
@@ -351,14 +362,14 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 			}
 		} else {
 			// No SID, no pending — send initial subscribe.
-			for _, t := range newTickers {
-				state.Markets[t] = struct{}{}
-			}
 			c.mu.Unlock()
 			err := c.sendSubscribe(ctx, ch, newTickers)
 			c.mu.Lock()
 			if err != nil {
 				return err
+			}
+			for _, t := range newTickers {
+				state.Markets[t] = struct{}{}
 			}
 		}
 	}
@@ -376,15 +387,15 @@ func (c *WSClient) RemoveMarkets(ctx context.Context, tickers []string, channels
 			continue
 		}
 
-		for _, t := range tickers {
-			delete(state.Markets, t)
-		}
-
+		sid := *state.SID
 		c.mu.Unlock()
-		err := c.sendUpdateSub(ctx, *state.SID, tickers, WSUpdateDeleteMarkets)
+		err := c.sendUpdateSub(ctx, sid, tickers, WSUpdateDeleteMarkets)
 		c.mu.Lock()
 		if err != nil {
 			return err
+		}
+		for _, t := range tickers {
+			delete(state.Markets, t)
 		}
 	}
 	return nil
@@ -486,7 +497,10 @@ func (c *WSClient) writeJSON(ctx context.Context, v any) error {
 	if conn == nil {
 		return fmt.Errorf("ws not connected")
 	}
-	return conn.Write(ctx, websocket.MessageText, data)
+	// Ensure writes don't block indefinitely on stalled connections.
+	writeCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	return conn.Write(writeCtx, websocket.MessageText, data)
 }
 
 func (c *WSClient) nextBackoff(current time.Duration) time.Duration {

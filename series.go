@@ -7,13 +7,34 @@ import (
 
 const pathSeries = "/trade-api/v2/series"
 
-// GetSeries retrieves details for a single series.
+// GetSeries — Get Series
+//
+// GET /trade-api/v2/series/{series_ticker}
+//
+// Endpoint for getting data about a specific series by its ticker. A series
+// represents a template for recurring events that follow the same format and
+// rules (e.g., "Monthly Jobs Report", "Weekly Initial Jobless Claims", "Daily
+// Weather in NYC"). Series define the structure, settlement sources, and
+// metadata that will be applied to each recurring event instance within that
+// series.
+//
+// See https://trading-api.readme.io/reference/getseries
 func (c *Client) GetSeries(ctx context.Context, seriesTicker string, params GetSeriesParams) (GetSeriesResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathSeries, seriesTicker)
 	return getJSON[GetSeriesResponse](c, ctx, path, params.toMap())
 }
 
-// GetSeriesList retrieves a list of series.
+// GetSeriesList — Get Series List
+//
+// GET /trade-api/v2/series
+//
+// Endpoint for getting data about multiple series with specified filters. A
+// series represents a template for recurring events that follow the same
+// format and rules (e.g., "Monthly Jobs Report", "Weekly Initial Jobless
+// Claims", "Daily Weather in NYC"). This endpoint allows you to browse and
+// discover available series templates by category.
+//
+// See https://trading-api.readme.io/reference/getserieslist
 func (c *Client) GetSeriesList(ctx context.Context, params GetSeriesListParams) (GetSeriesListResponse, error) {
 	return getJSON[GetSeriesListResponse](c, ctx, pathSeries, params.toMap())
 }
@@ -50,42 +71,4 @@ func (p GetSeriesListParams) toMap() map[string]string {
 		Bool("include_volume", p.IncludeVolume).
 		Int64("min_updated_ts", p.MinUpdatedTs).
 		Build()
-}
-
-// ---------------------------------------------------------------------------
-// Response types
-// ---------------------------------------------------------------------------
-
-// SettlementSource is a source used for market determination.
-type SettlementSource struct {
-	Name string `json:"name"`
-	URL  string `json:"url"`
-}
-
-// SeriesDetail is the full series object returned by the Kalshi API.
-type SeriesDetail struct {
-	Ticker                 string             `json:"ticker"`
-	Frequency              string             `json:"frequency"`
-	Title                  string             `json:"title"`
-	Category               string             `json:"category"`
-	Tags                   []string           `json:"tags"`
-	SettlementSources      []SettlementSource `json:"settlement_sources"`
-	ContractURL            string             `json:"contract_url"`
-	ContractTermsURL       string             `json:"contract_terms_url"`
-	FeeType                FeeType            `json:"fee_type"`
-	FeeMultiplier          float64            `json:"fee_multiplier"`
-	AdditionalProhibitions []string           `json:"additional_prohibitions"`
-	ProductMetadata        any                `json:"product_metadata"`
-	VolumeFP               string             `json:"volume_fp"`
-	LastUpdatedTs          string             `json:"last_updated_ts"`
-}
-
-// GetSeriesResponse is the response from GET /series/{ticker}.
-type GetSeriesResponse struct {
-	Series SeriesDetail `json:"series"`
-}
-
-// GetSeriesListResponse is the response from GET /series.
-type GetSeriesListResponse struct {
-	Series []SeriesDetail `json:"series"`
 }

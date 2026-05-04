@@ -114,18 +114,18 @@ type MarketLifecycleAdditionalMetadata struct {
 
 // MarketLifecycleV2Data is the msg body for a "market_lifecycle_v2" message.
 type MarketLifecycleV2Data struct {
-	EventType                MarketLifecycleEventType            `json:"event_type"`
-	MarketTicker             string                              `json:"market_ticker"`
-	OpenTs                   int64                               `json:"open_ts,omitempty"`
-	CloseTs                  int64                               `json:"close_ts,omitempty"`
-	Result                   string                              `json:"result,omitempty"`
-	DeterminationTs          int64                               `json:"determination_ts,omitempty"`
-	SettlementValue          string                              `json:"settlement_value,omitempty"`
-	SettledTs                int64                               `json:"settled_ts,omitempty"`
-	IsDeactivated            *bool                               `json:"is_deactivated,omitempty"`
-	FractionalTradingEnabled *bool                               `json:"fractional_trading_enabled,omitempty"`
-	PriceLevelStructure      string                              `json:"price_level_structure,omitempty"`
-	AdditionalMetadata       *MarketLifecycleAdditionalMetadata  `json:"additional_metadata,omitempty"`
+	EventType                MarketLifecycleEventType           `json:"event_type"`
+	MarketTicker             string                             `json:"market_ticker"`
+	OpenTs                   int64                              `json:"open_ts,omitempty"`
+	CloseTs                  int64                              `json:"close_ts,omitempty"`
+	Result                   string                             `json:"result,omitempty"`
+	DeterminationTs          int64                              `json:"determination_ts,omitempty"`
+	SettlementValue          string                             `json:"settlement_value,omitempty"`
+	SettledTs                int64                              `json:"settled_ts,omitempty"`
+	IsDeactivated            *bool                              `json:"is_deactivated,omitempty"`
+	FractionalTradingEnabled *bool                              `json:"fractional_trading_enabled,omitempty"`
+	PriceLevelStructure      string                             `json:"price_level_structure,omitempty"`
+	AdditionalMetadata       *MarketLifecycleAdditionalMetadata `json:"additional_metadata,omitempty"`
 }
 
 // EventLifecycleData is the msg body for an "event_lifecycle" message.
@@ -133,7 +133,7 @@ type EventLifecycleData struct {
 	EventTicker          string               `json:"event_ticker"`
 	Title                string               `json:"title"`
 	Subtitle             string               `json:"subtitle"`
-	CollateralReturnType CollateralReturnType  `json:"collateral_return_type"`
+	CollateralReturnType CollateralReturnType `json:"collateral_return_type"`
 	SeriesTicker         string               `json:"series_ticker"`
 	StrikeDate           int64                `json:"strike_date,omitempty"`
 	StrikePeriod         string               `json:"strike_period,omitempty"`
@@ -266,7 +266,7 @@ type RFQCreatedData struct {
 	TargetCostDollars   string           `json:"target_cost_dollars,omitempty"`
 	CreatedTs           string           `json:"created_ts"`
 	MVECollectionTicker string           `json:"mve_collection_ticker,omitempty"`
-	MVESelectedLegs     []MVESelectedLeg `json:"mve_selected_legs,omitempty"`
+	MveSelectedLegs     []MveSelectedLeg `json:"mve_selected_legs,omitempty"`
 }
 
 // RFQDeletedData is the msg body for an "rfq_deleted" message.

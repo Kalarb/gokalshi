@@ -42,7 +42,7 @@ func TestWithWSLogger_SetsLogger(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
 
 	cfg := &ClientConfig{
-		WSBaseURL: "ws://localhost",
+		WSBaseURL:   "ws://localhost",
 		Credentials: &Credentials{KeyID: "test"},
 	}
 	ws := NewWSClient(cfg, WithWSLogger(logger))
@@ -55,7 +55,7 @@ func TestWithWSLogger_SetsLogger(t *testing.T) {
 
 func TestDefaultWSClient_UsesDiscardLogger(t *testing.T) {
 	cfg := &ClientConfig{
-		WSBaseURL: "ws://localhost",
+		WSBaseURL:   "ws://localhost",
 		Credentials: &Credentials{KeyID: "test"},
 	}
 	ws := NewWSClient(cfg)

@@ -200,6 +200,6 @@ func TestHTTPIntegration_Account(t *testing.T) {
 		resp, err := c.GetAccountAPILimits(ctx)
 		require.NoError(t, err)
 		assert.NotEmpty(t, resp.UsageTier)
-		t.Logf("tier=%s read=%d write=%d", resp.UsageTier, resp.ReadLimit, resp.WriteLimit)
+		t.Logf("tier=%s read=%d write=%d", resp.UsageTier, resp.Read.RefillRate, resp.Write.RefillRate)
 	})
 }
