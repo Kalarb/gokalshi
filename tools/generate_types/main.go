@@ -87,6 +87,10 @@ var fieldTypeOverrides = map[[2]string]string{
 
 	// CollateralReturnType
 	{"EventData", "collateral_return_type"}: "CollateralReturnType",
+
+	// Side (accepted_side fields)
+	{"AcceptQuoteRequest", "accepted_side"}: "Side",
+	{"Quote", "accepted_side"}:             "Side",
 }
 
 // Spec is a minimal representation of the OpenAPI spec.

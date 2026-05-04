@@ -6,7 +6,7 @@ package gokalshi
 // AcceptQuoteRequest is a generated type from the Kalshi OpenAPI spec.
 type AcceptQuoteRequest struct {
 	// The side of the quote to accept (yes or no)
-	AcceptedSide string `json:"accepted_side"`
+	AcceptedSide Side `json:"accepted_side"`
 }
 
 // AmendOrderRequest is a generated type from the Kalshi OpenAPI spec.
@@ -481,8 +481,10 @@ type Market struct {
 	// Time when this market's fee waiver expires
 	FeeWaiverExpirationTime *string `json:"fee_waiver_expiration_time,omitempty"`
 	// Minimum expiration value that leads to a YES settlement
-	FloorStrike              *float64 `json:"floor_strike,omitempty"`
-	FractionalTradingEnabled bool     `json:"fractional_trading_enabled"`
+	FloorStrike *float64 `json:"floor_strike,omitempty"`
+	// Deprecated. This flag is always `true` and carries no information. Will be removed after a pre-an...
+	// Deprecated.
+	FractionalTradingEnabled bool `json:"fractional_trading_enabled"`
 	// Mapping from expiration values to settlement values
 	FunctionalStrike *string `json:"functional_strike,omitempty"`
 	// If true, the market may be removed after determination if there is no activity on it
@@ -543,9 +545,6 @@ type Market struct {
 	StrikeType string `json:"strike_type,omitempty"`
 	// Deprecated.
 	Subtitle string `json:"subtitle,omitempty"`
-	// DEPRECATED: Use price_level_structure and price_ranges instead.
-	// Deprecated.
-	TickSize int    `json:"tick_size,omitempty"`
 	Ticker   string `json:"ticker"`
 	// Deprecated.
 	Title string `json:"title,omitempty"`
@@ -1394,7 +1393,7 @@ type GetPositionsResponse struct {
 // Quote is a generated type from the Kalshi OpenAPI spec.
 type Quote struct {
 	// The side that was accepted (yes or no)
-	AcceptedSide string `json:"accepted_side,omitempty"`
+	AcceptedSide Side `json:"accepted_side,omitempty"`
 	// Timestamp when the quote was accepted
 	AcceptedTS string `json:"accepted_ts,omitempty"`
 	// Reason for quote cancellation if cancelled
