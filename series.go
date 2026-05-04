@@ -39,6 +39,15 @@ func (c *Client) GetSeriesList(ctx context.Context, params GetSeriesListParams) 
 	return getJSON[GetSeriesListResponse](c, ctx, pathSeries, params.toMap())
 }
 
+// GetSeriesFeeChanges — Get Series Fee Changes
+//
+// GET /trade-api/v2/series/fee_changes
+//
+// See https://trading-api.readme.io/reference/getseriesfeechanges
+func (c *Client) GetSeriesFeeChanges(ctx context.Context, params GetSeriesFeeChangesParams) (GetSeriesFeeChangesResponse, error) {
+	return getJSON[GetSeriesFeeChangesResponse](c, ctx, pathSeries+"/fee_changes", params.toMap())
+}
+
 // ---------------------------------------------------------------------------
 // Query parameter types
 // ---------------------------------------------------------------------------
@@ -70,5 +79,18 @@ func (p GetSeriesListParams) toMap() map[string]string {
 		Bool("include_product_metadata", p.IncludeProductMetadata).
 		Bool("include_volume", p.IncludeVolume).
 		Int64("min_updated_ts", p.MinUpdatedTs).
+		Build()
+}
+
+// GetSeriesFeeChangesParams holds optional query parameters for GetSeriesFeeChanges.
+type GetSeriesFeeChangesParams struct {
+	SeriesTicker   string
+	ShowHistorical bool
+}
+
+func (p GetSeriesFeeChangesParams) toMap() map[string]string {
+	return NewQuery().
+		String("series_ticker", p.SeriesTicker).
+		Bool("show_historical", p.ShowHistorical).
 		Build()
 }

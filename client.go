@@ -51,7 +51,7 @@ func NewClient(cfg *ClientConfig, opts ...ClientOption) *Client {
 		httpClient:  &http.Client{Timeout: 30 * time.Second},
 		baseURL:     cfg.HTTPBaseURL,
 		credentials: cfg.Credentials,
-		limiter:     NewReadWriteTokenBucket(DefaultTokenBucketConfig()),
+		limiter:     mustNewTokenBucket(DefaultTokenBucketConfig()),
 		maxRetries:  4,
 		baseDelay:   100 * time.Millisecond,
 	}
@@ -64,6 +64,14 @@ func NewClient(cfg *ClientConfig, opts ...ClientOption) *Client {
 // Close releases resources held by the client.
 func (c *Client) Close() {
 	c.httpClient.CloseIdleConnections()
+}
+
+func mustNewTokenBucket(cfg TokenBucketConfig) *ReadWriteTokenBucket {
+	b, err := NewReadWriteTokenBucket(cfg)
+	if err != nil {
+		panic("invalid default token bucket config: " + err.Error())
+	}
+	return b
 }
 
 // do executes an HTTP request with rate limiting, auth headers, and 429 retry.
@@ -94,9 +102,13 @@ func (c *Client) do(ctx context.Context, method, path string, readCost, writeCos
 			return nil, fmt.Errorf("HTTP %s %s: %w", method, path, err)
 		}
 
-		if statusCode == http.StatusTooManyRequests {
-			if retried, err := c.handleRetry(ctx, method, path, retries); err != nil {
-				return nil, err
+		if statusCode == http.StatusTooManyRequests || isRetryableStatus(statusCode) {
+			if retried, retryErr := c.handleRetry(ctx, method, path, retries); retryErr != nil {
+				// Exhausted retries — return the original API error for 5xx.
+				if isRetryableStatus(statusCode) {
+					return nil, newAPIError(statusCode, method, path, string(respBody))
+				}
+				return nil, retryErr
 			} else if retried {
 				continue
 			}
@@ -163,6 +175,13 @@ func (c *Client) executeRequest(req *http.Request) ([]byte, int, error) {
 		return nil, resp.StatusCode, fmt.Errorf("read response body: %w", err)
 	}
 	return body, resp.StatusCode, nil
+}
+
+// isRetryableStatus returns true for server errors worth retrying.
+func isRetryableStatus(code int) bool {
+	return code == http.StatusBadGateway ||
+		code == http.StatusServiceUnavailable ||
+		code == http.StatusGatewayTimeout
 }
 
 // handleRetry handles 429 rate limit responses with exponential backoff.

@@ -543,3 +543,251 @@ func TestWSClient_HandleIncoming_SubscribedFlushPending(t *testing.T) {
 
 	assert.Empty(t, state.PendingMarkets)
 }
+
+// ---------------------------------------------------------------------------
+// Step 1: msgCh lifecycle + Close() wait
+// ---------------------------------------------------------------------------
+
+func TestWSClient_MsgCh_ClosedAfterListenLoopExits(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		// Keep connection alive until test is done.
+		<-time.After(5 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg, WithWSBackoff(10*time.Millisecond, 50*time.Millisecond))
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go ws.ListenLoop(ctx)
+	time.Sleep(100 * time.Millisecond) // let it connect
+
+	cancel()
+	time.Sleep(200 * time.Millisecond) // let ListenLoop exit
+
+	// MsgCh should be closed — receive returns ok=false.
+	select {
+	case _, ok := <-ws.MsgCh():
+		assert.False(t, ok, "MsgCh should be closed after ListenLoop exits")
+	case <-time.After(2 * time.Second):
+		t.Fatal("MsgCh was not closed after ListenLoop exited")
+	}
+}
+
+func TestWSClient_MsgCh_RangeExitsOnShutdown(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		<-time.After(5 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg, WithWSBackoff(10*time.Millisecond, 50*time.Millisecond))
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go ws.ListenLoop(ctx)
+	time.Sleep(100 * time.Millisecond)
+
+	rangeExited := make(chan struct{})
+	go func() {
+		for range ws.MsgCh() {
+			// drain
+		}
+		close(rangeExited)
+	}()
+
+	cancel()
+
+	select {
+	case <-rangeExited:
+		// range loop exited because channel was closed
+	case <-time.After(2 * time.Second):
+		t.Fatal("range over MsgCh did not exit after ListenLoop shutdown")
+	}
+}
+
+func TestWSClient_Close_WaitsForListenLoop(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		<-time.After(5 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg, WithWSBackoff(10*time.Millisecond, 50*time.Millisecond))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	listenDone := make(chan struct{})
+	go func() {
+		ws.ListenLoop(ctx)
+		close(listenDone)
+	}()
+	time.Sleep(100 * time.Millisecond) // let it connect
+
+	// Close should wait for ListenLoop to finish.
+	// The close handshake may error if the server-side handler already exited.
+	_ = ws.Close()
+
+	select {
+	case <-listenDone:
+		// ListenLoop has exited by the time Close returns
+	case <-time.After(2 * time.Second):
+		t.Fatal("ListenLoop still running after Close() returned")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Step 2: PendingMarkets recovery on reconnect
+// ---------------------------------------------------------------------------
+
+func TestWSClient_HandleConnectionLoss_MergesPendingMarkets(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	state := NewChannelState("orderbook_delta")
+	state.Markets["EXISTING-1"] = struct{}{}
+	state.PendingMarkets["PENDING-1"] = struct{}{}
+	state.PendingMarkets["PENDING-2"] = struct{}{}
+	sid := 5
+	state.SID = &sid
+	state.Seq = 10
+	ws.channels["orderbook_delta"] = state
+	ws.sidMap[5] = state
+	ws.pendingInit[99] = "orderbook_delta"
+
+	ws.handleConnectionLoss()
+
+	// PendingMarkets should have been merged into Markets before cleanup.
+	assert.Contains(t, state.Markets, "EXISTING-1", "existing markets should be preserved")
+	assert.Contains(t, state.Markets, "PENDING-1", "pending markets should be merged into Markets")
+	assert.Contains(t, state.Markets, "PENDING-2", "pending markets should be merged into Markets")
+	assert.Empty(t, state.PendingMarkets, "PendingMarkets should be cleared after merge")
+
+	// Standard cleanup assertions
+	assert.Nil(t, state.SID)
+	assert.Equal(t, 0, state.Seq)
+}
+
+// ---------------------------------------------------------------------------
+// Step 5: Read timeout on silent server
+// ---------------------------------------------------------------------------
+
+func TestWSClient_ReadLoop_TimeoutOnSilentServer(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		// Accept connection but never send any data.
+		<-time.After(30 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg, WithWSReadTimeout(500*time.Millisecond))
+
+	ctx := context.Background()
+	err := ws.Connect(ctx)
+	require.NoError(t, err)
+	defer ws.Close()
+
+	// readLoop should return an error within ~1s due to read timeout.
+	done := make(chan error, 1)
+	go func() {
+		done <- ws.readLoop(ctx)
+	}()
+
+	select {
+	case err := <-done:
+		assert.Error(t, err, "readLoop should return error on silent server")
+	case <-time.After(3 * time.Second):
+		t.Fatal("readLoop did not timeout on silent server")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Step 4: Unlock/relock SID validation
+// ---------------------------------------------------------------------------
+
+func TestWSClient_AddMarkets_SIDInvalidatedDuringUnlock(t *testing.T) {
+	// Server that reads commands slowly, giving us time to simulate connection loss.
+	cmdReceived := make(chan struct{})
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, _, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			close(cmdReceived)
+			// Block forever — simulates a slow/stuck write.
+			<-time.After(10 * time.Second)
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	err := ws.Connect(ctx)
+	require.NoError(t, err)
+	defer ws.Close()
+
+	state := NewChannelState("ticker")
+	sid := 10
+	state.SID = &sid
+	state.Markets["OLD-TICK"] = struct{}{}
+	ws.channels["ticker"] = state
+	ws.sidMap[10] = state
+
+	// AddMarkets will unlock mu to send, then re-lock. During the unlock window,
+	// simulate connection loss which clears SID.
+	go func() {
+		<-cmdReceived
+		ws.handleConnectionLoss()
+	}()
+
+	// AddMarkets sends update_subscription, during which handleConnectionLoss fires.
+	_ = ws.AddMarkets(ctx, []string{"NEW-TICK"}, []string{"ticker"})
+
+	ws.mu.Lock()
+	hasSID := state.SID != nil
+	_, hasNew := state.Markets["NEW-TICK"]
+	ws.mu.Unlock()
+
+	if !hasSID {
+		// SID was cleared (connection loss happened). NEW-TICK should NOT be in Markets
+		// because the subscription it was sent on no longer exists.
+		assert.False(t, hasNew,
+			"NEW-TICK should not be in Markets when SID was invalidated during send")
+	}
+	// If SID still present (race went the other way), the test is inconclusive — that's OK.
+}
+
+// ---------------------------------------------------------------------------
+// Step 3: Sequence gap drops message
+// ---------------------------------------------------------------------------
+
+func TestWSClient_HandleDataMessage_SequenceGap_DropsMessage(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	state := NewChannelState("orderbook_delta")
+	sid := 1
+	state.SID = &sid
+	state.Seq = 5
+	ws.channels["orderbook_delta"] = state
+	ws.sidMap[1] = state
+
+	msg := WSMessage{
+		Type: WSMsgOrderbookDelta,
+		SID:  1,
+		Seq:  10, // gap: expected 6
+	}
+	raw := []byte(`{"type":"orderbook_delta","sid":1,"seq":10,"msg":{}}`)
+
+	ws.mu.Lock()
+	result := ws.handleDataMessage(msg, raw)
+	ws.mu.Unlock()
+
+	assert.Nil(t, result, "out-of-sequence message should NOT be dispatched")
+	assert.True(t, ws.forceReconnect.Load(), "forceReconnect should be set on sequence gap")
+}

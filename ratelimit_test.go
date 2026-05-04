@@ -11,12 +11,15 @@ import (
 )
 
 func testBucket(readRate, writeRate float64) *ReadWriteTokenBucket {
-	b := NewReadWriteTokenBucket(TokenBucketConfig{
+	b, err := NewReadWriteTokenBucket(TokenBucketConfig{
 		ReadRate:      readRate,
 		WriteRate:     writeRate,
 		WindowSize:    1.0,
 		SafetyPadding: 0.0,
 	})
+	if err != nil {
+		panic(err)
+	}
 	return b
 }
 
@@ -28,7 +31,8 @@ func testBucketWithClock(readRate, writeRate float64, clock func() float64) *Rea
 
 func TestNewReadWriteTokenBucket(t *testing.T) {
 	cfg := DefaultTokenBucketConfig()
-	b := NewReadWriteTokenBucket(cfg)
+	b, err := NewReadWriteTokenBucket(cfg)
+	require.NoError(t, err)
 
 	status := b.Status()
 	assert.Equal(t, cfg.ReadRate, status.ReadTokens)
@@ -239,4 +243,40 @@ func TestCalculateWaitTime_BothBuckets(t *testing.T) {
 
 	wait := b.GetWaitTime(1.0, 1.0)
 	assert.Greater(t, wait, time.Duration(0))
+}
+
+// ---------------------------------------------------------------------------
+// Step 7: Rate limiter validation
+// ---------------------------------------------------------------------------
+
+func TestAcquire_NegativeCost_ReturnsError(t *testing.T) {
+	b := testBucket(10, 10)
+	ctx := context.Background()
+
+	err := b.Acquire(ctx, -1, 0)
+	assert.Error(t, err, "negative readCost should return error")
+
+	err = b.Acquire(ctx, 0, -1)
+	assert.Error(t, err, "negative writeCost should return error")
+}
+
+func TestTryAcquire_NegativeCost_ReturnsFalse(t *testing.T) {
+	b := testBucket(10, 10)
+
+	ok := b.TryAcquire(-1, 0)
+	assert.False(t, ok, "negative readCost should return false")
+
+	ok = b.TryAcquire(0, -1)
+	assert.False(t, ok, "negative writeCost should return false")
+}
+
+func TestNewReadWriteTokenBucket_InvalidConfig(t *testing.T) {
+	_, err := NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 0, WriteRate: 10, WindowSize: 1})
+	assert.Error(t, err, "zero ReadRate should error")
+
+	_, err = NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 10, WriteRate: -1, WindowSize: 1})
+	assert.Error(t, err, "negative WriteRate should error")
+
+	_, err = NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 10, WriteRate: 10, WindowSize: 0})
+	assert.Error(t, err, "zero WindowSize should error")
 }

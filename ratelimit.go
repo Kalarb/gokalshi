@@ -53,13 +53,23 @@ type ReadWriteTokenBucket struct {
 }
 
 // NewReadWriteTokenBucket creates a new rate limiter with the given config.
-func NewReadWriteTokenBucket(cfg TokenBucketConfig) *ReadWriteTokenBucket {
+// Returns an error if config values are invalid (zero/negative rates or window).
+func NewReadWriteTokenBucket(cfg TokenBucketConfig) (*ReadWriteTokenBucket, error) {
+	if cfg.ReadRate <= 0 {
+		return nil, fmt.Errorf("ReadRate must be positive, got %v", cfg.ReadRate)
+	}
+	if cfg.WriteRate <= 0 {
+		return nil, fmt.Errorf("WriteRate must be positive, got %v", cfg.WriteRate)
+	}
+	if cfg.WindowSize <= 0 {
+		return nil, fmt.Errorf("WindowSize must be positive, got %v", cfg.WindowSize)
+	}
 	return &ReadWriteTokenBucket{
 		cfg:         cfg,
 		readTokens:  cfg.ReadRate,
 		writeTokens: cfg.WriteRate,
 		clock:       defaultClock,
-	}
+	}, nil
 }
 
 func defaultClock() float64 {
@@ -69,7 +79,11 @@ func defaultClock() float64 {
 // Acquire blocks until tokens are available, then consumes them.
 // For read requests: readCost > 0, writeCost = 0.
 // For write requests: readCost = 0, writeCost > 0.
+// Returns an error if costs are negative.
 func (b *ReadWriteTokenBucket) Acquire(ctx context.Context, readCost, writeCost float64) error {
+	if readCost < 0 || writeCost < 0 {
+		return fmt.Errorf("rate limiter costs must be non-negative: readCost=%v, writeCost=%v", readCost, writeCost)
+	}
 	for {
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("rate limiter acquire cancelled: %w", err)
@@ -90,8 +104,11 @@ func (b *ReadWriteTokenBucket) Acquire(ctx context.Context, readCost, writeCost 
 }
 
 // TryAcquire attempts to consume tokens without blocking.
-// Returns true if tokens were consumed, false otherwise.
+// Returns true if tokens were consumed, false if insufficient tokens or invalid costs.
 func (b *ReadWriteTokenBucket) TryAcquire(readCost, writeCost float64) bool {
+	if readCost < 0 || writeCost < 0 {
+		return false
+	}
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

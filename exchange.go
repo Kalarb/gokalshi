@@ -55,28 +55,3 @@ func (c *Client) GetUserDataTimestamp(ctx context.Context) (GetUserDataTimestamp
 	return getJSON[GetUserDataTimestampResponse](c, ctx, pathExchange+"/user_data_timestamp", nil)
 }
 
-// GetSeriesFeeChanges — Get Series Fee Changes
-//
-// GET /trade-api/v2/series/fee_changes
-//
-// See https://trading-api.readme.io/reference/getseriesfeechanges
-func (c *Client) GetSeriesFeeChanges(ctx context.Context, params GetSeriesFeeChangesParams) (GetSeriesFeeChangesResponse, error) {
-	return getJSON[GetSeriesFeeChangesResponse](c, ctx, pathSeries+"/fee_changes", params.toMap())
-}
-
-// ---------------------------------------------------------------------------
-// Query parameter types
-// ---------------------------------------------------------------------------
-
-// GetSeriesFeeChangesParams holds optional query parameters for GetSeriesFeeChanges.
-type GetSeriesFeeChangesParams struct {
-	SeriesTicker   string
-	ShowHistorical bool
-}
-
-func (p GetSeriesFeeChangesParams) toMap() map[string]string {
-	return NewQuery().
-		String("series_ticker", p.SeriesTicker).
-		Bool("show_historical", p.ShowHistorical).
-		Build()
-}

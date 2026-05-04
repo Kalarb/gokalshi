@@ -19,7 +19,9 @@ type WSClient struct {
 	conn   *websocket.Conn
 	logger *slog.Logger
 
-	msgCh chan []byte // raw messages dispatched to FeedHandler
+	msgCh      chan []byte // raw messages dispatched to FeedHandler
+	closeMsgCh sync.Once  // ensures msgCh is closed exactly once
+	listenDone chan struct{}
 
 	mu          sync.Mutex
 	msgID       int
@@ -27,9 +29,10 @@ type WSClient struct {
 	sidMap      map[int]*ChannelState
 	pendingInit map[int]string // msgID → channel name
 
-	minBackoff   time.Duration
-	maxBackoff   time.Duration
-	OnDisconnect func() // called when connection is lost (before reconnect)
+	minBackoff  time.Duration
+	maxBackoff  time.Duration
+	readTimeout time.Duration
+	OnDisconnect func() // called when connection is lost (before reconnect); must not call WSClient methods
 	OnReconnect  func() // called after successful reconnect + subscription recovery
 
 	closed         atomic.Bool
@@ -49,17 +52,26 @@ func WithWSBackoff(min, max time.Duration) WSClientOption {
 	return func(c *WSClient) { c.minBackoff = min; c.maxBackoff = max }
 }
 
+// WithWSReadTimeout sets the read deadline for each conn.Read call.
+// If no message is received within this duration, the connection is considered
+// dead and a reconnect is triggered. Default: 60s.
+func WithWSReadTimeout(d time.Duration) WSClientOption {
+	return func(c *WSClient) { c.readTimeout = d }
+}
+
 // NewWSClient creates a new WebSocket client.
 func NewWSClient(cfg *ClientConfig, opts ...WSClientOption) *WSClient {
 	c := &WSClient{
 		cfg:         cfg,
 		msgCh:       make(chan []byte, 4096),
+		listenDone:  make(chan struct{}),
 		logger:      newDiscardLogger(),
 		channels:    make(map[string]*ChannelState),
 		sidMap:      make(map[int]*ChannelState),
 		pendingInit: make(map[int]string),
 		minBackoff:  1 * time.Second,
 		maxBackoff:  32 * time.Second,
+		readTimeout: 60 * time.Second,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -91,27 +103,41 @@ func (c *WSClient) Connect(ctx context.Context) error {
 		return fmt.Errorf("WS dial %s: %w", url, err)
 	}
 
+	c.mu.Lock()
 	c.conn = conn
+	c.mu.Unlock()
 	c.logger.LogAttrs(ctx, slog.LevelInfo, "ws_connected", slog.String("url", url))
 	return nil
 }
 
-// Close gracefully closes the WebSocket connection.
+// Close gracefully closes the WebSocket connection and waits for ListenLoop to exit.
 // Safe for concurrent use.
 func (c *WSClient) Close() error {
 	c.closed.Store(true)
 	c.mu.Lock()
 	conn := c.conn
 	c.mu.Unlock()
+
+	var err error
 	if conn != nil {
-		return conn.Close(websocket.StatusNormalClosure, "client closing")
+		err = conn.Close(websocket.StatusNormalClosure, "client closing")
 	}
-	return nil
+
+	// Wait for ListenLoop to finish (with timeout to avoid hanging forever).
+	select {
+	case <-c.listenDone:
+	case <-time.After(5 * time.Second):
+	}
+	return err
 }
 
 // ListenLoop is the main read loop. It reads messages, handles reconnection
 // with exponential backoff, and dispatches data messages on MsgCh.
+// When ListenLoop exits, MsgCh is closed so consumers using range will exit.
 func (c *WSClient) ListenLoop(ctx context.Context) {
+	defer close(c.listenDone)
+	defer c.closeMsgCh.Do(func() { close(c.msgCh) })
+
 	backoff := c.minBackoff
 
 	for {
@@ -119,7 +145,11 @@ func (c *WSClient) ListenLoop(ctx context.Context) {
 			return
 		}
 
-		if c.conn == nil {
+		c.mu.Lock()
+		needsConnect := c.conn == nil
+		c.mu.Unlock()
+
+		if needsConnect {
 			if err := c.Connect(ctx); err != nil {
 				c.logger.LogAttrs(ctx, slog.LevelError, "ws_connect_failed",
 					slog.String("error", err.Error()), slog.String("retry_in", backoff.String()))
@@ -164,7 +194,9 @@ func (c *WSClient) ListenLoop(ctx context.Context) {
 
 func (c *WSClient) readLoop(ctx context.Context) error {
 	for {
-		_, data, err := c.conn.Read(ctx)
+		readCtx, cancel := context.WithTimeout(ctx, c.readTimeout)
+		_, data, err := c.conn.Read(readCtx)
+		cancel()
 		if err != nil {
 			return err
 		}
@@ -313,6 +345,7 @@ func (c *WSClient) handleDataMessage(msg WSMessage, raw []byte) []byte {
 			c.logger.LogAttrs(context.Background(), slog.LevelWarn, "ws_sequence_gap",
 				slog.String("channel", state.Name), slog.Int("expected", state.Seq+1), slog.Int("got", msg.Seq))
 			c.forceReconnect.Store(true)
+			return nil // drop out-of-sequence message
 		}
 		state.Seq = msg.Seq
 	}
@@ -352,8 +385,13 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 			if err != nil {
 				return err
 			}
-			for _, t := range newTickers {
-				state.Markets[t] = struct{}{}
+			// Verify SID is still valid after re-acquiring lock.
+			// If connection was lost during the send, SID is cleared and
+			// recoverSubscriptions will handle re-subscribing.
+			if state.SID != nil && *state.SID == sid {
+				for _, t := range newTickers {
+					state.Markets[t] = struct{}{}
+				}
 			}
 		} else if _, pending := c.pendingInitForChannel(ch); pending {
 			// Subscribe in progress — queue tickers.
@@ -368,8 +406,11 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 			if err != nil {
 				return err
 			}
-			for _, t := range newTickers {
-				state.Markets[t] = struct{}{}
+			// Only update Markets if state hasn't been reset by connection loss.
+			if _, still := c.channels[ch]; still {
+				for _, t := range newTickers {
+					state.Markets[t] = struct{}{}
+				}
 			}
 		}
 	}
@@ -394,8 +435,11 @@ func (c *WSClient) RemoveMarkets(ctx context.Context, tickers []string, channels
 		if err != nil {
 			return err
 		}
-		for _, t := range tickers {
-			delete(state.Markets, t)
+		// Verify SID still valid after re-acquiring lock.
+		if state.SID != nil && *state.SID == sid {
+			for _, t := range tickers {
+				delete(state.Markets, t)
+			}
 		}
 	}
 	return nil
@@ -422,6 +466,11 @@ func (c *WSClient) handleConnectionLoss() {
 	c.sidMap = make(map[int]*ChannelState)
 	c.pendingInit = make(map[int]string)
 	for _, state := range c.channels {
+		// Merge PendingMarkets into Markets so recoverSubscriptions picks them up.
+		for t := range state.PendingMarkets {
+			state.Markets[t] = struct{}{}
+		}
+		state.PendingMarkets = make(map[string]struct{})
 		state.SID = nil
 		state.Seq = 0
 	}

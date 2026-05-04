@@ -57,10 +57,11 @@ func testClientConfig(t *testing.T, serverURL string) *ClientConfig {
 func newTestClient(t *testing.T, serverURL string) *Client {
 	t.Helper()
 	cfg := testClientConfig(t, serverURL)
-	limiter := NewReadWriteTokenBucket(TokenBucketConfig{
+	limiter, err := NewReadWriteTokenBucket(TokenBucketConfig{
 		ReadRate: 100, WriteRate: 100,
 		WindowSize: 1.0, SafetyPadding: 0,
 	})
+	require.NoError(t, err)
 	return NewClient(cfg, WithRateLimiter(limiter), WithBaseDelay(1*time.Millisecond))
 }
 
@@ -1031,4 +1032,86 @@ func TestGetFiltersBySport(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, resp.SportOrdering, 1)
 	assert.Equal(t, "NFL", resp.SportOrdering[0])
+}
+
+// ---------------------------------------------------------------------------
+// Step 6: HTTP retry for 5xx
+// ---------------------------------------------------------------------------
+
+func TestClient_Retry5xx(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := attempts.Add(1)
+		if n <= 2 {
+			w.WriteHeader(http.StatusBadGateway)
+			fmt.Fprint(w, `{"error":"bad gateway"}`)
+			return
+		}
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.get(context.Background(), "/test", nil)
+	require.NoError(t, err)
+	assert.Contains(t, string(resp), "ok")
+	assert.Equal(t, int32(3), attempts.Load())
+}
+
+func TestClient_Retry503(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		n := attempts.Add(1)
+		if n <= 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			fmt.Fprint(w, `{"error":"service unavailable"}`)
+			return
+		}
+		fmt.Fprint(w, `{"ok":true}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.get(context.Background(), "/test", nil)
+	require.NoError(t, err)
+	assert.Contains(t, string(resp), "ok")
+	assert.Equal(t, int32(2), attempts.Load())
+}
+
+func TestClient_Retry5xx_MaxExceeded(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusBadGateway)
+		fmt.Fprint(w, `{"error":"bad gateway"}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	c.maxRetries = 3
+
+	_, err := c.get(context.Background(), "/test", nil)
+	assert.Error(t, err)
+
+	var apiErr *APIError
+	assert.ErrorAs(t, err, &apiErr)
+	assert.Equal(t, 502, apiErr.StatusCode)
+	// Should have tried 1 original + 3 retries = 4 total
+	assert.Equal(t, int32(4), attempts.Load())
+}
+
+func TestClient_4xxNotRetried(t *testing.T) {
+	var attempts atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, `{"error":{"code":"bad_request","message":"invalid"}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.get(context.Background(), "/test", nil)
+	assert.Error(t, err)
+	// 4xx should NOT be retried — only 1 attempt.
+	assert.Equal(t, int32(1), attempts.Load())
 }

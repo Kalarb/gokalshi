@@ -20,7 +20,9 @@ func (q *QueryBuilder) String(key, val string) *QueryBuilder {
 	return q
 }
 
-// Int adds an int parameter if positive.
+// Int adds an int parameter if positive (val > 0).
+// Zero and negative values are silently skipped — this is intentional for optional
+// query parameters where the zero value means "not specified".
 func (q *QueryBuilder) Int(key string, val int) *QueryBuilder {
 	if val > 0 {
 		q.m[key] = strconv.Itoa(val)
@@ -28,7 +30,8 @@ func (q *QueryBuilder) Int(key string, val int) *QueryBuilder {
 	return q
 }
 
-// Int64 adds an int64 parameter if positive.
+// Int64 adds an int64 parameter if positive (val > 0).
+// Zero and negative values are silently skipped.
 func (q *QueryBuilder) Int64(key string, val int64) *QueryBuilder {
 	if val > 0 {
 		q.m[key] = strconv.FormatInt(val, 10)
