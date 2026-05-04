@@ -277,6 +277,70 @@ func waitForSID(t *testing.T, ws *WSClient, channel string, timeout time.Duratio
 }
 
 // ---------------------------------------------------------------------------
+// Subscribe-only channels — verify subscription succeeds (no data expected)
+// ---------------------------------------------------------------------------
+
+func TestWSIntegration_SubscribeMarketLifecycleV2(t *testing.T) {
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	ticker := getActiveBTC15MTicker(t, httpClient)
+	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"market_lifecycle_v2"})
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "market_lifecycle_v2", 10*time.Second)
+	t.Logf("market_lifecycle_v2 channel subscribed for %s", ticker)
+}
+
+func TestWSIntegration_SubscribeMultivariateMarketLifecycle(t *testing.T) {
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	ticker := getActiveBTC15MTicker(t, httpClient)
+	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"multivariate_market_lifecycle"})
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "multivariate_market_lifecycle", 10*time.Second)
+	t.Logf("multivariate_market_lifecycle channel subscribed for %s", ticker)
+}
+
+func TestWSIntegration_SubscribeMultivariate(t *testing.T) {
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	ticker := getActiveBTC15MTicker(t, httpClient)
+	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"multivariate"})
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "multivariate", 10*time.Second)
+	t.Logf("multivariate channel subscribed for %s", ticker)
+}
+
+func TestWSIntegration_SubscribeCommunications(t *testing.T) {
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	ticker := getActiveBTC15MTicker(t, httpClient)
+	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"communications"})
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "communications", 10*time.Second)
+	t.Logf("communications channel subscribed for %s", ticker)
+}
+
+func TestWSIntegration_SubscribeOrderGroupUpdates(t *testing.T) {
+	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	ticker := getActiveBTC15MTicker(t, httpClient)
+	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"order_group_updates"})
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "order_group_updates", 10*time.Second)
+	t.Logf("order_group_updates channel subscribed for %s", ticker)
+}
+
+// ---------------------------------------------------------------------------
 // Subscription management operations
 // ---------------------------------------------------------------------------
 

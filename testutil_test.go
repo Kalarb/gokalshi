@@ -8,6 +8,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// ptr returns a pointer to the given value. Used in test structs for *string fields etc.
+func ptr[T any](v T) *T { return &v }
+
 // loadEnv walks up from CWD to find go.mod, then loads .env from that directory.
 // No-op if .env doesn't exist (env vars may be set via CI/shell).
 func loadEnv(t *testing.T) {

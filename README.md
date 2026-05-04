@@ -157,22 +157,22 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `GetExchangeAnnouncements` | Y | | Y | |
 | `GetExchangeSchedule` | Y | | Y | |
 | `GetUserDataTimestamp` | Y | | Y | |
-| `GetSeriesFeeChanges` | Y | | | |
+| `GetSeriesFeeChanges` | Y | | Y | |
 
 #### Orders
 
 | Method | Impl | Unit | Integration | Notes |
 |---|:---:|:---:|:---:|---|
-| `GetOrders` | Y | Y | | |
-| `GetOrder` | Y | Y | Y | via create+cancel lifecycle |
+| `GetOrders` | Y | Y | Y | |
+| `GetOrder` | Y | Y | Y | retry for propagation delay |
 | `CreateOrder` | Y | Y | Y | places at 1c, won't fill |
 | `CancelOrder` | Y | Y | Y | cleans up created order |
-| `AmendOrder` | Y | Y | | |
-| `DecreaseOrder` | Y | Y | | |
-| `BatchCreateOrders` | Y | Y | | |
-| `BatchCancelOrders` | Y | Y | | |
-| `GetQueuePositions` | Y | | | |
-| `GetQueuePosition` | Y | | | |
+| `AmendOrder` | Y | Y | Y | create -> amend price -> cancel |
+| `DecreaseOrder` | Y | Y | Y | create count=2 -> decrease to 1 -> cancel |
+| `BatchCreateOrders` | Y | Y | Y | batch create 3 -> batch cancel all |
+| `BatchCancelOrders` | Y | Y | Y | same test as batch_create |
+| `GetQueuePositions` | Y | | Y | filters by market ticker |
+| `GetQueuePosition` | Y | | Y | skips if 404 on DEMO |
 
 #### Portfolio
 
@@ -190,10 +190,10 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `GetMarket` | Y | Y | Y | |
 | `GetMarkets` | Y | Y | Y | |
 | `GetMarketOrderbook` | Y | Y | Y | |
-| `GetMarketOrderbooks` | Y | | | batch, multiple tickers |
+| `GetMarketOrderbooks` | Y | | Y | batch, multiple tickers |
 | `GetTrades` | Y | Y | Y | |
-| `GetMarketCandlesticks` | Y | | | via series + market ticker |
-| `GetBatchMarketCandlesticks` | Y | | | |
+| `GetMarketCandlesticks` | Y | | Y | via series + market ticker |
+| `GetBatchMarketCandlesticks` | Y | | Y | |
 
 #### Events
 
@@ -202,9 +202,9 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `GetEvent` | Y | Y | Y | |
 | `GetEvents` | Y | Y | Y | |
 | `GetEventMetadata` | Y | | Y | |
-| `GetMultivariateEvents` | Y | | | |
-| `GetEventCandlesticks` | Y | | | via series + event ticker |
-| `GetEventForecastPercentileHistory` | Y | | | |
+| `GetMultivariateEvents` | Y | | Y | |
+| `GetEventCandlesticks` | Y | | Y | via series + event ticker |
+| `GetEventForecastPercentileHistory` | Y | | Y | skips if 400 on DEMO |
 
 #### Series
 
@@ -217,8 +217,8 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 
 | Method | Impl | Unit | Integration | Notes |
 |---|:---:|:---:|:---:|---|
-| `GetTagsByCategories` | Y | | | |
-| `GetFiltersBySport` | Y | | | |
+| `GetTagsByCategories` | Y | | Y | |
+| `GetFiltersBySport` | Y | | Y | |
 
 ### WebSocket
 
@@ -232,11 +232,11 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `fill` | Y | `fill` | Y | Y | Y | subscription-only in integration |
 | `market_positions` | Y | `market_position` | Y | Y | Y | subscription-only in integration |
 | `user_orders` | Y | `user_order` | Y | Y | Y | subscription-only in integration |
-| `market_lifecycle_v2` | | `market_lifecycle_v2`, `event_lifecycle` | Y | Y | | |
-| `multivariate_market_lifecycle` | | `multivariate_market_lifecycle`, `event_lifecycle` | Y | Y | | |
-| `multivariate` | | `multivariate_lookup` | Y | Y | | |
-| `communications` | Y | `rfq_created`, `rfq_deleted`, `quote_created`, `quote_accepted`, `quote_executed` | Y | Y | | |
-| `order_group_updates` | Y | `order_group_updates` | Y | Y | | |
+| `market_lifecycle_v2` | | `market_lifecycle_v2`, `event_lifecycle` | Y | Y | Y | subscription-only in integration |
+| `multivariate_market_lifecycle` | | `multivariate_market_lifecycle`, `event_lifecycle` | Y | Y | Y | subscription-only in integration |
+| `multivariate` | | `multivariate_lookup` | Y | Y | Y | subscription-only in integration |
+| `communications` | Y | `rfq_created`, `rfq_deleted`, `quote_created`, `quote_accepted`, `quote_executed` | Y | Y | Y | subscription-only in integration |
+| `order_group_updates` | Y | `order_group_updates` | Y | Y | Y | subscription-only in integration |
 
 #### Client Operations
 

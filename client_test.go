@@ -26,9 +26,6 @@ import (
 // Test helpers
 // ---------------------------------------------------------------------------
 
-// ptr returns a pointer to v. Used for nullable fields in generated types.
-func ptr[T any](v T) *T { return &v }
-
 // testClientConfig creates a ClientConfig pointing at the given test server.
 func testClientConfig(t *testing.T, serverURL string) *ClientConfig {
 	t.Helper()
