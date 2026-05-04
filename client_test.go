@@ -659,3 +659,376 @@ func TestGetOrdersParams_toMap_AllFields(t *testing.T) {
 	assert.Equal(t, "100", m["min_ts"])
 	assert.Equal(t, "200", m["max_ts"])
 }
+
+// ---------------------------------------------------------------------------
+// Account endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestGetAccountAPILimits(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/account/limits", r.URL.Path)
+		fmt.Fprint(w, `{"usage_tier":"basic","read":{"refill_rate":20},"write":{"refill_rate":10}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetAccountAPILimits(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "basic", resp.UsageTier)
+}
+
+// ---------------------------------------------------------------------------
+// Exchange endpoint tests (missing 4)
+// ---------------------------------------------------------------------------
+
+func TestGetExchangeAnnouncements(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/exchange/announcements", r.URL.Path)
+		fmt.Fprint(w, `{"announcements":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetExchangeAnnouncements(context.Background())
+	require.NoError(t, err)
+	assert.NotNil(t, resp.Announcements)
+}
+
+func TestGetExchangeSchedule(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/exchange/schedule", r.URL.Path)
+		fmt.Fprint(w, `{"schedule":{"standard_hours":[{"monday":[{"open_time":"09:00","close_time":"17:00"}]}]}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetExchangeSchedule(context.Background())
+	require.NoError(t, err)
+	assert.NotEmpty(t, resp.Schedule.StandardHours)
+}
+
+func TestGetUserDataTimestamp(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/exchange/user_data_timestamp", r.URL.Path)
+		fmt.Fprint(w, `{"as_of_time":"2024-01-01T00:00:00Z"}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetUserDataTimestamp(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, "2024-01-01T00:00:00Z", resp.AsOfTime)
+}
+
+func TestGetSeriesFeeChanges(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/series/fee_changes", r.URL.Path)
+		assert.Equal(t, "KXBTC", r.URL.Query().Get("series_ticker"))
+		fmt.Fprint(w, `{"series_fee_change_arr":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetSeriesFeeChanges(context.Background(), GetSeriesFeeChangesParams{
+		SeriesTicker: "KXBTC",
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp.SeriesFeeChangeArr)
+}
+
+func TestGetSeriesFeeChangesParams_toMap(t *testing.T) {
+	p := GetSeriesFeeChangesParams{SeriesTicker: "S", ShowHistorical: true}
+	m := p.toMap()
+	assert.Equal(t, "S", m["series_ticker"])
+	assert.Equal(t, "true", m["show_historical"])
+}
+
+// ---------------------------------------------------------------------------
+// Orders endpoint tests (missing 2)
+// ---------------------------------------------------------------------------
+
+func TestGetQueuePositions(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/orders/queue_positions", r.URL.Path)
+		assert.Equal(t, "TICK-A", r.URL.Query().Get("market_tickers"))
+		fmt.Fprint(w, `{"queue_positions":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetQueuePositions(context.Background(), GetQueuePositionsParams{
+		MarketTickers: "TICK-A",
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp.QueuePositions)
+}
+
+func TestGetQueuePosition(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, pathOrders+"/ord-99/queue_position", r.URL.Path)
+		fmt.Fprint(w, `{"queue_position_fp":"42.00"}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetQueuePosition(context.Background(), "ord-99")
+	require.NoError(t, err)
+	assert.Equal(t, "42.00", resp.QueuePositionFP)
+}
+
+func TestGetQueuePositionsParams_toMap(t *testing.T) {
+	p := GetQueuePositionsParams{MarketTickers: "A,B", EventTicker: "E"}
+	m := p.toMap()
+	assert.Equal(t, "A,B", m["market_tickers"])
+	assert.Equal(t, "E", m["event_ticker"])
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio endpoint tests (missing 1)
+// ---------------------------------------------------------------------------
+
+func TestGetSettlements(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/settlements", r.URL.Path)
+		assert.Equal(t, "10", r.URL.Query().Get("limit"))
+		fmt.Fprint(w, `{"settlements":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetSettlements(context.Background(), GetSettlementsParams{Limit: 10})
+	require.NoError(t, err)
+	assert.NotNil(t, resp.Settlements)
+}
+
+func TestGetSettlementsParams_toMap(t *testing.T) {
+	p := GetSettlementsParams{Ticker: "T", EventTicker: "E", Limit: 5, Cursor: "c", MinTs: 1, MaxTs: 2}
+	m := p.toMap()
+	assert.Equal(t, "T", m["ticker"])
+	assert.Equal(t, "E", m["event_ticker"])
+	assert.Equal(t, "5", m["limit"])
+	assert.Equal(t, "c", m["cursor"])
+	assert.Equal(t, "1", m["min_ts"])
+	assert.Equal(t, "2", m["max_ts"])
+}
+
+// ---------------------------------------------------------------------------
+// Markets endpoint tests (missing 3)
+// ---------------------------------------------------------------------------
+
+func TestGetMarketOrderbooks(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/markets/orderbooks", r.URL.Path)
+		assert.Equal(t, "A,B,C", r.URL.Query().Get("tickers"))
+		fmt.Fprint(w, `{"orderbooks":[{},{}]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetMarketOrderbooks(context.Background(), GetMarketOrderbooksParams{
+		Tickers: "A,B,C",
+	})
+	require.NoError(t, err)
+	assert.Len(t, resp.Orderbooks, 2)
+}
+
+func TestGetMarketCandlesticks(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/series/SER/markets/MKT/candlesticks", r.URL.Path)
+		assert.Equal(t, "1000", r.URL.Query().Get("start_ts"))
+		assert.Equal(t, "2000", r.URL.Query().Get("end_ts"))
+		assert.Equal(t, "60", r.URL.Query().Get("period_interval"))
+		fmt.Fprint(w, `{"ticker":"MKT","candlesticks":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetMarketCandlesticks(context.Background(), "SER", "MKT", GetMarketCandlesticksParams{
+		StartTs: 1000, EndTs: 2000, PeriodInterval: 60,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, "MKT", resp.Ticker)
+}
+
+func TestGetBatchMarketCandlesticks(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/markets/candlesticks", r.URL.Path)
+		assert.Equal(t, "A,B", r.URL.Query().Get("market_tickers"))
+		assert.Equal(t, "1", r.URL.Query().Get("period_interval"))
+		fmt.Fprint(w, `{"markets":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetBatchMarketCandlesticks(context.Background(), GetBatchMarketCandlesticksParams{
+		MarketTickers: "A,B", StartTs: 100, EndTs: 200, PeriodInterval: 1,
+	})
+	require.NoError(t, err)
+}
+
+func TestGetMarketOrderbooksParams_toMap(t *testing.T) {
+	p := GetMarketOrderbooksParams{Tickers: "X,Y"}
+	m := p.toMap()
+	assert.Equal(t, "X,Y", m["tickers"])
+}
+
+func TestGetMarketCandlesticksParams_toMap(t *testing.T) {
+	p := GetMarketCandlesticksParams{StartTs: 1, EndTs: 2, PeriodInterval: 60, IncludeLatestBeforeStart: true}
+	m := p.toMap()
+	assert.Equal(t, "1", m["start_ts"])
+	assert.Equal(t, "2", m["end_ts"])
+	assert.Equal(t, "60", m["period_interval"])
+	assert.Equal(t, "true", m["include_latest_before_start"])
+}
+
+func TestGetBatchMarketCandlesticksParams_toMap(t *testing.T) {
+	p := GetBatchMarketCandlesticksParams{MarketTickers: "A,B", StartTs: 1, EndTs: 2, PeriodInterval: 1440}
+	m := p.toMap()
+	assert.Equal(t, "A,B", m["market_tickers"])
+	assert.Equal(t, "1", m["start_ts"])
+	assert.Equal(t, "2", m["end_ts"])
+	assert.Equal(t, "1440", m["period_interval"])
+}
+
+// ---------------------------------------------------------------------------
+// Events endpoint tests (missing 4)
+// ---------------------------------------------------------------------------
+
+func TestGetEventMetadata(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/events/EVT-1/metadata", r.URL.Path)
+		fmt.Fprint(w, `{"image_url":"https://example.com/img.png"}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetEventMetadata(context.Background(), "EVT-1")
+	require.NoError(t, err)
+	assert.Equal(t, "https://example.com/img.png", resp.ImageURL)
+}
+
+func TestGetMultivariateEvents(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/events/multivariate", r.URL.Path)
+		assert.Equal(t, "5", r.URL.Query().Get("limit"))
+		assert.Equal(t, "SER", r.URL.Query().Get("series_ticker"))
+		fmt.Fprint(w, `{"events":[],"cursor":""}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetMultivariateEvents(context.Background(), GetMultivariateEventsParams{
+		Limit: 5, SeriesTicker: "SER",
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp.Events)
+}
+
+func TestGetEventCandlesticks(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/series/SER/events/EVT/candlesticks", r.URL.Path)
+		assert.Equal(t, "1000", r.URL.Query().Get("start_ts"))
+		assert.Equal(t, "2000", r.URL.Query().Get("end_ts"))
+		assert.Equal(t, "1", r.URL.Query().Get("period_interval"))
+		fmt.Fprint(w, `{"market_candlesticks":[],"market_tickers":[],"adjusted_end_ts":0}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetEventCandlesticks(context.Background(), "SER", "EVT", GetEventCandlesticksParams{
+		StartTs: 1000, EndTs: 2000, PeriodInterval: 1,
+	})
+	require.NoError(t, err)
+}
+
+func TestGetEventForecastPercentileHistory(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/series/SER/events/EVT/forecast_percentile_history", r.URL.Path)
+		assert.Equal(t, "2500,5000,7500", r.URL.Query().Get("percentiles"))
+		assert.Equal(t, "60", r.URL.Query().Get("period_interval"))
+		fmt.Fprint(w, `{"forecast_history":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetEventForecastPercentileHistory(context.Background(), "SER", "EVT", GetEventForecastPercentileHistoryParams{
+		Percentiles: "2500,5000,7500", StartTs: 100, EndTs: 200, PeriodInterval: 60,
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, resp.ForecastHistory)
+}
+
+func TestGetMultivariateEventsParams_toMap(t *testing.T) {
+	p := GetMultivariateEventsParams{Limit: 5, Cursor: "c", SeriesTicker: "S", CollectionTicker: "C", WithNestedMarkets: true}
+	m := p.toMap()
+	assert.Equal(t, "5", m["limit"])
+	assert.Equal(t, "c", m["cursor"])
+	assert.Equal(t, "S", m["series_ticker"])
+	assert.Equal(t, "C", m["collection_ticker"])
+	assert.Equal(t, "true", m["with_nested_markets"])
+}
+
+func TestGetEventCandlesticksParams_toMap(t *testing.T) {
+	p := GetEventCandlesticksParams{StartTs: 1, EndTs: 2, PeriodInterval: 60}
+	m := p.toMap()
+	assert.Equal(t, "1", m["start_ts"])
+	assert.Equal(t, "2", m["end_ts"])
+	assert.Equal(t, "60", m["period_interval"])
+}
+
+func TestGetEventForecastPercentileHistoryParams_toMap(t *testing.T) {
+	p := GetEventForecastPercentileHistoryParams{Percentiles: "25,50", StartTs: 1, EndTs: 2, PeriodInterval: 1}
+	m := p.toMap()
+	assert.Equal(t, "25,50", m["percentiles"])
+	assert.Equal(t, "1", m["start_ts"])
+	assert.Equal(t, "2", m["end_ts"])
+	assert.Equal(t, "1", m["period_interval"])
+}
+
+// ---------------------------------------------------------------------------
+// Search endpoint tests (missing 2)
+// ---------------------------------------------------------------------------
+
+func TestGetTagsByCategories(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/search/tags_by_categories", r.URL.Path)
+		fmt.Fprint(w, `{"tags_by_categories":{"Politics":["tag1"]}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetTagsByCategories(context.Background())
+	require.NoError(t, err)
+	assert.NotNil(t, resp.TagsByCategories)
+}
+
+func TestGetFiltersBySport(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodGet, r.Method)
+		assert.Equal(t, "/trade-api/v2/search/filters_by_sport", r.URL.Path)
+		fmt.Fprint(w, `{"filters_by_sports":{},"sport_ordering":["NFL"]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetFiltersBySport(context.Background())
+	require.NoError(t, err)
+	assert.Len(t, resp.SportOrdering, 1)
+	assert.Equal(t, "NFL", resp.SportOrdering[0])
+}

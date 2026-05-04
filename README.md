@@ -147,17 +147,17 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 
 | Method | Impl | Unit | Integration | Notes |
 |---|:---:|:---:|:---:|---|
-| `GetAccountAPILimits` | Y | | Y | |
+| `GetAccountAPILimits` | Y | Y | Y | |
 
 #### Exchange
 
 | Method | Impl | Unit | Integration | Notes |
 |---|:---:|:---:|:---:|---|
 | `GetExchangeStatus` | Y | Y | Y | |
-| `GetExchangeAnnouncements` | Y | | Y | |
-| `GetExchangeSchedule` | Y | | Y | |
-| `GetUserDataTimestamp` | Y | | Y | |
-| `GetSeriesFeeChanges` | Y | | Y | |
+| `GetExchangeAnnouncements` | Y | Y | Y | |
+| `GetExchangeSchedule` | Y | Y | Y | |
+| `GetUserDataTimestamp` | Y | Y | Y | |
+| `GetSeriesFeeChanges` | Y | Y | Y | |
 
 #### Orders
 
@@ -171,8 +171,8 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `DecreaseOrder` | Y | Y | Y | create count=2 -> decrease to 1 -> cancel |
 | `BatchCreateOrders` | Y | Y | Y | batch create 3 -> batch cancel all |
 | `BatchCancelOrders` | Y | Y | Y | same test as batch_create |
-| `GetQueuePositions` | Y | | Y | filters by market ticker |
-| `GetQueuePosition` | Y | | Y | skips if 404 on DEMO |
+| `GetQueuePositions` | Y | Y | Y | filters by market ticker |
+| `GetQueuePosition` | Y | Y | Y | skips if 404 on DEMO |
 
 #### Portfolio
 
@@ -181,7 +181,7 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `GetBalance` | Y | Y | Y | |
 | `GetPositions` | Y | Y | Y | |
 | `GetFills` | Y | Y | Y | |
-| `GetSettlements` | Y | | Y | |
+| `GetSettlements` | Y | Y | Y | |
 
 #### Markets
 
@@ -190,10 +190,10 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `GetMarket` | Y | Y | Y | |
 | `GetMarkets` | Y | Y | Y | |
 | `GetMarketOrderbook` | Y | Y | Y | |
-| `GetMarketOrderbooks` | Y | | Y | batch, multiple tickers |
+| `GetMarketOrderbooks` | Y | Y | Y | batch, multiple tickers |
 | `GetTrades` | Y | Y | Y | |
-| `GetMarketCandlesticks` | Y | | Y | via series + market ticker |
-| `GetBatchMarketCandlesticks` | Y | | Y | |
+| `GetMarketCandlesticks` | Y | Y | Y | via series + market ticker |
+| `GetBatchMarketCandlesticks` | Y | Y | Y | |
 
 #### Events
 
@@ -201,10 +201,10 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 |---|:---:|:---:|:---:|---|
 | `GetEvent` | Y | Y | Y | |
 | `GetEvents` | Y | Y | Y | |
-| `GetEventMetadata` | Y | | Y | |
-| `GetMultivariateEvents` | Y | | Y | |
-| `GetEventCandlesticks` | Y | | Y | via series + event ticker |
-| `GetEventForecastPercentileHistory` | Y | | Y | skips if 400 on DEMO |
+| `GetEventMetadata` | Y | Y | Y | |
+| `GetMultivariateEvents` | Y | Y | Y | |
+| `GetEventCandlesticks` | Y | Y | Y | via series + event ticker |
+| `GetEventForecastPercentileHistory` | Y | Y | Y | skips if 400 on DEMO |
 
 #### Series
 
@@ -217,8 +217,8 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 
 | Method | Impl | Unit | Integration | Notes |
 |---|:---:|:---:|:---:|---|
-| `GetTagsByCategories` | Y | | Y | |
-| `GetFiltersBySport` | Y | | Y | |
+| `GetTagsByCategories` | Y | Y | Y | |
+| `GetFiltersBySport` | Y | Y | Y | |
 
 ### WebSocket
 
