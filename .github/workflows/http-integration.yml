@@ -8,7 +8,40 @@ on:
   workflow_dispatch:
 
 jobs:
+  exchange-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      active: ${{ steps.gate.outputs.active }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Write credentials
+        run: |
+          echo "$KALSHI_DEMO_PRIVATE_KEY_PEM" > /tmp/demo-key.pem
+          chmod 600 /tmp/demo-key.pem
+          cat > .env << EOF
+          KALSHI_DEMO_API_KEY_ID=$KALSHI_DEMO_API_KEY_ID
+          KALSHI_DEMO_PRIVATE_KEY_FILE=/tmp/demo-key.pem
+          EOF
+        env:
+          KALSHI_DEMO_API_KEY_ID: ${{ secrets.KALSHI_DEMO_API_KEY_ID }}
+          KALSHI_DEMO_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_DEMO_PRIVATE_KEY_PEM }}
+
+      - name: Check exchange status
+        id: gate
+        run: |
+          result=$(go run ./tools/exchange_gate)
+          echo "$result"
+          echo "$result" >> "$GITHUB_OUTPUT"
+
   http-integration:
+    needs: exchange-gate
+    if: needs.exchange-gate.outputs.active == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

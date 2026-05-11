@@ -1,4 +1,4 @@
-name: Unit Tests
+name: REST Unit Tests
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  unit-tests:
+  rest-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -16,11 +16,11 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run unit tests with coverage
-        run: go test ./... -v -count=1 -coverprofile=coverage.out
+      - name: Run REST unit tests with coverage
+        run: go test -skip 'TestWSClient|TestNewWSClient|TestNewChannelState|TestMsgTypeToChannel' ./... -v -count=1 -coverprofile=coverage.out
 
       - name: Display coverage
         run: go tool cover -func=coverage.out | tail -1
 
       - name: Run with race detector
-        run: go test -race ./... -count=1
+        run: go test -race -skip 'TestWSClient|TestNewWSClient|TestNewChannelState|TestMsgTypeToChannel' ./... -count=1

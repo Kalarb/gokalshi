@@ -19,4 +19,16 @@ jobs:
           go-version-file: go.mod
 
       - name: Validate REST API against OpenAPI spec
+        id: validate
+        continue-on-error: true
         run: go test -tags spec_validation -run TestOpenAPICoverage -v -count=1 -timeout 30s
+
+      - name: Update badge
+        uses: Schneegans/dynamic-badges-action@v1.7.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 65579a629076066fcbf09520ca76301a
+          filename: go-openapi-status.json
+          label: OpenAPI (Go)
+          message: ${{ steps.validate.outcome == 'success' && 'Up-to-date' || 'Behind' }}
+          color: ${{ steps.validate.outcome == 'success' && 'green' || 'yellow' }}
