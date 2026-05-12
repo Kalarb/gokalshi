@@ -3,7 +3,6 @@ package gokalshi
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -529,7 +528,7 @@ func TestWSClient_HandleIncoming_SubscribedFlushPending(t *testing.T) {
 	ws.channels["orderbook_delta"] = state
 	ws.pendingInit[1] = "orderbook_delta"
 
-	msg := fmt.Sprintf(`{"type":"subscribed","id":1,"msg":{"channel":"orderbook_delta","sid":99}}`)
+	msg := `{"type":"subscribed","id":1,"msg":{"channel":"orderbook_delta","sid":99}}`
 	ws.handleIncoming([]byte(msg))
 
 	select {

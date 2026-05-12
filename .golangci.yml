@@ -1,0 +1,31 @@
+version: "2"
+
+linters:
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - unused
+    - ineffassign
+  settings:
+    errcheck:
+      check-type-assertions: true
+      exclude-functions:
+        - (io.Closer).Close
+        - (net/http.ResponseWriter).Write
+        - fmt.Fprint
+        - fmt.Fprintf
+        - fmt.Fprintln
+    staticcheck:
+      checks:
+        - "all"
+        - "-SA1019"
+        - "-ST1003"
+  exclusions:
+    rules:
+      - linters: [errcheck]
+        path: "_test\\.go$"
+      - linters: [unused]
+        path: "testutil_test\\.go$"
+    paths:
+      - tools
