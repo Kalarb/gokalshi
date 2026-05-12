@@ -3,8 +3,8 @@
 ![Lint](https://github.com/Kalarb/gokalshi/actions/workflows/lint.yml/badge.svg)
 ![HTTP Integration](https://github.com/Kalarb/gokalshi/actions/workflows/http-integration.yml/badge.svg)
 ![WS Integration](https://github.com/Kalarb/gokalshi/actions/workflows/ws-integration.yml/badge.svg)
-![OpenAPI](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Kalarb/65579a629076066fcbf09520ca76301a/raw/go-openapi-status.json)
-![AsyncAPI](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/Kalarb/65579a629076066fcbf09520ca76301a/raw/go-asyncapi-status.json)
+![OpenAPI](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/yardboy27/65579a629076066fcbf09520ca76301a/raw/go-openapi-status.json)
+![AsyncAPI](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/yardboy27/65579a629076066fcbf09520ca76301a/raw/go-asyncapi-status.json)
 
 # gokalshi
 
