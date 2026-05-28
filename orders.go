@@ -61,7 +61,7 @@ func (c *Client) GetOrder(ctx context.Context, orderID string) (CreateOrderRespo
 // before the historical cutoff are only available via `GET
 // /historical/orders`. Resting orders will always be available through this
 // endpoint. See [Historical
-// Data](https://kalshi.com/docs/getting_started/historical_data) for details.
+// Data](https://docs.kalshi.com/getting_started/historical_data) for details.
 //
 // See https://trading-api.readme.io/reference/getorders
 func (c *Client) GetOrders(ctx context.Context, params GetOrdersParams) (GetOrdersResponse, error) {

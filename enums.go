@@ -212,6 +212,7 @@ const (
 	WSMsgQuoteCreated                WSMessageType = "quote_created"
 	WSMsgQuoteAccepted               WSMessageType = "quote_accepted"
 	WSMsgQuoteExecuted               WSMessageType = "quote_executed"
+	WSMsgEventFeeUpdate              WSMessageType = "event_fee_update"
 )
 
 // WSResponseType represents the type field of a WebSocket command response.

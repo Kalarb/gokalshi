@@ -26,7 +26,8 @@ import (
 const specURL = "https://docs.kalshi.com/openapi.yaml"
 
 // skipPrefixes are schema name prefixes to exclude from generation.
-var skipPrefixes = []string{"Subaccount", "IntraExchange", "Fcm"}
+// IntraExchange schemas are internal and reference undefined enum types.
+var skipPrefixes = []string{"IntraExchange"}
 
 // typeAliases are schemas that map to simple Go types (not full structs).
 var typeAliases = map[string]string{

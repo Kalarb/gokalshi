@@ -36,7 +36,7 @@ func (c *Client) GetPositions(ctx context.Context, params GetPositionsParams) (G
 // Endpoint for getting all fills for the member. A fill is when a trade you
 // have is matched. Fills that occurred before the historical cutoff are only
 // available via `GET /historical/fills`. See [Historical
-// Data](https://kalshi.com/docs/getting_started/historical_data) for details.
+// Data](https://docs.kalshi.com/getting_started/historical_data) for details.
 //
 // See https://trading-api.readme.io/reference/getfills
 func (c *Client) GetFills(ctx context.Context, params GetFillsParams) (GetFillsResponse, error) {
@@ -52,6 +52,28 @@ func (c *Client) GetFills(ctx context.Context, params GetFillsParams) (GetFillsR
 // See https://trading-api.readme.io/reference/getsettlements
 func (c *Client) GetSettlements(ctx context.Context, params GetSettlementsParams) (GetSettlementsResponse, error) {
 	return getJSON[GetSettlementsResponse](c, ctx, pathPortfolio+"/settlements", params.toMap())
+}
+
+// GetDeposits — Get Deposits
+//
+// GET /trade-api/v2/portfolio/deposits
+//
+// Endpoint for getting the member's deposit history.
+//
+// See https://trading-api.readme.io/reference/getdeposits
+func (c *Client) GetDeposits(ctx context.Context, params GetDepositsParams) (GetDepositsResponse, error) {
+	return getJSON[GetDepositsResponse](c, ctx, pathPortfolio+"/deposits", params.toMap())
+}
+
+// GetWithdrawals — Get Withdrawals
+//
+// GET /trade-api/v2/portfolio/withdrawals
+//
+// Endpoint for getting the member's withdrawal history.
+//
+// See https://trading-api.readme.io/reference/getwithdrawals
+func (c *Client) GetWithdrawals(ctx context.Context, params GetWithdrawalsParams) (GetWithdrawalsResponse, error) {
+	return getJSON[GetWithdrawalsResponse](c, ctx, pathPortfolio+"/withdrawals", params.toMap())
 }
 
 // ---------------------------------------------------------------------------
@@ -122,5 +144,31 @@ func (p GetSettlementsParams) toMap() map[string]string {
 		Int("limit", p.Limit).
 		String("cursor", p.Cursor).
 		Int("subaccount", p.Subaccount).
+		Build()
+}
+
+// GetDepositsParams holds optional query parameters for GetDeposits.
+type GetDepositsParams struct {
+	Limit  int
+	Cursor string
+}
+
+func (p GetDepositsParams) toMap() map[string]string {
+	return NewQuery().
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
+		Build()
+}
+
+// GetWithdrawalsParams holds optional query parameters for GetWithdrawals.
+type GetWithdrawalsParams struct {
+	Limit  int
+	Cursor string
+}
+
+func (p GetWithdrawalsParams) toMap() map[string]string {
+	return NewQuery().
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
 		Build()
 }

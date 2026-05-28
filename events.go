@@ -90,6 +90,19 @@ func (c *Client) GetEventForecastPercentileHistory(ctx context.Context, seriesTi
 	return getJSON[GetEventForecastPercentilesHistoryResponse](c, ctx, path, params.toMap())
 }
 
+// GetEventFeeChanges — Get Event Fee Changes
+//
+// GET /trade-api/v2/events/fee_changes
+//
+// Event fees are an override layered on top of the parent series' fee
+// structure. If `fee_type_override` and `fee_multiplier_override` are null,
+// that indicates the override is cleared.
+//
+// See https://trading-api.readme.io/reference/geteventfeechanges
+func (c *Client) GetEventFeeChanges(ctx context.Context, params GetEventFeeChangesParams) (GetEventFeeChangesResponse, error) {
+	return getJSON[GetEventFeeChangesResponse](c, ctx, pathEvents+"/fee_changes", params.toMap())
+}
+
 // ---------------------------------------------------------------------------
 // Query parameter types
 // ---------------------------------------------------------------------------
@@ -178,5 +191,20 @@ func (p GetEventForecastPercentileHistoryParams) toMap() map[string]string {
 		Int64("start_ts", p.StartTs).
 		Int64("end_ts", p.EndTs).
 		Int("period_interval", p.PeriodInterval).
+		Build()
+}
+
+// GetEventFeeChangesParams holds query parameters for GetEventFeeChanges.
+type GetEventFeeChangesParams struct {
+	EventTicker string
+	Limit       int
+	Cursor      string
+}
+
+func (p GetEventFeeChangesParams) toMap() map[string]string {
+	return NewQuery().
+		String("event_ticker", p.EventTicker).
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
 		Build()
 }

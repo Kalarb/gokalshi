@@ -18,8 +18,6 @@ import (
 )
 
 var skippedPathPrefixes = []string{
-	"/trade-api/v2/portfolio/subaccounts",
-	"/trade-api/v2/portfolio/summary",
 	"/trade-api/v2/fcm",
 }
 

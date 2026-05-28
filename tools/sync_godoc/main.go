@@ -102,6 +102,94 @@ var methodToOperationID = map[string]string{
 
 	// Account
 	"GetAccountAPILimits": "GetAccountApiLimits",
+
+	// Account
+	"GetAccountEndpointCosts": "GetAccountEndpointCosts",
+
+	// Portfolio
+	"GetDeposits":                       "GetDeposits",
+	"GetWithdrawals":                    "GetWithdrawals",
+	"GetPortfolioRestingOrderTotalValue": "GetPortfolioRestingOrderTotalValue",
+
+	// API Keys
+	"GetAPIKeys":    "GetApiKeys",
+	"CreateAPIKey":  "CreateApiKey",
+	"GenerateAPIKey": "GenerateApiKey",
+	"DeleteAPIKey":  "DeleteApiKey",
+
+	// Event Orders (V2)
+	"CreateOrderV2":       "CreateOrderV2",
+	"BatchCreateOrdersV2": "BatchCreateOrdersV2",
+	"BatchCancelOrdersV2": "BatchCancelOrdersV2",
+	"CancelOrderV2":       "CancelOrderV2",
+	"AmendOrderV2":        "AmendOrderV2",
+	"DecreaseOrderV2":     "DecreaseOrderV2",
+
+	// Events
+	"GetEventFeeChanges": "GetEventFeeChanges",
+
+	// Historical
+	"GetHistoricalCutoff":              "GetHistoricalCutoff",
+	"GetHistoricalFills":               "GetHistoricalFills",
+	"GetHistoricalOrders":              "GetHistoricalOrders",
+	"GetHistoricalTrades":              "GetHistoricalTrades",
+	"GetHistoricalMarkets":             "GetHistoricalMarkets",
+	"GetHistoricalMarket":              "GetHistoricalMarket",
+	"GetHistoricalMarketCandlesticks":  "GetHistoricalMarketCandlesticks",
+
+	// Incentive Programs
+	"GetIncentivePrograms": "GetIncentivePrograms",
+
+	// Live Data
+	"GetLiveDataBatch":       "GetLiveDataBatch",
+	"GetLiveDataByMilestone": "GetLiveDataByMilestone",
+	"GetMilestoneGameStats":  "GetMilestoneGameStats",
+	"GetLiveData":            "GetLiveData",
+
+	// Milestones
+	"GetMilestones": "GetMilestones",
+	"GetMilestone":  "GetMilestone",
+
+	// Multivariate Event Collections
+	"GetMultivariateEventCollections":                      "GetMultivariateEventCollections",
+	"GetMultivariateEventCollection":                       "GetMultivariateEventCollection",
+	"GetMultivariateEventCollectionLookupHistory":           "GetMultivariateEventCollectionLookupHistory",
+	"CreateMarketInMultivariateEventCollection":             "CreateMarketInMultivariateEventCollection",
+	"LookupTickersForMarketInMultivariateEventCollection":   "LookupTickersForMarketInMultivariateEventCollection",
+
+	// Structured Targets
+	"GetStructuredTargets": "GetStructuredTargets",
+	"GetStructuredTarget":  "GetStructuredTarget",
+
+	// Subaccounts
+	"CreateSubaccount":        "CreateSubaccount",
+	"GetSubaccountBalances":   "GetSubaccountBalances",
+	"GetSubaccountNetting":    "GetSubaccountNetting",
+	"UpdateSubaccountNetting": "UpdateSubaccountNetting",
+	"ApplySubaccountTransfer": "ApplySubaccountTransfer",
+	"GetSubaccountTransfers":  "GetSubaccountTransfers",
+
+	// Communications
+	"GetCommunicationsID": "GetCommunicationsID",
+	"CreateRFQ":           "CreateRFQ",
+	"GetRFQs":             "GetRFQs",
+	"GetRFQ":              "GetRFQ",
+	"DeleteRFQ":           "DeleteRFQ",
+	"CreateQuote":         "CreateQuote",
+	"GetQuotes":           "GetQuotes",
+	"GetQuote":            "GetQuote",
+	"DeleteQuote":         "DeleteQuote",
+	"AcceptQuote":         "AcceptQuote",
+	"ConfirmQuote":        "ConfirmQuote",
+
+	// Order Groups
+	"CreateOrderGroup":      "CreateOrderGroup",
+	"GetOrderGroups":        "GetOrderGroups",
+	"GetOrderGroup":         "GetOrderGroup",
+	"DeleteOrderGroup":      "DeleteOrderGroup",
+	"ResetOrderGroup":       "ResetOrderGroup",
+	"TriggerOrderGroup":     "TriggerOrderGroup",
+	"UpdateOrderGroupLimit": "UpdateOrderGroupLimit",
 }
 
 func main() {

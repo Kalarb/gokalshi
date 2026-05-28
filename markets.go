@@ -99,7 +99,7 @@ func (c *Client) GetMarkets(ctx context.Context, params GetMarketsParams) (GetMa
 // minute), 60 (1 hour), 1440 (1 day). Candlesticks for markets that settled
 // before the historical cutoff are only available via `GET
 // /historical/markets/{ticker}/candlesticks`. See [Historical
-// Data](https://kalshi.com/docs/getting_started/historical_data) for details.
+// Data](https://docs.kalshi.com/getting_started/historical_data) for details.
 //
 // See https://trading-api.readme.io/reference/getmarketcandlesticks
 func (c *Client) GetMarketCandlesticks(ctx context.Context, seriesTicker, ticker string, params GetMarketCandlesticksParams) (GetMarketCandlesticksResponse, error) {

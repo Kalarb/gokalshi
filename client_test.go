@@ -1032,3 +1032,591 @@ func TestGetFiltersBySport(t *testing.T) {
 	assert.Len(t, resp.SportOrdering, 1)
 	assert.Equal(t, "NFL", resp.SportOrdering[0])
 }
+
+// ---------------------------------------------------------------------------
+// Account endpoint tests (new)
+// ---------------------------------------------------------------------------
+
+func TestGetAccountEndpointCosts(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/account/endpoint_costs", r.URL.Path)
+		fmt.Fprint(w, `{"default_cost":1,"endpoint_costs":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetAccountEndpointCosts(context.Background())
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio Summary endpoint test
+// ---------------------------------------------------------------------------
+
+func TestGetPortfolioRestingOrderTotalValue(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/portfolio/summary/total_resting_order_value", r.URL.Path)
+		fmt.Fprint(w, `{"total_resting_order_value":500}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetPortfolioRestingOrderTotalValue(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, 500, resp.TotalRestingOrderValue)
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio deposits / withdrawals tests
+// ---------------------------------------------------------------------------
+
+func TestGetDeposits(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/portfolio/deposits", r.URL.Path)
+		fmt.Fprint(w, `{"deposits":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetDeposits(context.Background(), GetDepositsParams{Limit: 10})
+	require.NoError(t, err)
+}
+
+func TestGetWithdrawals(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/portfolio/withdrawals", r.URL.Path)
+		fmt.Fprint(w, `{"withdrawals":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetWithdrawals(context.Background(), GetWithdrawalsParams{Limit: 10})
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Subaccounts endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestCreateSubaccount(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/subaccounts", r.URL.Path)
+		fmt.Fprint(w, `{"subaccount_number":1}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.CreateSubaccount(context.Background())
+	require.NoError(t, err)
+	assert.Equal(t, 1, resp.SubaccountNumber)
+}
+
+func TestGetSubaccountBalances(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/portfolio/subaccounts/balances", r.URL.Path)
+		fmt.Fprint(w, `{"subaccount_balances":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetSubaccountBalances(context.Background())
+	require.NoError(t, err)
+}
+
+func TestGetSubaccountNetting(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/portfolio/subaccounts/netting", r.URL.Path)
+		fmt.Fprint(w, `{"netting_configs":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetSubaccountNetting(context.Background())
+	require.NoError(t, err)
+}
+
+func TestUpdateSubaccountNetting(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/subaccounts/netting", r.URL.Path)
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	err := c.UpdateSubaccountNetting(context.Background(), UpdateSubaccountNettingRequest{
+		Enabled:          true,
+		SubaccountNumber: 1,
+	})
+	require.NoError(t, err)
+}
+
+func TestApplySubaccountTransfer(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/subaccounts/transfer", r.URL.Path)
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.ApplySubaccountTransfer(context.Background(), ApplySubaccountTransferRequest{
+		AmountCents:    100,
+		FromSubaccount: 0,
+		ToSubaccount:   1,
+	})
+	require.NoError(t, err)
+}
+
+func TestGetSubaccountTransfers(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/portfolio/subaccounts/transfers", r.URL.Path)
+		assert.Equal(t, "5", r.URL.Query().Get("limit"))
+		fmt.Fprint(w, `{"transfers":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetSubaccountTransfers(context.Background(), GetSubaccountTransfersParams{Limit: 5})
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// API Keys endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestGetAPIKeys(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/api_keys", r.URL.Path)
+		fmt.Fprint(w, `{"api_keys":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetAPIKeys(context.Background())
+	require.NoError(t, err)
+}
+
+func TestCreateAPIKey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/api_keys", r.URL.Path)
+		fmt.Fprint(w, `{"api_key":"key-1"}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.CreateAPIKey(context.Background(), CreateApiKeyRequest{})
+	require.NoError(t, err)
+}
+
+func TestGenerateAPIKey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/api_keys/generate", r.URL.Path)
+		fmt.Fprint(w, `{"api_key":"key-2"}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GenerateAPIKey(context.Background(), GenerateApiKeyRequest{})
+	require.NoError(t, err)
+}
+
+func TestDeleteAPIKey(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/trade-api/v2/api_keys/key-1", r.URL.Path)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	err := c.DeleteAPIKey(context.Background(), "key-1")
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Event Orders V2 endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestCreateOrderV2(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/events/orders", r.URL.Path)
+		fmt.Fprint(w, `{"order":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.CreateOrderV2(context.Background(), CreateOrderV2Request{})
+	require.NoError(t, err)
+}
+
+func TestBatchCreateOrdersV2(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/events/orders/batched", r.URL.Path)
+		fmt.Fprint(w, `{"orders":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.BatchCreateOrdersV2(context.Background(), BatchCreateOrdersV2Request{
+		Orders: []CreateOrderV2Request{{}},
+	})
+	require.NoError(t, err)
+}
+
+func TestBatchCancelOrdersV2(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/events/orders/batched", r.URL.Path)
+		fmt.Fprint(w, `{"orders":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.BatchCancelOrdersV2(context.Background(), BatchCancelOrdersV2Request{
+		Orders: []map[string]any{{"order_id": "ord-1"}},
+	})
+	require.NoError(t, err)
+}
+
+func TestCancelOrderV2(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodDelete, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/events/orders/ord-1", r.URL.Path)
+		fmt.Fprint(w, `{"order":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.CancelOrderV2(context.Background(), "ord-1", CancelOrderV2Params{})
+	require.NoError(t, err)
+}
+
+func TestAmendOrderV2(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/events/orders/ord-1/amend", r.URL.Path)
+		fmt.Fprint(w, `{"order":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.AmendOrderV2(context.Background(), "ord-1", AmendOrderV2Request{})
+	require.NoError(t, err)
+}
+
+func TestDecreaseOrderV2(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/portfolio/events/orders/ord-1/decrease", r.URL.Path)
+		fmt.Fprint(w, `{"order":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.DecreaseOrderV2(context.Background(), "ord-1", DecreaseOrderV2Request{})
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Events fee changes test
+// ---------------------------------------------------------------------------
+
+func TestGetEventFeeChanges(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/events/fee_changes", r.URL.Path)
+		assert.Equal(t, "EVT", r.URL.Query().Get("event_ticker"))
+		fmt.Fprint(w, `{"event_fee_changes":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetEventFeeChanges(context.Background(), GetEventFeeChangesParams{EventTicker: "EVT"})
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Historical endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestGetHistoricalCutoff(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/historical/cutoff", r.URL.Path)
+		fmt.Fprint(w, `{"market_settled_ts":"2024-01-01","orders_updated_ts":"2024-01-01","trades_created_ts":"2024-01-01"}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	resp, err := c.GetHistoricalCutoff(context.Background())
+	require.NoError(t, err)
+	assert.NotEmpty(t, resp.MarketSettledTS)
+}
+
+func TestGetHistoricalFills(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/historical/fills", r.URL.Path)
+		fmt.Fprint(w, `{"fills":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetHistoricalFills(context.Background(), GetHistoricalFillsParams{Limit: 10})
+	require.NoError(t, err)
+}
+
+func TestGetHistoricalOrders(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/historical/orders", r.URL.Path)
+		fmt.Fprint(w, `{"orders":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetHistoricalOrders(context.Background(), GetHistoricalOrdersParams{})
+	require.NoError(t, err)
+}
+
+func TestGetHistoricalTrades(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/historical/trades", r.URL.Path)
+		fmt.Fprint(w, `{"trades":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetHistoricalTrades(context.Background(), GetHistoricalTradesParams{})
+	require.NoError(t, err)
+}
+
+func TestGetHistoricalMarkets(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/historical/markets", r.URL.Path)
+		fmt.Fprint(w, `{"markets":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetHistoricalMarkets(context.Background(), GetHistoricalMarketsParams{})
+	require.NoError(t, err)
+}
+
+func TestGetHistoricalMarket(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/historical/markets/TICK-1", r.URL.Path)
+		fmt.Fprint(w, `{"market":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetHistoricalMarket(context.Background(), "TICK-1")
+	require.NoError(t, err)
+}
+
+func TestGetHistoricalMarketCandlesticks(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/historical/markets/TICK-1/candlesticks", r.URL.Path)
+		fmt.Fprint(w, `{"candlesticks":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetHistoricalMarketCandlesticks(context.Background(), "TICK-1", GetHistoricalMarketCandlesticksParams{})
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Incentive Programs endpoint test
+// ---------------------------------------------------------------------------
+
+func TestGetIncentivePrograms(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/incentive_programs", r.URL.Path)
+		fmt.Fprint(w, `{"incentive_programs":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetIncentivePrograms(context.Background())
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Live Data endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestGetLiveDataBatch(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/live_data/batch", r.URL.Path)
+		fmt.Fprint(w, `{"live_datas":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetLiveDataBatch(context.Background(), GetLiveDataBatchParams{MilestoneIDs: "m1,m2"})
+	require.NoError(t, err)
+}
+
+func TestGetLiveDataByMilestone(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/live_data/milestone/m-1", r.URL.Path)
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetLiveDataByMilestone(context.Background(), "m-1", GetLiveDataParams{})
+	require.NoError(t, err)
+}
+
+func TestGetMilestoneGameStats(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/live_data/milestone/m-1/game_stats", r.URL.Path)
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetMilestoneGameStats(context.Background(), "m-1")
+	require.NoError(t, err)
+}
+
+func TestGetLiveData(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/live_data/scoreboard/milestone/m-1", r.URL.Path)
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetLiveData(context.Background(), "scoreboard", "m-1", GetLiveDataParams{})
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Milestones endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestGetMilestones(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/milestones", r.URL.Path)
+		assert.Equal(t, "EVT", r.URL.Query().Get("event_ticker"))
+		fmt.Fprint(w, `{"milestones":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetMilestones(context.Background(), GetMilestonesParams{EventTicker: "EVT"})
+	require.NoError(t, err)
+}
+
+func TestGetMilestone(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/milestones/m-1", r.URL.Path)
+		fmt.Fprint(w, `{"milestone":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetMilestone(context.Background(), "m-1")
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Multivariate Event Collections endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestGetMultivariateEventCollections(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/multivariate_event_collections", r.URL.Path)
+		fmt.Fprint(w, `{"collections":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetMultivariateEventCollections(context.Background(), GetMultivariateEventCollectionsParams{})
+	require.NoError(t, err)
+}
+
+func TestGetMultivariateEventCollection(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/multivariate_event_collections/COL-1", r.URL.Path)
+		fmt.Fprint(w, `{"collection":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetMultivariateEventCollection(context.Background(), "COL-1")
+	require.NoError(t, err)
+}
+
+func TestGetMultivariateEventCollectionLookupHistory(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/multivariate_event_collections/COL-1/lookup", r.URL.Path)
+		fmt.Fprint(w, `{"lookup_history":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetMultivariateEventCollectionLookupHistory(context.Background(), "COL-1", GetMVECollectionLookupParams{})
+	require.NoError(t, err)
+}
+
+func TestCreateMarketInMultivariateEventCollection(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/multivariate_event_collections/COL-1", r.URL.Path)
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.CreateMarketInMultivariateEventCollection(context.Background(), "COL-1", CreateMarketInMultivariateEventCollectionRequest{})
+	require.NoError(t, err)
+}
+
+func TestLookupTickersForMarketInMultivariateEventCollection(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPut, r.Method)
+		assert.Equal(t, "/trade-api/v2/multivariate_event_collections/COL-1/lookup", r.URL.Path)
+		fmt.Fprint(w, `{}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.LookupTickersForMarketInMultivariateEventCollection(context.Background(), "COL-1", LookupTickersForMarketInMultivariateEventCollectionRequest{})
+	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// Structured Targets endpoint tests
+// ---------------------------------------------------------------------------
+
+func TestGetStructuredTargets(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/structured_targets", r.URL.Path)
+		fmt.Fprint(w, `{"structured_targets":[]}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetStructuredTargets(context.Background(), GetStructuredTargetsParams{})
+	require.NoError(t, err)
+}
+
+func TestGetStructuredTarget(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/trade-api/v2/structured_targets/st-1", r.URL.Path)
+		fmt.Fprint(w, `{"structured_target":{}}`)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	_, err := c.GetStructuredTarget(context.Background(), "st-1")
+	require.NoError(t, err)
+}

@@ -323,6 +323,13 @@ type QuoteExecutedData struct {
 	ExecutedTs     string `json:"executed_ts"`
 }
 
+// EventFeeUpdateData is the msg body for an "event_fee_update" message.
+type EventFeeUpdateData struct {
+	EventTicker           string   `json:"event_ticker"`
+	FeeTypeOverride       *string  `json:"fee_type_override"`
+	FeeMultiplierOverride *float64 `json:"fee_multiplier_override"`
+}
+
 // ---------------------------------------------------------------------------
 // WS error codes (from Kalshi API spec)
 // ---------------------------------------------------------------------------

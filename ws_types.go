@@ -26,6 +26,7 @@ var MsgTypeToChannel = map[WSMessageType][]string{
 	WSMsgQuoteCreated:                {"communications"},
 	WSMsgQuoteAccepted:               {"communications"},
 	WSMsgQuoteExecuted:               {"communications"},
+	WSMsgEventFeeUpdate:              {"market_lifecycle_v2"},
 }
 
 // ChannelState tracks the subscription state for a single WS channel.
