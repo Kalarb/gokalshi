@@ -126,6 +126,10 @@ type CreateRFQResponse struct {
 	ID string `json:"id"`
 }
 
+// EmptyResponse An empty response body
+type EmptyResponse struct {
+}
+
 // GetCommunicationsIDResponse is a generated type from the Kalshi OpenAPI spec.
 type GetCommunicationsIDResponse struct {
 	// A public communications ID which is used to identify the user
@@ -1423,6 +1427,16 @@ type GetOrdersResponse struct {
 	Orders []Order `json:"orders"`
 }
 
+// GetPositionsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetPositionsResponse struct {
+	// The Cursor represents a pointer to the next page of records in the pagination. Use the value retu...
+	Cursor string `json:"cursor,omitempty"`
+	// List of event positions
+	EventPositions []EventPosition `json:"event_positions"`
+	// List of market positions
+	MarketPositions []MarketPosition `json:"market_positions"`
+}
+
 // ---------------------------------------------------------------------------
 // Historical
 // ---------------------------------------------------------------------------
@@ -1629,10 +1643,6 @@ type CreateOrderGroupResponse struct {
 	Subaccount int `json:"subaccount"`
 }
 
-// EmptyResponse An empty response body
-type EmptyResponse struct {
-}
-
 // GetOrderGroupResponse is a generated type from the Kalshi OpenAPI spec.
 type GetOrderGroupResponse struct {
 	// String representation of the current maximum contracts allowed over a rolling 15-second window.
@@ -1835,16 +1845,6 @@ type GetDepositsResponse struct {
 type GetPortfolioRestingOrderTotalValueResponse struct {
 	// Total value of resting orders in cents
 	TotalRestingOrderValue int `json:"total_resting_order_value"`
-}
-
-// GetPositionsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetPositionsResponse struct {
-	// The Cursor represents a pointer to the next page of records in the pagination. Use the value retu...
-	Cursor string `json:"cursor,omitempty"`
-	// List of event positions
-	EventPositions []EventPosition `json:"event_positions"`
-	// List of market positions
-	MarketPositions []MarketPosition `json:"market_positions"`
 }
 
 // GetSettlementsResponse is a generated type from the Kalshi OpenAPI spec.

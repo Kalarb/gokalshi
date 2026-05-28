@@ -243,18 +243,25 @@ func isParameterSchema(name string) bool {
 
 // buildSchemaGroups maps schema names to their API domain group by walking
 // the spec's Paths and extracting $ref'd schemas from request/response bodies.
+// All map iterations are sorted for deterministic output.
 func buildSchemaGroups(spec *Spec) map[string]string {
 	groups := make(map[string]string)
 
-	for path, methods := range spec.Paths {
+	paths := sortedKeys(spec.Paths)
+	for _, path := range paths {
+		methods := spec.Paths[path]
 		group := groupNameFromPath(path)
-		for _, op := range methods {
+
+		methodKeys := sortedKeys(methods)
+		for _, method := range methodKeys {
+			op := methods[method]
 			if op == nil {
 				continue
 			}
 			// Collect schema refs from request body
 			if op.RequestBody != nil {
-				for _, mt := range op.RequestBody.Content {
+				for _, ct := range sortedKeys(op.RequestBody.Content) {
+					mt := op.RequestBody.Content[ct]
 					if mt.Schema != nil && mt.Schema.Ref != "" {
 						name := refToName(mt.Schema.Ref)
 						if _, ok := groups[name]; !ok {
@@ -264,11 +271,13 @@ func buildSchemaGroups(spec *Spec) map[string]string {
 				}
 			}
 			// Collect schema refs from responses
-			for _, resp := range op.Responses {
+			for _, code := range sortedKeys(op.Responses) {
+				resp := op.Responses[code]
 				if resp == nil {
 					continue
 				}
-				for _, mt := range resp.Content {
+				for _, ct := range sortedKeys(resp.Content) {
+					mt := resp.Content[ct]
 					if mt.Schema != nil && mt.Schema.Ref != "" {
 						name := refToName(mt.Schema.Ref)
 						if _, ok := groups[name]; !ok {
@@ -280,6 +289,16 @@ func buildSchemaGroups(spec *Spec) map[string]string {
 		}
 	}
 	return groups
+}
+
+// sortedKeys returns the keys of a map in sorted order.
+func sortedKeys[V any](m map[string]V) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 // groupNameFromPath derives a section name from an API path.
@@ -338,7 +357,13 @@ func groupNameFromPath(path string) string {
 		return name
 	}
 	// Fallback: title-case the segment
-	return strings.ReplaceAll(strings.Title(seg), "_", " ")
+	words := strings.Split(seg, "_")
+	for i, w := range words {
+		if len(w) > 0 {
+			words[i] = strings.ToUpper(w[:1]) + w[1:]
+		}
+	}
+	return strings.Join(words, " ")
 }
 
 func refToName(ref string) string {
