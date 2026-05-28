@@ -2,8 +2,6 @@ package gokalshi
 
 import "context"
 
-const pathSubaccounts = pathPortfolio + "/subaccounts"
-
 // CreateSubaccount — Create Subaccount
 //
 // POST /trade-api/v2/portfolio/subaccounts

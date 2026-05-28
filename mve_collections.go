@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathMVECollections = "/trade-api/v2/multivariate_event_collections"
-
 // GetMultivariateEventCollections — Get Multivariate Event Collections
 //
 // GET /trade-api/v2/multivariate_event_collections

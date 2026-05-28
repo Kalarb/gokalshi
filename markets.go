@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathMarkets = "/trade-api/v2/markets"
-
 // GetMarketOrderbook — Get Market Orderbook
 //
 // GET /trade-api/v2/markets/{ticker}/orderbook

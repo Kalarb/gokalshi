@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathSeries = "/trade-api/v2/series"
-
 // GetSeries — Get Series
 //
 // GET /trade-api/v2/series/{series_ticker}

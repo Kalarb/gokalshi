@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathEventOrders = pathPortfolio + "/events/orders"
-
 // CreateOrderV2 — Create Order (V2)
 //
 // POST /trade-api/v2/portfolio/events/orders

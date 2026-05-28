@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathAPIKeys = "/trade-api/v2/api_keys"
-
 // GetAPIKeys — Get API Keys
 //
 // GET /trade-api/v2/api_keys

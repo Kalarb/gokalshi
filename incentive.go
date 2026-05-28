@@ -11,5 +11,5 @@ import "context"
 //
 // See https://trading-api.readme.io/reference/getincentiveprograms
 func (c *Client) GetIncentivePrograms(ctx context.Context) (GetIncentiveProgramsResponse, error) {
-	return getJSON[GetIncentiveProgramsResponse](c, ctx, "/trade-api/v2/incentive_programs", nil)
+	return getJSON[GetIncentiveProgramsResponse](c, ctx, pathIncentivePrograms, nil)
 }

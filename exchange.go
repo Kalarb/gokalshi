@@ -4,8 +4,6 @@ import (
 	"context"
 )
 
-const pathExchange = "/trade-api/v2/exchange"
-
 // GetExchangeStatus — Get Exchange Status
 //
 // GET /trade-api/v2/exchange/status

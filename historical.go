@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathHistorical = "/trade-api/v2/historical"
-
 // GetHistoricalCutoff — Get Historical Cutoff Timestamps
 //
 // GET /trade-api/v2/historical/cutoff

@@ -3,43 +3,169 @@
 
 package gokalshi
 
+// ---------------------------------------------------------------------------
+// API Keys
+// ---------------------------------------------------------------------------
+
+// CreateApiKeyRequest is a generated type from the Kalshi OpenAPI spec.
+type CreateApiKeyRequest struct {
+	// Name for the API key. This helps identify the key's purpose
+	Name string `json:"name"`
+	// RSA public key in PEM format. This will be used to verify signatures on API requests
+	PublicKey string `json:"public_key"`
+	// List of scopes to grant to the API key. Valid values are 'read' and 'write'. If 'write' is includ...
+	Scopes []string `json:"scopes,omitempty"`
+}
+
+// CreateApiKeyResponse is a generated type from the Kalshi OpenAPI spec.
+type CreateApiKeyResponse struct {
+	// Unique identifier for the newly created API key
+	APIKeyID string `json:"api_key_id"`
+}
+
+// GenerateApiKeyRequest is a generated type from the Kalshi OpenAPI spec.
+type GenerateApiKeyRequest struct {
+	// Name for the API key. This helps identify the key's purpose
+	Name string `json:"name"`
+	// List of scopes to grant to the API key. Valid values are 'read' and 'write'. If 'write' is includ...
+	Scopes []string `json:"scopes,omitempty"`
+}
+
+// GenerateApiKeyResponse is a generated type from the Kalshi OpenAPI spec.
+type GenerateApiKeyResponse struct {
+	// Unique identifier for the newly generated API key
+	APIKeyID string `json:"api_key_id"`
+	// RSA private key in PEM format. This must be stored securely and cannot be retrieved again after t...
+	PrivateKey string `json:"private_key"`
+}
+
+// GetApiKeysResponse is a generated type from the Kalshi OpenAPI spec.
+type GetApiKeysResponse struct {
+	// List of all API keys associated with the user
+	APIKeys []ApiKey `json:"api_keys"`
+}
+
+// ---------------------------------------------------------------------------
+// Account
+// ---------------------------------------------------------------------------
+
+// GetAccountApiLimitsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetAccountApiLimitsResponse struct {
+	Read BucketLimit `json:"read"`
+	// User's API usage tier.
+	UsageTier string      `json:"usage_tier"`
+	Write     BucketLimit `json:"write"`
+}
+
+// GetAccountEndpointCostsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetAccountEndpointCostsResponse struct {
+	// Default token cost applied to endpoints that are not listed in `endpoint_costs`. This is currentl...
+	DefaultCost int `json:"default_cost"`
+	// API v2 endpoints whose configured token cost differs from `default_cost`. Endpoints that use the ...
+	EndpointCosts []EndpointTokenCost `json:"endpoint_costs"`
+}
+
+// ---------------------------------------------------------------------------
+// Communications
+// ---------------------------------------------------------------------------
+
 // AcceptQuoteRequest is a generated type from the Kalshi OpenAPI spec.
 type AcceptQuoteRequest struct {
 	// The side of the quote to accept (yes or no)
 	AcceptedSide Side `json:"accepted_side"`
 }
 
+// CreateQuoteRequest is a generated type from the Kalshi OpenAPI spec.
+type CreateQuoteRequest struct {
+	// The bid price for NO contracts, in dollars
+	NoBid string `json:"no_bid"`
+	// If true, the quote creator's resting order will be cancelled rather than crossed if it would take...
+	PostOnly bool `json:"post_only,omitempty"`
+	// Whether to rest the remainder of the quote after execution
+	RestRemainder bool `json:"rest_remainder"`
+	// The ID of the RFQ to quote on
+	RFQID string `json:"rfq_id"`
+	// Optional subaccount number to place the quote under (0 for primary, 1-32 for subaccounts)
+	Subaccount int `json:"subaccount,omitempty"`
+	// The bid price for YES contracts, in dollars
+	YesBid string `json:"yes_bid"`
+}
+
+// CreateQuoteResponse is a generated type from the Kalshi OpenAPI spec.
+type CreateQuoteResponse struct {
+	// The ID of the newly created quote
+	ID string `json:"id"`
+}
+
+// CreateRFQRequest is a generated type from the Kalshi OpenAPI spec.
+type CreateRFQRequest struct {
+	// The number of contracts for the RFQ. Whole contracts only. Contracts may be provided via contract...
+	Contracts int `json:"contracts,omitempty"`
+	// String representation of the number of contracts for the RFQ. Contracts may be provided via contr...
+	ContractsFP *string `json:"contracts_fp,omitempty"`
+	// The ticker of the market for which to create an RFQ
+	MarketTicker string `json:"market_ticker"`
+	// Whether to delete existing RFQs as part of this RFQ's creation
+	ReplaceExisting bool `json:"replace_existing,omitempty"`
+	// Whether to rest the remainder of the RFQ after execution
+	RestRemainder bool `json:"rest_remainder"`
+	// The subaccount number to create the RFQ for (direct members only; 0 for primary, 1-32 for subacco...
+	Subaccount int `json:"subaccount,omitempty"`
+	// The subtrader to create the RFQ for (FCM members only)
+	SubtraderID string `json:"subtrader_id,omitempty"`
+	// DEPRECATED: The target cost for the RFQ in centi-cents. Use target_cost_dollars instead.
+	// Deprecated.
+	TargetCostCentiCents int64 `json:"target_cost_centi_cents,omitempty"`
+	// The target cost for the RFQ in dollars
+	TargetCostDollars string `json:"target_cost_dollars,omitempty"`
+}
+
+// CreateRFQResponse is a generated type from the Kalshi OpenAPI spec.
+type CreateRFQResponse struct {
+	// The ID of the newly created RFQ
+	ID string `json:"id"`
+}
+
+// GetCommunicationsIDResponse is a generated type from the Kalshi OpenAPI spec.
+type GetCommunicationsIDResponse struct {
+	// A public communications ID which is used to identify the user
+	CommunicationsID string `json:"communications_id"`
+}
+
+// GetQuoteResponse is a generated type from the Kalshi OpenAPI spec.
+type GetQuoteResponse struct {
+	// The details of the requested quote
+	Quote Quote `json:"quote"`
+}
+
+// GetQuotesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetQuotesResponse struct {
+	// Cursor for pagination to get the next page of results
+	Cursor string `json:"cursor,omitempty"`
+	// List of quotes matching the query criteria
+	Quotes []Quote `json:"quotes"`
+}
+
+// GetRFQResponse is a generated type from the Kalshi OpenAPI spec.
+type GetRFQResponse struct {
+	// The details of the requested RFQ
+	RFQ RFQ `json:"rfq"`
+}
+
+// GetRFQsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetRFQsResponse struct {
+	// Cursor for pagination to get the next page of results
+	Cursor string `json:"cursor,omitempty"`
+	// List of RFQs matching the query criteria
+	Rfqs []RFQ `json:"rfqs"`
+}
+
+// ---------------------------------------------------------------------------
+// Core
+// ---------------------------------------------------------------------------
+
 // ExchangeIndex Identifier for an exchange shard. Defaults to 0 if unspecified. Note: currently only 0 supported.
 type ExchangeIndex = int
-
-// AmendOrderRequest is a generated type from the Kalshi OpenAPI spec.
-type AmendOrderRequest struct {
-	// Action of the order
-	Action Action `json:"action"`
-	// The original client-specified order ID to be amended
-	ClientOrderID string `json:"client_order_id,omitempty"`
-	// Updated quantity for the order (whole contracts only). If updating quantity, provide count or cou...
-	Count int `json:"count,omitempty"`
-	// String representation of the updated quantity for the order. If updating quantity, provide count ...
-	CountFP       *string       `json:"count_fp,omitempty"`
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
-	// Updated no price for the order in cents
-	NoPrice int `json:"no_price,omitempty"`
-	// Updated no price for the order in fixed-point dollars. Exactly one of yes_price, no_price, yes_pr...
-	NoPriceDollars string `json:"no_price_dollars,omitempty"`
-	// Side of the order
-	Side Side `json:"side"`
-	// Optional subaccount number to use for this amendment (0 for primary, 1-32 for subaccounts)
-	Subaccount int `json:"subaccount,omitempty"`
-	// Market ticker
-	Ticker string `json:"ticker"`
-	// The new client-specified order ID after amendment
-	UpdatedClientOrderID string `json:"updated_client_order_id,omitempty"`
-	// Updated yes price for the order in cents
-	YesPrice int `json:"yes_price,omitempty"`
-	// Updated yes price for the order in fixed-point dollars. Exactly one of yes_price, no_price, yes_p...
-	YesPriceDollars string `json:"yes_price_dollars,omitempty"`
-}
 
 // Order is a generated type from the Kalshi OpenAPI spec.
 type Order struct {
@@ -92,47 +218,6 @@ type Order struct {
 	YesPriceDollars string `json:"yes_price_dollars"`
 }
 
-// AmendOrderResponse is a generated type from the Kalshi OpenAPI spec.
-type AmendOrderResponse struct {
-	// The order before amendment
-	OldOrder Order `json:"old_order"`
-	// The order after amendment
-	Order Order `json:"order"`
-}
-
-// AmendOrderV2Request is a generated type from the Kalshi OpenAPI spec.
-type AmendOrderV2Request struct {
-	// The original client-specified order ID to be amended
-	ClientOrderID string `json:"client_order_id,omitempty"`
-	// Updated total/max fillable count for the order. Set this to the order's already filled count plus...
-	Count         string        `json:"count"`
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
-	// Updated price for the order in fixed-point dollars.
-	Price string `json:"price"`
-	// Side of the order
-	Side BookSide `json:"side"`
-	// Market ticker
-	Ticker string `json:"ticker"`
-	// The new client-specified order ID after amendment
-	UpdatedClientOrderID string `json:"updated_client_order_id,omitempty"`
-}
-
-// AmendOrderV2Response is a generated type from the Kalshi OpenAPI spec.
-type AmendOrderV2Response struct {
-	// Volume-weighted average fee paid per contract for fills resulting from the amend. Only present wh...
-	AverageFeePaid *string `json:"average_fee_paid,omitempty"`
-	// Volume-weighted average fill price for fills resulting from the amend. Only present when fills oc...
-	AverageFillPrice *string `json:"average_fill_price,omitempty"`
-	ClientOrderID    string  `json:"client_order_id,omitempty"`
-	// Number of contracts filled as a result of the amend crossing the book. Only present when fills oc...
-	FillCount *string `json:"fill_count,omitempty"`
-	OrderID   string  `json:"order_id"`
-	// Number of resting contracts remaining after the amend. This is the actual post-amend resting quan...
-	RemainingCount *string `json:"remaining_count,omitempty"`
-	// Matching engine timestamp at which the amend was processed, as Unix epoch milliseconds.
-	TSMs int64 `json:"ts_ms"`
-}
-
 // Announcement is a generated type from the Kalshi OpenAPI spec.
 type Announcement struct {
 	// The time the announcement was delivered.
@@ -155,22 +240,6 @@ type ApiKey struct {
 	Scopes []string `json:"scopes"`
 }
 
-// ApplySubaccountTransferRequest is a generated type from the Kalshi OpenAPI spec.
-type ApplySubaccountTransferRequest struct {
-	// Amount to transfer in cents.
-	AmountCents int64 `json:"amount_cents"`
-	// Unique client-provided transfer ID for idempotency.
-	ClientTransferID string `json:"client_transfer_id"`
-	// Source subaccount number (0 for primary, 1-32 for numbered subaccounts).
-	FromSubaccount int `json:"from_subaccount"`
-	// Destination subaccount number (0 for primary, 1-32 for numbered subaccounts).
-	ToSubaccount int `json:"to_subaccount"`
-}
-
-// ApplySubaccountTransferResponse Empty response indicating successful transfer.
-type ApplySubaccountTransferResponse struct {
-}
-
 // AssociatedEvent is a generated type from the Kalshi OpenAPI spec.
 type AssociatedEvent struct {
 	// List of active quoters for this event.
@@ -183,18 +252,6 @@ type AssociatedEvent struct {
 	SizeMin *int `json:"size_min,omitempty"`
 	// The event ticker.
 	Ticker string `json:"ticker"`
-}
-
-// ErrorResponse is a generated type from the Kalshi OpenAPI spec.
-type ErrorResponse struct {
-	// Error code
-	Code string `json:"code,omitempty"`
-	// Additional details about the error, if available
-	Details string `json:"details,omitempty"`
-	// Human-readable error message
-	Message string `json:"message,omitempty"`
-	// The name of the service that generated the error
-	Service string `json:"service,omitempty"`
 }
 
 // BatchCancelOrdersIndividualResponse is a generated type from the Kalshi OpenAPI spec.
@@ -216,118 +273,11 @@ type BatchCancelOrdersRequestOrder struct {
 	Subaccount int `json:"subaccount,omitempty"`
 }
 
-// BatchCancelOrdersRequest is a generated type from the Kalshi OpenAPI spec.
-type BatchCancelOrdersRequest struct {
-	// An array of order IDs to cancel
-	// Deprecated.
-	Ids []string `json:"ids,omitempty"`
-	// An array of orders to cancel, each optionally specifying a subaccount
-	Orders []BatchCancelOrdersRequestOrder `json:"orders,omitempty"`
-}
-
-// BatchCancelOrdersResponse is a generated type from the Kalshi OpenAPI spec.
-type BatchCancelOrdersResponse struct {
-	Orders []BatchCancelOrdersIndividualResponse `json:"orders"`
-}
-
-// BatchCancelOrdersV2Request is a generated type from the Kalshi OpenAPI spec.
-type BatchCancelOrdersV2Request struct {
-	// An array of orders to cancel, each optionally specifying a subaccount.
-	Orders []map[string]any `json:"orders"`
-}
-
-// BatchCancelOrdersV2Response is a generated type from the Kalshi OpenAPI spec.
-type BatchCancelOrdersV2Response struct {
-	Orders []map[string]any `json:"orders"`
-}
-
 // BatchCreateOrdersIndividualResponse is a generated type from the Kalshi OpenAPI spec.
 type BatchCreateOrdersIndividualResponse struct {
 	ClientOrderID *string        `json:"client_order_id,omitempty"`
 	Error         *ErrorResponse `json:"error,omitempty"`
 	Order         *Order         `json:"order,omitempty"`
-}
-
-// CreateOrderRequest is a generated type from the Kalshi OpenAPI spec.
-type CreateOrderRequest struct {
-	Action Action `json:"action"`
-	// Maximum cost in cents. When specified, the order will automatically have Fill-or-Kill (FoK) behav...
-	BuyMaxCost int `json:"buy_max_cost,omitempty"`
-	// If this flag is set to true, the order will be canceled if the order is open and trading on the e...
-	CancelOrderOnPause bool   `json:"cancel_order_on_pause,omitempty"`
-	ClientOrderID      string `json:"client_order_id,omitempty"`
-	// Order quantity in contracts (whole contracts only). Provide count or count_fp; if both provided t...
-	Count int `json:"count,omitempty"`
-	// String representation of the order quantity in contracts. Provide count or count_fp; if both prov...
-	CountFP       *string       `json:"count_fp,omitempty"`
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
-	// Optional Unix timestamp in seconds for when the order expires. To place
-	ExpirationTS int64 `json:"expiration_ts,omitempty"`
-	NoPrice      int   `json:"no_price,omitempty"`
-	// Submitting price of the No side in fixed-point dollars
-	NoPriceDollars string `json:"no_price_dollars,omitempty"`
-	// The order group this order is part of
-	OrderGroupID            string                  `json:"order_group_id,omitempty"`
-	PostOnly                bool                    `json:"post_only,omitempty"`
-	ReduceOnly              bool                    `json:"reduce_only,omitempty"`
-	SelfTradePreventionType SelfTradePreventionType `json:"self_trade_prevention_type,omitempty"`
-	// Deprecated: Use reduce_only instead. Only accepts value of 0.
-	SellPositionFloor int  `json:"sell_position_floor,omitempty"`
-	Side              Side `json:"side"`
-	// The subaccount number to use for this order. 0 is the primary subaccount.
-	Subaccount int    `json:"subaccount,omitempty"`
-	Ticker     string `json:"ticker"`
-	// Specifies how long the order remains active. Use `good_till_canceled`
-	TimeInForce TimeInForce `json:"time_in_force,omitempty"`
-	YesPrice    int         `json:"yes_price,omitempty"`
-	// Submitting price of the Yes side in fixed-point dollars
-	YesPriceDollars string `json:"yes_price_dollars,omitempty"`
-}
-
-// BatchCreateOrdersRequest is a generated type from the Kalshi OpenAPI spec.
-type BatchCreateOrdersRequest struct {
-	Orders []CreateOrderRequest `json:"orders"`
-}
-
-// BatchCreateOrdersResponse is a generated type from the Kalshi OpenAPI spec.
-type BatchCreateOrdersResponse struct {
-	Orders []BatchCreateOrdersIndividualResponse `json:"orders"`
-}
-
-// CreateOrderV2Request is a generated type from the Kalshi OpenAPI spec.
-type CreateOrderV2Request struct {
-	// If this flag is set to true, the order will be canceled if the order is open and trading on the e...
-	CancelOrderOnPause bool   `json:"cancel_order_on_pause,omitempty"`
-	ClientOrderID      string `json:"client_order_id"`
-	// String representation of the order quantity in contracts.
-	Count         string        `json:"count"`
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
-	// Optional Unix timestamp in seconds for when the order expires. To place
-	ExpirationTime int64 `json:"expiration_time,omitempty"`
-	// The order group this order is part of
-	OrderGroupID string `json:"order_group_id,omitempty"`
-	PostOnly     bool   `json:"post_only,omitempty"`
-	// Price for the order in fixed-point dollars.
-	Price string `json:"price"`
-	// Specifies whether the order place count should be capped by the member's current position.
-	ReduceOnly              bool                    `json:"reduce_only,omitempty"`
-	SelfTradePreventionType SelfTradePreventionType `json:"self_trade_prevention_type"`
-	Side                    BookSide                `json:"side"`
-	// The subaccount number to use for this order. 0 is the primary subaccount.
-	Subaccount int    `json:"subaccount,omitempty"`
-	Ticker     string `json:"ticker"`
-	// Specifies how long the order remains active. Use `good_till_canceled`
-	TimeInForce string `json:"time_in_force"`
-}
-
-// BatchCreateOrdersV2Request is a generated type from the Kalshi OpenAPI spec.
-type BatchCreateOrdersV2Request struct {
-	Orders []CreateOrderV2Request `json:"orders"`
-}
-
-// BatchCreateOrdersV2Response is a generated type from the Kalshi OpenAPI spec.
-type BatchCreateOrdersV2Response struct {
-	Orders []map[string]any `json:"orders"`
 }
 
 // BidAskDistribution is a generated type from the Kalshi OpenAPI spec.
@@ -386,12 +336,6 @@ type MarketCandlesticksResponse struct {
 	MarketTicker string `json:"market_ticker"`
 }
 
-// BatchGetMarketCandlesticksResponse is a generated type from the Kalshi OpenAPI spec.
-type BatchGetMarketCandlesticksResponse struct {
-	// Array of market candlestick data, one entry per requested market.
-	Markets []MarketCandlesticksResponse `json:"markets"`
-}
-
 // BidAskDistributionHistorical is a generated type from the Kalshi OpenAPI spec.
 type BidAskDistributionHistorical struct {
 	// Offer price on the market at the end of the candlestick period (in dollars).
@@ -412,39 +356,6 @@ type BucketLimit struct {
 	RefillRate int `json:"refill_rate"`
 }
 
-// CancelOrderResponse is a generated type from the Kalshi OpenAPI spec.
-type CancelOrderResponse struct {
-	Order Order `json:"order"`
-	// String representation of the number of contracts that were successfully canceled from this order
-	ReducedByFP string `json:"reduced_by_fp"`
-}
-
-// CancelOrderV2Response is a generated type from the Kalshi OpenAPI spec.
-type CancelOrderV2Response struct {
-	ClientOrderID string `json:"client_order_id,omitempty"`
-	OrderID       string `json:"order_id"`
-	// Number of contracts that were canceled (i.e. the remaining count at time of cancellation).
-	ReducedBy string `json:"reduced_by"`
-	// Matching engine timestamp at which the cancellation was processed, as Unix epoch milliseconds.
-	TSMs int64 `json:"ts_ms"`
-}
-
-// CreateApiKeyRequest is a generated type from the Kalshi OpenAPI spec.
-type CreateApiKeyRequest struct {
-	// Name for the API key. This helps identify the key's purpose
-	Name string `json:"name"`
-	// RSA public key in PEM format. This will be used to verify signatures on API requests
-	PublicKey string `json:"public_key"`
-	// List of scopes to grant to the API key. Valid values are 'read' and 'write'. If 'write' is includ...
-	Scopes []string `json:"scopes,omitempty"`
-}
-
-// CreateApiKeyResponse is a generated type from the Kalshi OpenAPI spec.
-type CreateApiKeyResponse struct {
-	// Unique identifier for the newly created API key
-	APIKeyID string `json:"api_key_id"`
-}
-
 // TickerPair is a generated type from the Kalshi OpenAPI spec.
 type TickerPair struct {
 	// Event ticker identifier.
@@ -453,14 +364,6 @@ type TickerPair struct {
 	MarketTicker string `json:"market_ticker"`
 	// Side of the market (yes or no).
 	Side string `json:"side"`
-}
-
-// CreateMarketInMultivariateEventCollectionRequest is a generated type from the Kalshi OpenAPI spec.
-type CreateMarketInMultivariateEventCollectionRequest struct {
-	// List of selected markets that act as parameters to determine which market is created.
-	SelectedMarkets []TickerPair `json:"selected_markets"`
-	// Whether to include the market payload in the response.
-	WithMarketPayload bool `json:"with_market_payload,omitempty"`
 }
 
 // MveSelectedLeg is a generated type from the Kalshi OpenAPI spec.
@@ -592,159 +495,12 @@ type Market struct {
 	YesSubTitle string `json:"yes_sub_title"`
 }
 
-// CreateMarketInMultivariateEventCollectionResponse is a generated type from the Kalshi OpenAPI spec.
-type CreateMarketInMultivariateEventCollectionResponse struct {
-	// Event ticker for the created market.
-	EventTicker string `json:"event_ticker"`
-	// Market payload of the created market.
-	Market Market `json:"market,omitempty"`
-	// Market ticker for the created market.
-	MarketTicker string `json:"market_ticker"`
-}
-
-// CreateOrderGroupRequest is a generated type from the Kalshi OpenAPI spec.
-type CreateOrderGroupRequest struct {
-	// Specifies the maximum number of contracts that can be matched within this group over a rolling 15...
-	ContractsLimit int64 `json:"contracts_limit,omitempty"`
-	// String representation of the maximum number of contracts that can be matched within this group ov...
-	ContractsLimitFP *string       `json:"contracts_limit_fp,omitempty"`
-	ExchangeIndex    ExchangeIndex `json:"exchange_index,omitempty"`
-	// Optional subaccount number to use for this order group (0 for primary, 1-32 for subaccounts)
-	Subaccount int `json:"subaccount,omitempty"`
-}
-
-// CreateOrderGroupResponse is a generated type from the Kalshi OpenAPI spec.
-type CreateOrderGroupResponse struct {
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
-	// The unique identifier for the created order group
-	OrderGroupID string `json:"order_group_id"`
-	// Subaccount number that owns the created order group (0 for primary, 1-32 for subaccounts).
-	Subaccount int `json:"subaccount"`
-}
-
-// CreateOrderResponse is a generated type from the Kalshi OpenAPI spec.
-type CreateOrderResponse struct {
-	Order Order `json:"order"`
-}
-
-// CreateOrderV2Response is a generated type from the Kalshi OpenAPI spec.
-type CreateOrderV2Response struct {
-	// Volume-weighted average fee paid per contract for fills resulting from this request. Only present...
-	AverageFeePaid string `json:"average_fee_paid,omitempty"`
-	// Volume-weighted average fill price. Only present when fill_count > 0.
-	AverageFillPrice string `json:"average_fill_price,omitempty"`
-	ClientOrderID    string `json:"client_order_id,omitempty"`
-	// Number of contracts filled immediately upon placement.
-	FillCount string `json:"fill_count"`
-	OrderID   string `json:"order_id"`
-	// Number of contracts remaining after placement. For IOC orders, this reflects the final state afte...
-	RemainingCount string `json:"remaining_count"`
-	// Matching engine timestamp at which the order was processed, as Unix epoch milliseconds.
-	TSMs int64 `json:"ts_ms"`
-}
-
-// CreateQuoteRequest is a generated type from the Kalshi OpenAPI spec.
-type CreateQuoteRequest struct {
-	// The bid price for NO contracts, in dollars
-	NoBid string `json:"no_bid"`
-	// If true, the quote creator's resting order will be cancelled rather than crossed if it would take...
-	PostOnly bool `json:"post_only,omitempty"`
-	// Whether to rest the remainder of the quote after execution
-	RestRemainder bool `json:"rest_remainder"`
-	// The ID of the RFQ to quote on
-	RFQID string `json:"rfq_id"`
-	// Optional subaccount number to place the quote under (0 for primary, 1-32 for subaccounts)
-	Subaccount int `json:"subaccount,omitempty"`
-	// The bid price for YES contracts, in dollars
-	YesBid string `json:"yes_bid"`
-}
-
-// CreateQuoteResponse is a generated type from the Kalshi OpenAPI spec.
-type CreateQuoteResponse struct {
-	// The ID of the newly created quote
-	ID string `json:"id"`
-}
-
-// CreateRFQRequest is a generated type from the Kalshi OpenAPI spec.
-type CreateRFQRequest struct {
-	// The number of contracts for the RFQ. Whole contracts only. Contracts may be provided via contract...
-	Contracts int `json:"contracts,omitempty"`
-	// String representation of the number of contracts for the RFQ. Contracts may be provided via contr...
-	ContractsFP *string `json:"contracts_fp,omitempty"`
-	// The ticker of the market for which to create an RFQ
-	MarketTicker string `json:"market_ticker"`
-	// Whether to delete existing RFQs as part of this RFQ's creation
-	ReplaceExisting bool `json:"replace_existing,omitempty"`
-	// Whether to rest the remainder of the RFQ after execution
-	RestRemainder bool `json:"rest_remainder"`
-	// The subaccount number to create the RFQ for (direct members only; 0 for primary, 1-32 for subacco...
-	Subaccount int `json:"subaccount,omitempty"`
-	// The subtrader to create the RFQ for (FCM members only)
-	SubtraderID string `json:"subtrader_id,omitempty"`
-	// DEPRECATED: The target cost for the RFQ in centi-cents. Use target_cost_dollars instead.
-	// Deprecated.
-	TargetCostCentiCents int64 `json:"target_cost_centi_cents,omitempty"`
-	// The target cost for the RFQ in dollars
-	TargetCostDollars string `json:"target_cost_dollars,omitempty"`
-}
-
-// CreateRFQResponse is a generated type from the Kalshi OpenAPI spec.
-type CreateRFQResponse struct {
-	// The ID of the newly created RFQ
-	ID string `json:"id"`
-}
-
-// CreateSubaccountResponse is a generated type from the Kalshi OpenAPI spec.
-type CreateSubaccountResponse struct {
-	// The sequential number assigned to this subaccount (1-32).
-	SubaccountNumber int `json:"subaccount_number"`
-}
-
 // DailySchedule is a generated type from the Kalshi OpenAPI spec.
 type DailySchedule struct {
 	// Closing time in ET (Eastern Time) format HH:MM.
 	CloseTime string `json:"close_time"`
 	// Opening time in ET (Eastern Time) format HH:MM.
 	OpenTime string `json:"open_time"`
-}
-
-// DecreaseOrderRequest is a generated type from the Kalshi OpenAPI spec.
-type DecreaseOrderRequest struct {
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
-	// Number of contracts to reduce by (whole contracts only). Reduce-by may be provided via reduce_by ...
-	ReduceBy int `json:"reduce_by,omitempty"`
-	// String representation of the number of contracts to reduce by. Reduce-by may be provided via redu...
-	ReduceByFP *string `json:"reduce_by_fp,omitempty"`
-	// Number of contracts to reduce to (whole contracts only). Reduce-to may be provided via reduce_to ...
-	ReduceTo int `json:"reduce_to,omitempty"`
-	// String representation of the number of contracts to reduce to. Reduce-to may be provided via redu...
-	ReduceToFP *string `json:"reduce_to_fp,omitempty"`
-	// Optional subaccount number to use for this decrease (0 for primary, 1-32 for subaccounts)
-	Subaccount int `json:"subaccount,omitempty"`
-}
-
-// DecreaseOrderResponse is a generated type from the Kalshi OpenAPI spec.
-type DecreaseOrderResponse struct {
-	Order Order `json:"order"`
-}
-
-// DecreaseOrderV2Request is a generated type from the Kalshi OpenAPI spec.
-type DecreaseOrderV2Request struct {
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
-	// String representation of the number of contracts to reduce by. Exactly one of `reduce_by` or `red...
-	ReduceBy *string `json:"reduce_by,omitempty"`
-	// String representation of the number of contracts to reduce to. Exactly one of `reduce_by` or `red...
-	ReduceTo *string `json:"reduce_to,omitempty"`
-}
-
-// DecreaseOrderV2Response is a generated type from the Kalshi OpenAPI spec.
-type DecreaseOrderV2Response struct {
-	ClientOrderID string `json:"client_order_id,omitempty"`
-	OrderID       string `json:"order_id"`
-	// Number of contracts remaining after the decrease.
-	RemainingCount string `json:"remaining_count"`
-	// Matching engine timestamp at which the decrease was processed, as Unix epoch milliseconds.
-	TSMs int64 `json:"ts_ms"`
 }
 
 // Deposit is a generated type from the Kalshi OpenAPI spec.
@@ -763,10 +519,6 @@ type Deposit struct {
 	Status string `json:"status"`
 	// Payment method used for the deposit.
 	Type string `json:"type"`
-}
-
-// EmptyResponse An empty response body
-type EmptyResponse struct {
 }
 
 // EndpointTokenCost is a generated type from the Kalshi OpenAPI spec.
@@ -847,16 +599,6 @@ type EventPosition struct {
 	TotalCostSharesFP string `json:"total_cost_shares_fp"`
 }
 
-// ExchangeStatus is a generated type from the Kalshi OpenAPI spec.
-type ExchangeStatus struct {
-	// False if the core Kalshi exchange is no longer taking any state changes at all. This includes but...
-	ExchangeActive bool `json:"exchange_active"`
-	// Estimated downtime for the current exchange maintenance window. However, this is not guaranteed a...
-	ExchangeEstimatedResumeTime *string `json:"exchange_estimated_resume_time,omitempty"`
-	// True if we are currently permitting trading on the exchange. This is true during trading hours an...
-	TradingActive bool `json:"trading_active"`
-}
-
 // Fill is a generated type from the Kalshi OpenAPI spec.
 type Fill struct {
 	// Deprecated. Use `outcome_side` (or `book_side`) instead. See [Order direction](/getting_started/o...
@@ -921,97 +663,10 @@ type ForecastPercentilesPoint struct {
 	PeriodInterval int `json:"period_interval"`
 }
 
-// GenerateApiKeyRequest is a generated type from the Kalshi OpenAPI spec.
-type GenerateApiKeyRequest struct {
-	// Name for the API key. This helps identify the key's purpose
-	Name string `json:"name"`
-	// List of scopes to grant to the API key. Valid values are 'read' and 'write'. If 'write' is includ...
-	Scopes []string `json:"scopes,omitempty"`
-}
-
-// GenerateApiKeyResponse is a generated type from the Kalshi OpenAPI spec.
-type GenerateApiKeyResponse struct {
-	// Unique identifier for the newly generated API key
-	APIKeyID string `json:"api_key_id"`
-	// RSA private key in PEM format. This must be stored securely and cannot be retrieved again after t...
-	PrivateKey string `json:"private_key"`
-}
-
-// GetAccountApiLimitsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetAccountApiLimitsResponse struct {
-	Read BucketLimit `json:"read"`
-	// User's API usage tier.
-	UsageTier string      `json:"usage_tier"`
-	Write     BucketLimit `json:"write"`
-}
-
-// GetAccountEndpointCostsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetAccountEndpointCostsResponse struct {
-	// Default token cost applied to endpoints that are not listed in `endpoint_costs`. This is currentl...
-	DefaultCost int `json:"default_cost"`
-	// API v2 endpoints whose configured token cost differs from `default_cost`. Endpoints that use the ...
-	EndpointCosts []EndpointTokenCost `json:"endpoint_costs"`
-}
-
-// GetApiKeysResponse is a generated type from the Kalshi OpenAPI spec.
-type GetApiKeysResponse struct {
-	// List of all API keys associated with the user
-	APIKeys []ApiKey `json:"api_keys"`
-}
-
 // IndexedBalance is a generated type from the Kalshi OpenAPI spec.
 type IndexedBalance struct {
 	Balance       string        `json:"balance"`
 	ExchangeIndex ExchangeIndex `json:"exchange_index"`
-}
-
-// GetBalanceResponse is a generated type from the Kalshi OpenAPI spec.
-type GetBalanceResponse struct {
-	// Member's available balance in cents. This represents the amount available for trading.
-	Balance int64 `json:"balance"`
-	// Balance broken down per exchange index.
-	BalanceBreakdown []IndexedBalance `json:"balance_breakdown,omitempty"`
-	// Member's available balance as a fixed-point dollar string. This represents the amount available f...
-	BalanceDollars string `json:"balance_dollars"`
-	// Member's portfolio value in cents. This is the current value of all positions held.
-	PortfolioValue int64 `json:"portfolio_value"`
-	// Unix timestamp of the last update to the balance.
-	UpdatedTS int64 `json:"updated_ts"`
-}
-
-// GetCommunicationsIDResponse is a generated type from the Kalshi OpenAPI spec.
-type GetCommunicationsIDResponse struct {
-	// A public communications ID which is used to identify the user
-	CommunicationsID string `json:"communications_id"`
-}
-
-// GetDepositsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetDepositsResponse struct {
-	Cursor   string    `json:"cursor,omitempty"`
-	Deposits []Deposit `json:"deposits"`
-}
-
-// GetEventCandlesticksResponse is a generated type from the Kalshi OpenAPI spec.
-type GetEventCandlesticksResponse struct {
-	// Adjusted end timestamp if the requested candlesticks would be larger than maxAggregateCandidates.
-	AdjustedEndTS int64 `json:"adjusted_end_ts"`
-	// Array of market candlestick arrays, one for each market in the event.
-	MarketCandlesticks [][]MarketCandlestick `json:"market_candlesticks"`
-	// Array of market tickers in the event.
-	MarketTickers []string `json:"market_tickers"`
-}
-
-// GetEventFeeChangesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetEventFeeChangesResponse struct {
-	// Pagination cursor for the next page. Empty if there are no more results.
-	Cursor          string           `json:"cursor"`
-	EventFeeChanges []EventFeeChange `json:"event_fee_changes"`
-}
-
-// GetEventForecastPercentilesHistoryResponse is a generated type from the Kalshi OpenAPI spec.
-type GetEventForecastPercentilesHistoryResponse struct {
-	// Array of forecast percentile data points over time.
-	ForecastHistory []ForecastPercentilesPoint `json:"forecast_history"`
 }
 
 // MarketMetadata is a generated type from the Kalshi OpenAPI spec.
@@ -1030,30 +685,6 @@ type SettlementSource struct {
 	Name string `json:"name,omitempty"`
 	// URL to the settlement source
 	URL string `json:"url,omitempty"`
-}
-
-// GetEventMetadataResponse is a generated type from the Kalshi OpenAPI spec.
-type GetEventMetadataResponse struct {
-	// Event competition.
-	Competition *string `json:"competition,omitempty"`
-	// Event scope, based on the competition.
-	CompetitionScope *string `json:"competition_scope,omitempty"`
-	// A path to an image that represents the image of the featured market.
-	FeaturedImageURL string `json:"featured_image_url,omitempty"`
-	// A path to an image that represents this event.
-	ImageURL string `json:"image_url"`
-	// Metadata for the markets in this event.
-	MarketDetails []MarketMetadata `json:"market_details"`
-	// A list of settlement sources for this event.
-	SettlementSources []SettlementSource `json:"settlement_sources"`
-}
-
-// GetEventResponse is a generated type from the Kalshi OpenAPI spec.
-type GetEventResponse struct {
-	// Data for the event.
-	Event EventData `json:"event"`
-	// Data for the markets in this event. This field is deprecated in favour of the "markets" field ins...
-	Markets []Market `json:"markets"`
 }
 
 // Milestone is a generated type from the Kalshi OpenAPI spec.
@@ -1084,22 +715,6 @@ type Milestone struct {
 	Title string `json:"title"`
 	// Type of the milestone. E.g. football_game, basketball_game, soccer_tournament_multi_leg, baseball...
 	Type string `json:"type"`
-}
-
-// GetEventsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetEventsResponse struct {
-	// Pagination cursor for the next page. Empty if there are no more results.
-	Cursor string `json:"cursor"`
-	// Array of events matching the query criteria.
-	Events []EventData `json:"events"`
-	// Array of milestones related to the events.
-	Milestones []Milestone `json:"milestones,omitempty"`
-}
-
-// GetExchangeAnnouncementsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetExchangeAnnouncementsResponse struct {
-	// A list of exchange-wide announcements.
-	Announcements []Announcement `json:"announcements"`
 }
 
 // MaintenanceWindow is a generated type from the Kalshi OpenAPI spec.
@@ -1140,43 +755,9 @@ type Schedule struct {
 	StandardHours []WeeklySchedule `json:"standard_hours"`
 }
 
-// GetExchangeScheduleResponse is a generated type from the Kalshi OpenAPI spec.
-type GetExchangeScheduleResponse struct {
-	Schedule Schedule `json:"schedule"`
-}
-
-// GetFillsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetFillsResponse struct {
-	Cursor string `json:"cursor"`
-	Fills  []Fill `json:"fills"`
-}
-
-// GetFiltersBySportsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetFiltersBySportsResponse struct {
-	// Mapping of sports to their filter details
-	FiltersBySports map[string]any `json:"filters_by_sports"`
-	// Ordered list of sports for display
-	SportOrdering []string `json:"sport_ordering"`
-}
-
 // PlayByPlay Play-by-play data organized by period.
 type PlayByPlay struct {
 	Periods []map[string]any `json:"periods,omitempty"`
-}
-
-// GetGameStatsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetGameStatsResponse struct {
-	Pbp PlayByPlay `json:"pbp,omitempty"`
-}
-
-// GetHistoricalCutoffResponse is a generated type from the Kalshi OpenAPI spec.
-type GetHistoricalCutoffResponse struct {
-	// Cutoff based on **market settlement time**. Markets and their candlesticks that settled before th...
-	MarketSettledTS string `json:"market_settled_ts"`
-	// Cutoff based on **order cancellation or execution time**. Orders canceled or fully executed befor...
-	OrdersUpdatedTS string `json:"orders_updated_ts"`
-	// Cutoff based on **trade fill time**. Fills that occurred before this timestamp must be accessed v...
-	TradesCreatedTS string `json:"trades_created_ts"`
 }
 
 // IncentiveProgram is a generated type from the Kalshi OpenAPI spec.
@@ -1205,13 +786,6 @@ type IncentiveProgram struct {
 	TargetSizeFP *string `json:"target_size_fp,omitempty"`
 }
 
-// GetIncentiveProgramsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetIncentiveProgramsResponse struct {
-	IncentivePrograms []IncentiveProgram `json:"incentive_programs"`
-	// Cursor for pagination to get the next page of results
-	NextCursor string `json:"next_cursor,omitempty"`
-}
-
 // LiveData is a generated type from the Kalshi OpenAPI spec.
 type LiveData struct {
 	// Live data details as a flexible object
@@ -1220,16 +794,6 @@ type LiveData struct {
 	MilestoneID string `json:"milestone_id"`
 	// Type of live data
 	Type string `json:"type"`
-}
-
-// GetLiveDataResponse is a generated type from the Kalshi OpenAPI spec.
-type GetLiveDataResponse struct {
-	LiveData LiveData `json:"live_data"`
-}
-
-// GetLiveDatasResponse is a generated type from the Kalshi OpenAPI spec.
-type GetLiveDatasResponse struct {
-	LiveDatas []LiveData `json:"live_datas"`
 }
 
 // PriceDistributionHistorical is a generated type from the Kalshi OpenAPI spec.
@@ -1264,22 +828,6 @@ type MarketCandlestickHistorical struct {
 	YesBid BidAskDistributionHistorical `json:"yes_bid"`
 }
 
-// GetMarketCandlesticksHistoricalResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMarketCandlesticksHistoricalResponse struct {
-	// Array of candlestick data points for the specified time range.
-	Candlesticks []MarketCandlestickHistorical `json:"candlesticks"`
-	// Unique identifier for the market.
-	Ticker string `json:"ticker"`
-}
-
-// GetMarketCandlesticksResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMarketCandlesticksResponse struct {
-	// Array of candlestick data points for the specified time range.
-	Candlesticks []MarketCandlestick `json:"candlesticks"`
-	// Unique identifier for the market.
-	Ticker string `json:"ticker"`
-}
-
 // PriceLevelDollarsCountFp Price level in dollars represented as [dollars_string, fp] where dollars_string is like "0.1500" and fp is a FixedPointCount string (fixed-point contract count). The second element is the contract quantity (not price).
 type PriceLevelDollarsCountFp = []string
 
@@ -1289,46 +837,10 @@ type OrderbookCountFp struct {
 	YesDollars []PriceLevelDollarsCountFp `json:"yes_dollars"`
 }
 
-// GetMarketOrderbookResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMarketOrderbookResponse struct {
-	// Orderbook with fixed-point contract counts (fp) in all price levels.
-	OrderbookFP OrderbookCountFp `json:"orderbook_fp"`
-}
-
 // MarketOrderbookFp is a generated type from the Kalshi OpenAPI spec.
 type MarketOrderbookFp struct {
 	OrderbookFP OrderbookCountFp `json:"orderbook_fp"`
 	Ticker      string           `json:"ticker"`
-}
-
-// GetMarketOrderbooksResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMarketOrderbooksResponse struct {
-	Orderbooks []MarketOrderbookFp `json:"orderbooks"`
-}
-
-// GetMarketResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMarketResponse struct {
-	Market Market `json:"market"`
-}
-
-// GetMarketsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMarketsResponse struct {
-	Cursor  string   `json:"cursor"`
-	Markets []Market `json:"markets"`
-}
-
-// GetMilestoneResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMilestoneResponse struct {
-	// The milestone data.
-	Milestone Milestone `json:"milestone"`
-}
-
-// GetMilestonesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMilestonesResponse struct {
-	// Cursor for pagination.
-	Cursor string `json:"cursor,omitempty"`
-	// List of milestones.
-	Milestones []Milestone `json:"milestones"`
 }
 
 // LookupPoint is a generated type from the Kalshi OpenAPI spec.
@@ -1341,12 +853,6 @@ type LookupPoint struct {
 	MarketTicker string `json:"market_ticker"`
 	// Markets that were selected for this lookup.
 	SelectedMarkets []TickerPair `json:"selected_markets"`
-}
-
-// GetMultivariateEventCollectionLookupHistoryResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMultivariateEventCollectionLookupHistoryResponse struct {
-	// List of recent lookup points in the collection.
-	LookupPoints []LookupPoint `json:"lookup_points"`
 }
 
 // MultivariateEventCollection is a generated type from the Kalshi OpenAPI spec.
@@ -1381,39 +887,6 @@ type MultivariateEventCollection struct {
 	Title string `json:"title"`
 }
 
-// GetMultivariateEventCollectionResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMultivariateEventCollectionResponse struct {
-	// The multivariate event collection.
-	MultivariateContract MultivariateEventCollection `json:"multivariate_contract"`
-}
-
-// GetMultivariateEventCollectionsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMultivariateEventCollectionsResponse struct {
-	// The Cursor represents a pointer to the next page of records in the pagination. Use the value retu...
-	Cursor string `json:"cursor,omitempty"`
-	// List of multivariate event collections.
-	MultivariateContracts []MultivariateEventCollection `json:"multivariate_contracts"`
-}
-
-// GetMultivariateEventsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetMultivariateEventsResponse struct {
-	// Pagination cursor for the next page. Empty if there are no more results.
-	Cursor string `json:"cursor"`
-	// Array of multivariate events matching the query criteria.
-	Events []EventData `json:"events"`
-}
-
-// GetOrderGroupResponse is a generated type from the Kalshi OpenAPI spec.
-type GetOrderGroupResponse struct {
-	// String representation of the current maximum contracts allowed over a rolling 15-second window.
-	ContractsLimitFP string        `json:"contracts_limit_fp,omitempty"`
-	ExchangeIndex    ExchangeIndex `json:"exchange_index,omitempty"`
-	// Whether auto-cancel is enabled for this order group
-	IsAutoCancelEnabled bool `json:"is_auto_cancel_enabled"`
-	// List of order IDs that belong to this order group
-	Orders []string `json:"orders"`
-}
-
 // OrderGroup is a generated type from the Kalshi OpenAPI spec.
 type OrderGroup struct {
 	// String representation of the current maximum contracts allowed over a rolling 15-second window.
@@ -1425,17 +898,6 @@ type OrderGroup struct {
 	IsAutoCancelEnabled bool `json:"is_auto_cancel_enabled"`
 }
 
-// GetOrderGroupsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetOrderGroupsResponse struct {
-	OrderGroups []OrderGroup `json:"order_groups,omitempty"`
-}
-
-// GetOrderQueuePositionResponse is a generated type from the Kalshi OpenAPI spec.
-type GetOrderQueuePositionResponse struct {
-	// The number of preceding shares before the order in the queue.
-	QueuePositionFP string `json:"queue_position_fp"`
-}
-
 // OrderQueuePosition is a generated type from the Kalshi OpenAPI spec.
 type OrderQueuePosition struct {
 	// The market ticker
@@ -1444,29 +906,6 @@ type OrderQueuePosition struct {
 	OrderID string `json:"order_id"`
 	// The number of preceding shares before the order in the queue.
 	QueuePositionFP string `json:"queue_position_fp"`
-}
-
-// GetOrderQueuePositionsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetOrderQueuePositionsResponse struct {
-	// Queue positions for all matching orders
-	QueuePositions []OrderQueuePosition `json:"queue_positions"`
-}
-
-// GetOrderResponse is a generated type from the Kalshi OpenAPI spec.
-type GetOrderResponse struct {
-	Order Order `json:"order"`
-}
-
-// GetOrdersResponse is a generated type from the Kalshi OpenAPI spec.
-type GetOrdersResponse struct {
-	Cursor string  `json:"cursor"`
-	Orders []Order `json:"orders"`
-}
-
-// GetPortfolioRestingOrderTotalValueResponse is a generated type from the Kalshi OpenAPI spec.
-type GetPortfolioRestingOrderTotalValueResponse struct {
-	// Total value of resting orders in cents
-	TotalRestingOrderValue int `json:"total_resting_order_value"`
 }
 
 // MarketPosition is a generated type from the Kalshi OpenAPI spec.
@@ -1488,16 +927,6 @@ type MarketPosition struct {
 	Ticker string `json:"ticker"`
 	// Total spent on this market in dollars
 	TotalTradedDollars string `json:"total_traded_dollars"`
-}
-
-// GetPositionsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetPositionsResponse struct {
-	// The Cursor represents a pointer to the next page of records in the pagination. Use the value retu...
-	Cursor string `json:"cursor,omitempty"`
-	// List of event positions
-	EventPositions []EventPosition `json:"event_positions"`
-	// List of market positions
-	MarketPositions []MarketPosition `json:"market_positions"`
 }
 
 // Quote is a generated type from the Kalshi OpenAPI spec.
@@ -1560,20 +989,6 @@ type Quote struct {
 	YesContractsFP string `json:"yes_contracts_fp,omitempty"`
 }
 
-// GetQuoteResponse is a generated type from the Kalshi OpenAPI spec.
-type GetQuoteResponse struct {
-	// The details of the requested quote
-	Quote Quote `json:"quote"`
-}
-
-// GetQuotesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetQuotesResponse struct {
-	// Cursor for pagination to get the next page of results
-	Cursor string `json:"cursor,omitempty"`
-	// List of quotes matching the query criteria
-	Quotes []Quote `json:"quotes"`
-}
-
 // RFQ is a generated type from the Kalshi OpenAPI spec.
 type RFQ struct {
 	// Reason for RFQ cancellation if cancelled
@@ -1608,20 +1023,6 @@ type RFQ struct {
 	UpdatedTS string `json:"updated_ts,omitempty"`
 }
 
-// GetRFQResponse is a generated type from the Kalshi OpenAPI spec.
-type GetRFQResponse struct {
-	// The details of the requested RFQ
-	RFQ RFQ `json:"rfq"`
-}
-
-// GetRFQsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetRFQsResponse struct {
-	// Cursor for pagination to get the next page of results
-	Cursor string `json:"cursor,omitempty"`
-	// List of RFQs matching the query criteria
-	Rfqs []RFQ `json:"rfqs"`
-}
-
 // SeriesFeeChange is a generated type from the Kalshi OpenAPI spec.
 type SeriesFeeChange struct {
 	// New fee multiplier for the series
@@ -1634,11 +1035,6 @@ type SeriesFeeChange struct {
 	ScheduledTS string `json:"scheduled_ts"`
 	// Series ticker this fee change applies to
 	SeriesTicker string `json:"series_ticker"`
-}
-
-// GetSeriesFeeChangesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetSeriesFeeChangesResponse struct {
-	SeriesFeeChangeArr []SeriesFeeChange `json:"series_fee_change_arr"`
 }
 
 // Series is a generated type from the Kalshi OpenAPI spec.
@@ -1673,16 +1069,6 @@ type Series struct {
 	VolumeFP string `json:"volume_fp,omitempty"`
 }
 
-// GetSeriesListResponse is a generated type from the Kalshi OpenAPI spec.
-type GetSeriesListResponse struct {
-	Series []Series `json:"series"`
-}
-
-// GetSeriesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetSeriesResponse struct {
-	Series Series `json:"series"`
-}
-
 // Settlement is a generated type from the Kalshi OpenAPI spec.
 type Settlement struct {
 	// The event ticker symbol of the market that was settled.
@@ -1709,12 +1095,6 @@ type Settlement struct {
 	YesTotalCostDollars string `json:"yes_total_cost_dollars"`
 }
 
-// GetSettlementsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetSettlementsResponse struct {
-	Cursor      string       `json:"cursor,omitempty"`
-	Settlements []Settlement `json:"settlements"`
-}
-
 // StructuredTarget is a generated type from the Kalshi OpenAPI spec.
 type StructuredTarget struct {
 	// Additional details about the structured target. Contains flexible JSON data specific to the targe...
@@ -1733,18 +1113,6 @@ type StructuredTarget struct {
 	Type string `json:"type,omitempty"`
 }
 
-// GetStructuredTargetResponse is a generated type from the Kalshi OpenAPI spec.
-type GetStructuredTargetResponse struct {
-	StructuredTarget StructuredTarget `json:"structured_target,omitempty"`
-}
-
-// GetStructuredTargetsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetStructuredTargetsResponse struct {
-	// Pagination cursor for the next page. Empty if there are no more results.
-	Cursor            string             `json:"cursor,omitempty"`
-	StructuredTargets []StructuredTarget `json:"structured_targets,omitempty"`
-}
-
 // SubaccountBalance is a generated type from the Kalshi OpenAPI spec.
 type SubaccountBalance struct {
 	// Balance in dollars.
@@ -1755,22 +1123,12 @@ type SubaccountBalance struct {
 	UpdatedTS int64 `json:"updated_ts"`
 }
 
-// GetSubaccountBalancesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetSubaccountBalancesResponse struct {
-	SubaccountBalances []SubaccountBalance `json:"subaccount_balances"`
-}
-
 // SubaccountNettingConfig is a generated type from the Kalshi OpenAPI spec.
 type SubaccountNettingConfig struct {
 	// Whether netting is enabled for this subaccount.
 	Enabled bool `json:"enabled"`
 	// Subaccount number (0 for primary, 1-32 for subaccounts).
 	SubaccountNumber int `json:"subaccount_number"`
-}
-
-// GetSubaccountNettingResponse is a generated type from the Kalshi OpenAPI spec.
-type GetSubaccountNettingResponse struct {
-	NettingConfigs []SubaccountNettingConfig `json:"netting_configs"`
 }
 
 // SubaccountTransfer is a generated type from the Kalshi OpenAPI spec.
@@ -1785,19 +1143,6 @@ type SubaccountTransfer struct {
 	ToSubaccount int `json:"to_subaccount"`
 	// Unique identifier for this transfer.
 	TransferID string `json:"transfer_id"`
-}
-
-// GetSubaccountTransfersResponse is a generated type from the Kalshi OpenAPI spec.
-type GetSubaccountTransfersResponse struct {
-	// Cursor for the next page of results.
-	Cursor    string               `json:"cursor,omitempty"`
-	Transfers []SubaccountTransfer `json:"transfers"`
-}
-
-// GetTagsForSeriesCategoriesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetTagsForSeriesCategoriesResponse struct {
-	// Mapping of series categories to their associated tags
-	TagsByCategories map[string]any `json:"tags_by_categories"`
 }
 
 // Trade is a generated type from the Kalshi OpenAPI spec.
@@ -1823,18 +1168,6 @@ type Trade struct {
 	YesPriceDollars string `json:"yes_price_dollars"`
 }
 
-// GetTradesResponse is a generated type from the Kalshi OpenAPI spec.
-type GetTradesResponse struct {
-	Cursor string  `json:"cursor"`
-	Trades []Trade `json:"trades"`
-}
-
-// GetUserDataTimestampResponse is a generated type from the Kalshi OpenAPI spec.
-type GetUserDataTimestampResponse struct {
-	// Timestamp when user data was last updated.
-	AsOfTime string `json:"as_of_time"`
-}
-
 // Withdrawal is a generated type from the Kalshi OpenAPI spec.
 type Withdrawal struct {
 	// Withdrawal amount in cents.
@@ -1853,10 +1186,409 @@ type Withdrawal struct {
 	Type string `json:"type"`
 }
 
-// GetWithdrawalsResponse is a generated type from the Kalshi OpenAPI spec.
-type GetWithdrawalsResponse struct {
-	Cursor      string       `json:"cursor,omitempty"`
-	Withdrawals []Withdrawal `json:"withdrawals"`
+// ScopeList is a generated type from the Kalshi OpenAPI spec.
+type ScopeList struct {
+	// List of scopes
+	Scopes []string `json:"scopes"`
+}
+
+// SportFilterDetails is a generated type from the Kalshi OpenAPI spec.
+type SportFilterDetails struct {
+	// Mapping of competitions to their scope lists
+	Competitions map[string]any `json:"competitions"`
+	// List of scopes available for this sport
+	Scopes []string `json:"scopes"`
+}
+
+// ---------------------------------------------------------------------------
+// Event Orders
+// ---------------------------------------------------------------------------
+
+// AmendOrderV2Request is a generated type from the Kalshi OpenAPI spec.
+type AmendOrderV2Request struct {
+	// The original client-specified order ID to be amended
+	ClientOrderID string `json:"client_order_id,omitempty"`
+	// Updated total/max fillable count for the order. Set this to the order's already filled count plus...
+	Count         string        `json:"count"`
+	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	// Updated price for the order in fixed-point dollars.
+	Price string `json:"price"`
+	// Side of the order
+	Side BookSide `json:"side"`
+	// Market ticker
+	Ticker string `json:"ticker"`
+	// The new client-specified order ID after amendment
+	UpdatedClientOrderID string `json:"updated_client_order_id,omitempty"`
+}
+
+// AmendOrderV2Response is a generated type from the Kalshi OpenAPI spec.
+type AmendOrderV2Response struct {
+	// Volume-weighted average fee paid per contract for fills resulting from the amend. Only present wh...
+	AverageFeePaid *string `json:"average_fee_paid,omitempty"`
+	// Volume-weighted average fill price for fills resulting from the amend. Only present when fills oc...
+	AverageFillPrice *string `json:"average_fill_price,omitempty"`
+	ClientOrderID    string  `json:"client_order_id,omitempty"`
+	// Number of contracts filled as a result of the amend crossing the book. Only present when fills oc...
+	FillCount *string `json:"fill_count,omitempty"`
+	OrderID   string  `json:"order_id"`
+	// Number of resting contracts remaining after the amend. This is the actual post-amend resting quan...
+	RemainingCount *string `json:"remaining_count,omitempty"`
+	// Matching engine timestamp at which the amend was processed, as Unix epoch milliseconds.
+	TSMs int64 `json:"ts_ms"`
+}
+
+// BatchCancelOrdersV2Request is a generated type from the Kalshi OpenAPI spec.
+type BatchCancelOrdersV2Request struct {
+	// An array of orders to cancel, each optionally specifying a subaccount.
+	Orders []map[string]any `json:"orders"`
+}
+
+// BatchCancelOrdersV2Response is a generated type from the Kalshi OpenAPI spec.
+type BatchCancelOrdersV2Response struct {
+	Orders []map[string]any `json:"orders"`
+}
+
+// CreateOrderV2Request is a generated type from the Kalshi OpenAPI spec.
+type CreateOrderV2Request struct {
+	// If this flag is set to true, the order will be canceled if the order is open and trading on the e...
+	CancelOrderOnPause bool   `json:"cancel_order_on_pause,omitempty"`
+	ClientOrderID      string `json:"client_order_id"`
+	// String representation of the order quantity in contracts.
+	Count         string        `json:"count"`
+	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	// Optional Unix timestamp in seconds for when the order expires. To place
+	ExpirationTime int64 `json:"expiration_time,omitempty"`
+	// The order group this order is part of
+	OrderGroupID string `json:"order_group_id,omitempty"`
+	PostOnly     bool   `json:"post_only,omitempty"`
+	// Price for the order in fixed-point dollars.
+	Price string `json:"price"`
+	// Specifies whether the order place count should be capped by the member's current position.
+	ReduceOnly              bool                    `json:"reduce_only,omitempty"`
+	SelfTradePreventionType SelfTradePreventionType `json:"self_trade_prevention_type"`
+	Side                    BookSide                `json:"side"`
+	// The subaccount number to use for this order. 0 is the primary subaccount.
+	Subaccount int    `json:"subaccount,omitempty"`
+	Ticker     string `json:"ticker"`
+	// Specifies how long the order remains active. Use `good_till_canceled`
+	TimeInForce string `json:"time_in_force"`
+}
+
+// BatchCreateOrdersV2Request is a generated type from the Kalshi OpenAPI spec.
+type BatchCreateOrdersV2Request struct {
+	Orders []CreateOrderV2Request `json:"orders"`
+}
+
+// BatchCreateOrdersV2Response is a generated type from the Kalshi OpenAPI spec.
+type BatchCreateOrdersV2Response struct {
+	Orders []map[string]any `json:"orders"`
+}
+
+// CancelOrderV2Response is a generated type from the Kalshi OpenAPI spec.
+type CancelOrderV2Response struct {
+	ClientOrderID string `json:"client_order_id,omitempty"`
+	OrderID       string `json:"order_id"`
+	// Number of contracts that were canceled (i.e. the remaining count at time of cancellation).
+	ReducedBy string `json:"reduced_by"`
+	// Matching engine timestamp at which the cancellation was processed, as Unix epoch milliseconds.
+	TSMs int64 `json:"ts_ms"`
+}
+
+// CreateOrderV2Response is a generated type from the Kalshi OpenAPI spec.
+type CreateOrderV2Response struct {
+	// Volume-weighted average fee paid per contract for fills resulting from this request. Only present...
+	AverageFeePaid string `json:"average_fee_paid,omitempty"`
+	// Volume-weighted average fill price. Only present when fill_count > 0.
+	AverageFillPrice string `json:"average_fill_price,omitempty"`
+	ClientOrderID    string `json:"client_order_id,omitempty"`
+	// Number of contracts filled immediately upon placement.
+	FillCount string `json:"fill_count"`
+	OrderID   string `json:"order_id"`
+	// Number of contracts remaining after placement. For IOC orders, this reflects the final state afte...
+	RemainingCount string `json:"remaining_count"`
+	// Matching engine timestamp at which the order was processed, as Unix epoch milliseconds.
+	TSMs int64 `json:"ts_ms"`
+}
+
+// DecreaseOrderV2Request is a generated type from the Kalshi OpenAPI spec.
+type DecreaseOrderV2Request struct {
+	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	// String representation of the number of contracts to reduce by. Exactly one of `reduce_by` or `red...
+	ReduceBy *string `json:"reduce_by,omitempty"`
+	// String representation of the number of contracts to reduce to. Exactly one of `reduce_by` or `red...
+	ReduceTo *string `json:"reduce_to,omitempty"`
+}
+
+// DecreaseOrderV2Response is a generated type from the Kalshi OpenAPI spec.
+type DecreaseOrderV2Response struct {
+	ClientOrderID string `json:"client_order_id,omitempty"`
+	OrderID       string `json:"order_id"`
+	// Number of contracts remaining after the decrease.
+	RemainingCount string `json:"remaining_count"`
+	// Matching engine timestamp at which the decrease was processed, as Unix epoch milliseconds.
+	TSMs int64 `json:"ts_ms"`
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+// GetEventFeeChangesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetEventFeeChangesResponse struct {
+	// Pagination cursor for the next page. Empty if there are no more results.
+	Cursor          string           `json:"cursor"`
+	EventFeeChanges []EventFeeChange `json:"event_fee_changes"`
+}
+
+// GetEventMetadataResponse is a generated type from the Kalshi OpenAPI spec.
+type GetEventMetadataResponse struct {
+	// Event competition.
+	Competition *string `json:"competition,omitempty"`
+	// Event scope, based on the competition.
+	CompetitionScope *string `json:"competition_scope,omitempty"`
+	// A path to an image that represents the image of the featured market.
+	FeaturedImageURL string `json:"featured_image_url,omitempty"`
+	// A path to an image that represents this event.
+	ImageURL string `json:"image_url"`
+	// Metadata for the markets in this event.
+	MarketDetails []MarketMetadata `json:"market_details"`
+	// A list of settlement sources for this event.
+	SettlementSources []SettlementSource `json:"settlement_sources"`
+}
+
+// GetEventResponse is a generated type from the Kalshi OpenAPI spec.
+type GetEventResponse struct {
+	// Data for the event.
+	Event EventData `json:"event"`
+	// Data for the markets in this event. This field is deprecated in favour of the "markets" field ins...
+	Markets []Market `json:"markets"`
+}
+
+// GetEventsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetEventsResponse struct {
+	// Pagination cursor for the next page. Empty if there are no more results.
+	Cursor string `json:"cursor"`
+	// Array of events matching the query criteria.
+	Events []EventData `json:"events"`
+	// Array of milestones related to the events.
+	Milestones []Milestone `json:"milestones,omitempty"`
+}
+
+// GetMultivariateEventsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMultivariateEventsResponse struct {
+	// Pagination cursor for the next page. Empty if there are no more results.
+	Cursor string `json:"cursor"`
+	// Array of multivariate events matching the query criteria.
+	Events []EventData `json:"events"`
+}
+
+// ---------------------------------------------------------------------------
+// Exchange
+// ---------------------------------------------------------------------------
+
+// ExchangeStatus is a generated type from the Kalshi OpenAPI spec.
+type ExchangeStatus struct {
+	// False if the core Kalshi exchange is no longer taking any state changes at all. This includes but...
+	ExchangeActive bool `json:"exchange_active"`
+	// Estimated downtime for the current exchange maintenance window. However, this is not guaranteed a...
+	ExchangeEstimatedResumeTime *string `json:"exchange_estimated_resume_time,omitempty"`
+	// True if we are currently permitting trading on the exchange. This is true during trading hours an...
+	TradingActive bool `json:"trading_active"`
+}
+
+// GetExchangeAnnouncementsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetExchangeAnnouncementsResponse struct {
+	// A list of exchange-wide announcements.
+	Announcements []Announcement `json:"announcements"`
+}
+
+// GetExchangeScheduleResponse is a generated type from the Kalshi OpenAPI spec.
+type GetExchangeScheduleResponse struct {
+	Schedule Schedule `json:"schedule"`
+}
+
+// GetUserDataTimestampResponse is a generated type from the Kalshi OpenAPI spec.
+type GetUserDataTimestampResponse struct {
+	// Timestamp when user data was last updated.
+	AsOfTime string `json:"as_of_time"`
+}
+
+// ---------------------------------------------------------------------------
+// FCM
+// ---------------------------------------------------------------------------
+
+// GetOrdersResponse is a generated type from the Kalshi OpenAPI spec.
+type GetOrdersResponse struct {
+	Cursor string  `json:"cursor"`
+	Orders []Order `json:"orders"`
+}
+
+// ---------------------------------------------------------------------------
+// Historical
+// ---------------------------------------------------------------------------
+
+// GetFillsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetFillsResponse struct {
+	Cursor string `json:"cursor"`
+	Fills  []Fill `json:"fills"`
+}
+
+// GetHistoricalCutoffResponse is a generated type from the Kalshi OpenAPI spec.
+type GetHistoricalCutoffResponse struct {
+	// Cutoff based on **market settlement time**. Markets and their candlesticks that settled before th...
+	MarketSettledTS string `json:"market_settled_ts"`
+	// Cutoff based on **order cancellation or execution time**. Orders canceled or fully executed befor...
+	OrdersUpdatedTS string `json:"orders_updated_ts"`
+	// Cutoff based on **trade fill time**. Fills that occurred before this timestamp must be accessed v...
+	TradesCreatedTS string `json:"trades_created_ts"`
+}
+
+// GetMarketCandlesticksHistoricalResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMarketCandlesticksHistoricalResponse struct {
+	// Array of candlestick data points for the specified time range.
+	Candlesticks []MarketCandlestickHistorical `json:"candlesticks"`
+	// Unique identifier for the market.
+	Ticker string `json:"ticker"`
+}
+
+// GetMarketResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMarketResponse struct {
+	Market Market `json:"market"`
+}
+
+// GetMarketsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMarketsResponse struct {
+	Cursor  string   `json:"cursor"`
+	Markets []Market `json:"markets"`
+}
+
+// GetTradesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetTradesResponse struct {
+	Cursor string  `json:"cursor"`
+	Trades []Trade `json:"trades"`
+}
+
+// ---------------------------------------------------------------------------
+// Incentive Programs
+// ---------------------------------------------------------------------------
+
+// ErrorResponse is a generated type from the Kalshi OpenAPI spec.
+type ErrorResponse struct {
+	// Error code
+	Code string `json:"code,omitempty"`
+	// Additional details about the error, if available
+	Details string `json:"details,omitempty"`
+	// Human-readable error message
+	Message string `json:"message,omitempty"`
+	// The name of the service that generated the error
+	Service string `json:"service,omitempty"`
+}
+
+// GetIncentiveProgramsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetIncentiveProgramsResponse struct {
+	IncentivePrograms []IncentiveProgram `json:"incentive_programs"`
+	// Cursor for pagination to get the next page of results
+	NextCursor string `json:"next_cursor,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Live Data
+// ---------------------------------------------------------------------------
+
+// GetGameStatsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetGameStatsResponse struct {
+	Pbp PlayByPlay `json:"pbp,omitempty"`
+}
+
+// GetLiveDataResponse is a generated type from the Kalshi OpenAPI spec.
+type GetLiveDataResponse struct {
+	LiveData LiveData `json:"live_data"`
+}
+
+// GetLiveDatasResponse is a generated type from the Kalshi OpenAPI spec.
+type GetLiveDatasResponse struct {
+	LiveDatas []LiveData `json:"live_datas"`
+}
+
+// ---------------------------------------------------------------------------
+// Markets
+// ---------------------------------------------------------------------------
+
+// BatchGetMarketCandlesticksResponse is a generated type from the Kalshi OpenAPI spec.
+type BatchGetMarketCandlesticksResponse struct {
+	// Array of market candlestick data, one entry per requested market.
+	Markets []MarketCandlesticksResponse `json:"markets"`
+}
+
+// GetMarketOrderbookResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMarketOrderbookResponse struct {
+	// Orderbook with fixed-point contract counts (fp) in all price levels.
+	OrderbookFP OrderbookCountFp `json:"orderbook_fp"`
+}
+
+// GetMarketOrderbooksResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMarketOrderbooksResponse struct {
+	Orderbooks []MarketOrderbookFp `json:"orderbooks"`
+}
+
+// ---------------------------------------------------------------------------
+// Milestones
+// ---------------------------------------------------------------------------
+
+// GetMilestoneResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMilestoneResponse struct {
+	// The milestone data.
+	Milestone Milestone `json:"milestone"`
+}
+
+// GetMilestonesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMilestonesResponse struct {
+	// Cursor for pagination.
+	Cursor string `json:"cursor,omitempty"`
+	// List of milestones.
+	Milestones []Milestone `json:"milestones"`
+}
+
+// ---------------------------------------------------------------------------
+// Multivariate Event Collections
+// ---------------------------------------------------------------------------
+
+// CreateMarketInMultivariateEventCollectionRequest is a generated type from the Kalshi OpenAPI spec.
+type CreateMarketInMultivariateEventCollectionRequest struct {
+	// List of selected markets that act as parameters to determine which market is created.
+	SelectedMarkets []TickerPair `json:"selected_markets"`
+	// Whether to include the market payload in the response.
+	WithMarketPayload bool `json:"with_market_payload,omitempty"`
+}
+
+// CreateMarketInMultivariateEventCollectionResponse is a generated type from the Kalshi OpenAPI spec.
+type CreateMarketInMultivariateEventCollectionResponse struct {
+	// Event ticker for the created market.
+	EventTicker string `json:"event_ticker"`
+	// Market payload of the created market.
+	Market Market `json:"market,omitempty"`
+	// Market ticker for the created market.
+	MarketTicker string `json:"market_ticker"`
+}
+
+// GetMultivariateEventCollectionLookupHistoryResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMultivariateEventCollectionLookupHistoryResponse struct {
+	// List of recent lookup points in the collection.
+	LookupPoints []LookupPoint `json:"lookup_points"`
+}
+
+// GetMultivariateEventCollectionResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMultivariateEventCollectionResponse struct {
+	// The multivariate event collection.
+	MultivariateContract MultivariateEventCollection `json:"multivariate_contract"`
+}
+
+// GetMultivariateEventCollectionsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMultivariateEventCollectionsResponse struct {
+	// The Cursor represents a pointer to the next page of records in the pagination. Use the value retu...
+	Cursor string `json:"cursor,omitempty"`
+	// List of multivariate event collections.
+	MultivariateContracts []MultivariateEventCollection `json:"multivariate_contracts"`
 }
 
 // LookupTickersForMarketInMultivariateEventCollectionRequest is a generated type from the Kalshi OpenAPI spec.
@@ -1873,18 +1605,48 @@ type LookupTickersForMarketInMultivariateEventCollectionResponse struct {
 	MarketTicker string `json:"market_ticker"`
 }
 
-// ScopeList is a generated type from the Kalshi OpenAPI spec.
-type ScopeList struct {
-	// List of scopes
-	Scopes []string `json:"scopes"`
+// ---------------------------------------------------------------------------
+// Order Groups
+// ---------------------------------------------------------------------------
+
+// CreateOrderGroupRequest is a generated type from the Kalshi OpenAPI spec.
+type CreateOrderGroupRequest struct {
+	// Specifies the maximum number of contracts that can be matched within this group over a rolling 15...
+	ContractsLimit int64 `json:"contracts_limit,omitempty"`
+	// String representation of the maximum number of contracts that can be matched within this group ov...
+	ContractsLimitFP *string       `json:"contracts_limit_fp,omitempty"`
+	ExchangeIndex    ExchangeIndex `json:"exchange_index,omitempty"`
+	// Optional subaccount number to use for this order group (0 for primary, 1-32 for subaccounts)
+	Subaccount int `json:"subaccount,omitempty"`
 }
 
-// SportFilterDetails is a generated type from the Kalshi OpenAPI spec.
-type SportFilterDetails struct {
-	// Mapping of competitions to their scope lists
-	Competitions map[string]any `json:"competitions"`
-	// List of scopes available for this sport
-	Scopes []string `json:"scopes"`
+// CreateOrderGroupResponse is a generated type from the Kalshi OpenAPI spec.
+type CreateOrderGroupResponse struct {
+	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	// The unique identifier for the created order group
+	OrderGroupID string `json:"order_group_id"`
+	// Subaccount number that owns the created order group (0 for primary, 1-32 for subaccounts).
+	Subaccount int `json:"subaccount"`
+}
+
+// EmptyResponse An empty response body
+type EmptyResponse struct {
+}
+
+// GetOrderGroupResponse is a generated type from the Kalshi OpenAPI spec.
+type GetOrderGroupResponse struct {
+	// String representation of the current maximum contracts allowed over a rolling 15-second window.
+	ContractsLimitFP string        `json:"contracts_limit_fp,omitempty"`
+	ExchangeIndex    ExchangeIndex `json:"exchange_index,omitempty"`
+	// Whether auto-cancel is enabled for this order group
+	IsAutoCancelEnabled bool `json:"is_auto_cancel_enabled"`
+	// List of order IDs that belong to this order group
+	Orders []string `json:"orders"`
+}
+
+// GetOrderGroupsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetOrderGroupsResponse struct {
+	OrderGroups []OrderGroup `json:"order_groups,omitempty"`
 }
 
 // UpdateOrderGroupLimitRequest is a generated type from the Kalshi OpenAPI spec.
@@ -1893,6 +1655,328 @@ type UpdateOrderGroupLimitRequest struct {
 	ContractsLimit int64 `json:"contracts_limit,omitempty"`
 	// String representation of the new maximum number of contracts that can be matched within this grou...
 	ContractsLimitFP *string `json:"contracts_limit_fp,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Orders
+// ---------------------------------------------------------------------------
+
+// AmendOrderRequest is a generated type from the Kalshi OpenAPI spec.
+type AmendOrderRequest struct {
+	// Action of the order
+	Action Action `json:"action"`
+	// The original client-specified order ID to be amended
+	ClientOrderID string `json:"client_order_id,omitempty"`
+	// Updated quantity for the order (whole contracts only). If updating quantity, provide count or cou...
+	Count int `json:"count,omitempty"`
+	// String representation of the updated quantity for the order. If updating quantity, provide count ...
+	CountFP       *string       `json:"count_fp,omitempty"`
+	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	// Updated no price for the order in cents
+	NoPrice int `json:"no_price,omitempty"`
+	// Updated no price for the order in fixed-point dollars. Exactly one of yes_price, no_price, yes_pr...
+	NoPriceDollars string `json:"no_price_dollars,omitempty"`
+	// Side of the order
+	Side Side `json:"side"`
+	// Optional subaccount number to use for this amendment (0 for primary, 1-32 for subaccounts)
+	Subaccount int `json:"subaccount,omitempty"`
+	// Market ticker
+	Ticker string `json:"ticker"`
+	// The new client-specified order ID after amendment
+	UpdatedClientOrderID string `json:"updated_client_order_id,omitempty"`
+	// Updated yes price for the order in cents
+	YesPrice int `json:"yes_price,omitempty"`
+	// Updated yes price for the order in fixed-point dollars. Exactly one of yes_price, no_price, yes_p...
+	YesPriceDollars string `json:"yes_price_dollars,omitempty"`
+}
+
+// AmendOrderResponse is a generated type from the Kalshi OpenAPI spec.
+type AmendOrderResponse struct {
+	// The order before amendment
+	OldOrder Order `json:"old_order"`
+	// The order after amendment
+	Order Order `json:"order"`
+}
+
+// BatchCancelOrdersRequest is a generated type from the Kalshi OpenAPI spec.
+type BatchCancelOrdersRequest struct {
+	// An array of order IDs to cancel
+	// Deprecated.
+	Ids []string `json:"ids,omitempty"`
+	// An array of orders to cancel, each optionally specifying a subaccount
+	Orders []BatchCancelOrdersRequestOrder `json:"orders,omitempty"`
+}
+
+// BatchCancelOrdersResponse is a generated type from the Kalshi OpenAPI spec.
+type BatchCancelOrdersResponse struct {
+	Orders []BatchCancelOrdersIndividualResponse `json:"orders"`
+}
+
+// CreateOrderRequest is a generated type from the Kalshi OpenAPI spec.
+type CreateOrderRequest struct {
+	Action Action `json:"action"`
+	// Maximum cost in cents. When specified, the order will automatically have Fill-or-Kill (FoK) behav...
+	BuyMaxCost int `json:"buy_max_cost,omitempty"`
+	// If this flag is set to true, the order will be canceled if the order is open and trading on the e...
+	CancelOrderOnPause bool   `json:"cancel_order_on_pause,omitempty"`
+	ClientOrderID      string `json:"client_order_id,omitempty"`
+	// Order quantity in contracts (whole contracts only). Provide count or count_fp; if both provided t...
+	Count int `json:"count,omitempty"`
+	// String representation of the order quantity in contracts. Provide count or count_fp; if both prov...
+	CountFP       *string       `json:"count_fp,omitempty"`
+	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	// Optional Unix timestamp in seconds for when the order expires. To place
+	ExpirationTS int64 `json:"expiration_ts,omitempty"`
+	NoPrice      int   `json:"no_price,omitempty"`
+	// Submitting price of the No side in fixed-point dollars
+	NoPriceDollars string `json:"no_price_dollars,omitempty"`
+	// The order group this order is part of
+	OrderGroupID            string                  `json:"order_group_id,omitempty"`
+	PostOnly                bool                    `json:"post_only,omitempty"`
+	ReduceOnly              bool                    `json:"reduce_only,omitempty"`
+	SelfTradePreventionType SelfTradePreventionType `json:"self_trade_prevention_type,omitempty"`
+	// Deprecated: Use reduce_only instead. Only accepts value of 0.
+	SellPositionFloor int  `json:"sell_position_floor,omitempty"`
+	Side              Side `json:"side"`
+	// The subaccount number to use for this order. 0 is the primary subaccount.
+	Subaccount int    `json:"subaccount,omitempty"`
+	Ticker     string `json:"ticker"`
+	// Specifies how long the order remains active. Use `good_till_canceled`
+	TimeInForce TimeInForce `json:"time_in_force,omitempty"`
+	YesPrice    int         `json:"yes_price,omitempty"`
+	// Submitting price of the Yes side in fixed-point dollars
+	YesPriceDollars string `json:"yes_price_dollars,omitempty"`
+}
+
+// BatchCreateOrdersRequest is a generated type from the Kalshi OpenAPI spec.
+type BatchCreateOrdersRequest struct {
+	Orders []CreateOrderRequest `json:"orders"`
+}
+
+// BatchCreateOrdersResponse is a generated type from the Kalshi OpenAPI spec.
+type BatchCreateOrdersResponse struct {
+	Orders []BatchCreateOrdersIndividualResponse `json:"orders"`
+}
+
+// CancelOrderResponse is a generated type from the Kalshi OpenAPI spec.
+type CancelOrderResponse struct {
+	Order Order `json:"order"`
+	// String representation of the number of contracts that were successfully canceled from this order
+	ReducedByFP string `json:"reduced_by_fp"`
+}
+
+// CreateOrderResponse is a generated type from the Kalshi OpenAPI spec.
+type CreateOrderResponse struct {
+	Order Order `json:"order"`
+}
+
+// DecreaseOrderRequest is a generated type from the Kalshi OpenAPI spec.
+type DecreaseOrderRequest struct {
+	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	// Number of contracts to reduce by (whole contracts only). Reduce-by may be provided via reduce_by ...
+	ReduceBy int `json:"reduce_by,omitempty"`
+	// String representation of the number of contracts to reduce by. Reduce-by may be provided via redu...
+	ReduceByFP *string `json:"reduce_by_fp,omitempty"`
+	// Number of contracts to reduce to (whole contracts only). Reduce-to may be provided via reduce_to ...
+	ReduceTo int `json:"reduce_to,omitempty"`
+	// String representation of the number of contracts to reduce to. Reduce-to may be provided via redu...
+	ReduceToFP *string `json:"reduce_to_fp,omitempty"`
+	// Optional subaccount number to use for this decrease (0 for primary, 1-32 for subaccounts)
+	Subaccount int `json:"subaccount,omitempty"`
+}
+
+// DecreaseOrderResponse is a generated type from the Kalshi OpenAPI spec.
+type DecreaseOrderResponse struct {
+	Order Order `json:"order"`
+}
+
+// GetOrderQueuePositionResponse is a generated type from the Kalshi OpenAPI spec.
+type GetOrderQueuePositionResponse struct {
+	// The number of preceding shares before the order in the queue.
+	QueuePositionFP string `json:"queue_position_fp"`
+}
+
+// GetOrderQueuePositionsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetOrderQueuePositionsResponse struct {
+	// Queue positions for all matching orders
+	QueuePositions []OrderQueuePosition `json:"queue_positions"`
+}
+
+// GetOrderResponse is a generated type from the Kalshi OpenAPI spec.
+type GetOrderResponse struct {
+	Order Order `json:"order"`
+}
+
+// ---------------------------------------------------------------------------
+// Portfolio
+// ---------------------------------------------------------------------------
+
+// GetBalanceResponse is a generated type from the Kalshi OpenAPI spec.
+type GetBalanceResponse struct {
+	// Member's available balance in cents. This represents the amount available for trading.
+	Balance int64 `json:"balance"`
+	// Balance broken down per exchange index.
+	BalanceBreakdown []IndexedBalance `json:"balance_breakdown,omitempty"`
+	// Member's available balance as a fixed-point dollar string. This represents the amount available f...
+	BalanceDollars string `json:"balance_dollars"`
+	// Member's portfolio value in cents. This is the current value of all positions held.
+	PortfolioValue int64 `json:"portfolio_value"`
+	// Unix timestamp of the last update to the balance.
+	UpdatedTS int64 `json:"updated_ts"`
+}
+
+// GetDepositsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetDepositsResponse struct {
+	Cursor   string    `json:"cursor,omitempty"`
+	Deposits []Deposit `json:"deposits"`
+}
+
+// GetPortfolioRestingOrderTotalValueResponse is a generated type from the Kalshi OpenAPI spec.
+type GetPortfolioRestingOrderTotalValueResponse struct {
+	// Total value of resting orders in cents
+	TotalRestingOrderValue int `json:"total_resting_order_value"`
+}
+
+// GetPositionsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetPositionsResponse struct {
+	// The Cursor represents a pointer to the next page of records in the pagination. Use the value retu...
+	Cursor string `json:"cursor,omitempty"`
+	// List of event positions
+	EventPositions []EventPosition `json:"event_positions"`
+	// List of market positions
+	MarketPositions []MarketPosition `json:"market_positions"`
+}
+
+// GetSettlementsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetSettlementsResponse struct {
+	Cursor      string       `json:"cursor,omitempty"`
+	Settlements []Settlement `json:"settlements"`
+}
+
+// GetWithdrawalsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetWithdrawalsResponse struct {
+	Cursor      string       `json:"cursor,omitempty"`
+	Withdrawals []Withdrawal `json:"withdrawals"`
+}
+
+// ---------------------------------------------------------------------------
+// Search
+// ---------------------------------------------------------------------------
+
+// GetFiltersBySportsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetFiltersBySportsResponse struct {
+	// Mapping of sports to their filter details
+	FiltersBySports map[string]any `json:"filters_by_sports"`
+	// Ordered list of sports for display
+	SportOrdering []string `json:"sport_ordering"`
+}
+
+// GetTagsForSeriesCategoriesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetTagsForSeriesCategoriesResponse struct {
+	// Mapping of series categories to their associated tags
+	TagsByCategories map[string]any `json:"tags_by_categories"`
+}
+
+// ---------------------------------------------------------------------------
+// Series
+// ---------------------------------------------------------------------------
+
+// GetEventCandlesticksResponse is a generated type from the Kalshi OpenAPI spec.
+type GetEventCandlesticksResponse struct {
+	// Adjusted end timestamp if the requested candlesticks would be larger than maxAggregateCandidates.
+	AdjustedEndTS int64 `json:"adjusted_end_ts"`
+	// Array of market candlestick arrays, one for each market in the event.
+	MarketCandlesticks [][]MarketCandlestick `json:"market_candlesticks"`
+	// Array of market tickers in the event.
+	MarketTickers []string `json:"market_tickers"`
+}
+
+// GetEventForecastPercentilesHistoryResponse is a generated type from the Kalshi OpenAPI spec.
+type GetEventForecastPercentilesHistoryResponse struct {
+	// Array of forecast percentile data points over time.
+	ForecastHistory []ForecastPercentilesPoint `json:"forecast_history"`
+}
+
+// GetMarketCandlesticksResponse is a generated type from the Kalshi OpenAPI spec.
+type GetMarketCandlesticksResponse struct {
+	// Array of candlestick data points for the specified time range.
+	Candlesticks []MarketCandlestick `json:"candlesticks"`
+	// Unique identifier for the market.
+	Ticker string `json:"ticker"`
+}
+
+// GetSeriesFeeChangesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetSeriesFeeChangesResponse struct {
+	SeriesFeeChangeArr []SeriesFeeChange `json:"series_fee_change_arr"`
+}
+
+// GetSeriesListResponse is a generated type from the Kalshi OpenAPI spec.
+type GetSeriesListResponse struct {
+	Series []Series `json:"series"`
+}
+
+// GetSeriesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetSeriesResponse struct {
+	Series Series `json:"series"`
+}
+
+// ---------------------------------------------------------------------------
+// Structured Targets
+// ---------------------------------------------------------------------------
+
+// GetStructuredTargetResponse is a generated type from the Kalshi OpenAPI spec.
+type GetStructuredTargetResponse struct {
+	StructuredTarget StructuredTarget `json:"structured_target,omitempty"`
+}
+
+// GetStructuredTargetsResponse is a generated type from the Kalshi OpenAPI spec.
+type GetStructuredTargetsResponse struct {
+	// Pagination cursor for the next page. Empty if there are no more results.
+	Cursor            string             `json:"cursor,omitempty"`
+	StructuredTargets []StructuredTarget `json:"structured_targets,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Subaccounts
+// ---------------------------------------------------------------------------
+
+// ApplySubaccountTransferRequest is a generated type from the Kalshi OpenAPI spec.
+type ApplySubaccountTransferRequest struct {
+	// Amount to transfer in cents.
+	AmountCents int64 `json:"amount_cents"`
+	// Unique client-provided transfer ID for idempotency.
+	ClientTransferID string `json:"client_transfer_id"`
+	// Source subaccount number (0 for primary, 1-32 for numbered subaccounts).
+	FromSubaccount int `json:"from_subaccount"`
+	// Destination subaccount number (0 for primary, 1-32 for numbered subaccounts).
+	ToSubaccount int `json:"to_subaccount"`
+}
+
+// ApplySubaccountTransferResponse Empty response indicating successful transfer.
+type ApplySubaccountTransferResponse struct {
+}
+
+// CreateSubaccountResponse is a generated type from the Kalshi OpenAPI spec.
+type CreateSubaccountResponse struct {
+	// The sequential number assigned to this subaccount (1-32).
+	SubaccountNumber int `json:"subaccount_number"`
+}
+
+// GetSubaccountBalancesResponse is a generated type from the Kalshi OpenAPI spec.
+type GetSubaccountBalancesResponse struct {
+	SubaccountBalances []SubaccountBalance `json:"subaccount_balances"`
+}
+
+// GetSubaccountNettingResponse is a generated type from the Kalshi OpenAPI spec.
+type GetSubaccountNettingResponse struct {
+	NettingConfigs []SubaccountNettingConfig `json:"netting_configs"`
+}
+
+// GetSubaccountTransfersResponse is a generated type from the Kalshi OpenAPI spec.
+type GetSubaccountTransfersResponse struct {
+	// Cursor for the next page of results.
+	Cursor    string               `json:"cursor,omitempty"`
+	Transfers []SubaccountTransfer `json:"transfers"`
 }
 
 // UpdateSubaccountNettingRequest is a generated type from the Kalshi OpenAPI spec.

@@ -104,9 +104,26 @@ type Spec struct {
 
 // Operation represents an API endpoint.
 type Operation struct {
-	OperationID string `yaml:"operationId"`
-	Summary     string `yaml:"summary"`
-	Description string `yaml:"description"`
+	OperationID string                  `yaml:"operationId"`
+	Summary     string                  `yaml:"summary"`
+	Description string                  `yaml:"description"`
+	RequestBody *RequestBody            `yaml:"requestBody"`
+	Responses   map[string]*ResponseDef `yaml:"responses"`
+}
+
+// RequestBody represents an OpenAPI request body.
+type RequestBody struct {
+	Content map[string]*MediaType `yaml:"content"`
+}
+
+// ResponseDef represents an OpenAPI response definition.
+type ResponseDef struct {
+	Content map[string]*MediaType `yaml:"content"`
+}
+
+// MediaType represents an OpenAPI media type with a schema reference.
+type MediaType struct {
+	Schema *Schema `yaml:"schema"`
 }
 
 // Schema represents an OpenAPI schema.
@@ -144,8 +161,12 @@ func main() {
 	// (includes Side, Action, OrderType, TimeInForce, MarketStatus, etc.
 	// that are inline enums in the spec, not named schemas).
 
+	// Build schema-to-group mapping from spec paths.
+	groups := buildSchemaGroups(spec)
+	fmt.Printf("  Grouped schemas: %d (remainder = Core)\n", len(groups))
+
 	// Generate object types (core, requests, responses all in one file)
-	objectCode := generateObjects(objects, schemas)
+	objectCode := generateObjects(objects, schemas, groups)
 	writeFile(outDir, "types_generated.go", objectCode)
 
 	fmt.Println("Done!")
@@ -218,6 +239,106 @@ func isParameterSchema(name string) bool {
 		}
 	}
 	return false
+}
+
+// buildSchemaGroups maps schema names to their API domain group by walking
+// the spec's Paths and extracting $ref'd schemas from request/response bodies.
+func buildSchemaGroups(spec *Spec) map[string]string {
+	groups := make(map[string]string)
+
+	for path, methods := range spec.Paths {
+		group := groupNameFromPath(path)
+		for _, op := range methods {
+			if op == nil {
+				continue
+			}
+			// Collect schema refs from request body
+			if op.RequestBody != nil {
+				for _, mt := range op.RequestBody.Content {
+					if mt.Schema != nil && mt.Schema.Ref != "" {
+						name := refToName(mt.Schema.Ref)
+						if _, ok := groups[name]; !ok {
+							groups[name] = group
+						}
+					}
+				}
+			}
+			// Collect schema refs from responses
+			for _, resp := range op.Responses {
+				if resp == nil {
+					continue
+				}
+				for _, mt := range resp.Content {
+					if mt.Schema != nil && mt.Schema.Ref != "" {
+						name := refToName(mt.Schema.Ref)
+						if _, ok := groups[name]; !ok {
+							groups[name] = group
+						}
+					}
+				}
+			}
+		}
+	}
+	return groups
+}
+
+// groupNameFromPath derives a section name from an API path.
+// "/portfolio/orders" → "Orders"
+// "/communications/rfqs" → "Communications"
+// "/events/{event_ticker}" → "Events"
+func groupNameFromPath(path string) string {
+	path = strings.TrimPrefix(path, "/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) == 0 {
+		return "Core"
+	}
+	seg := parts[0]
+
+	// Map top-level path segments to readable group names.
+	groupNames := map[string]string{
+		"account":                          "Account",
+		"api_keys":                         "API Keys",
+		"communications":                   "Communications",
+		"events":                           "Events",
+		"exchange":                         "Exchange",
+		"fcm":                              "FCM",
+		"historical":                       "Historical",
+		"incentive_programs":               "Incentive Programs",
+		"live_data":                        "Live Data",
+		"markets":                          "Markets",
+		"milestones":                       "Milestones",
+		"multivariate_event_collections":   "Multivariate Event Collections",
+		"portfolio":                        "Portfolio",
+		"search":                           "Search",
+		"series":                           "Series",
+		"structured_targets":               "Structured Targets",
+	}
+
+	if name, ok := groupNames[seg]; ok {
+		// For portfolio, use the sub-path for more specific grouping
+		if seg == "portfolio" && len(parts) > 1 {
+			sub := strings.SplitN(parts[1], "/", 2)[0]
+			subGroups := map[string]string{
+				"orders":        "Orders",
+				"events":        "Event Orders",
+				"order_groups":  "Order Groups",
+				"subaccounts":   "Subaccounts",
+				"summary":       "Portfolio",
+				"balance":       "Portfolio",
+				"positions":     "Portfolio",
+				"fills":         "Portfolio",
+				"settlements":   "Portfolio",
+				"deposits":      "Portfolio",
+				"withdrawals":   "Portfolio",
+			}
+			if subName, ok := subGroups[sub]; ok {
+				return subName
+			}
+		}
+		return name
+	}
+	// Fallback: title-case the segment
+	return strings.ReplaceAll(strings.Title(seg), "_", " ")
 }
 
 func refToName(ref string) string {
@@ -367,15 +488,35 @@ func enumConstName(typeName, value string) string {
 	return result.String()
 }
 
-func generateObjects(names []string, schemas map[string]*Schema) string {
+func generateObjects(names []string, schemas map[string]*Schema, groups map[string]string) string {
 	sorted := topologicalSort(names, schemas)
+
+	// Secondary sort: group by domain while preserving dependency order within groups.
+	// Assign group indices so "Core" (ungrouped) comes first, then alphabetical groups.
+	groupOf := func(name string) string {
+		if g, ok := groups[name]; ok {
+			return g
+		}
+		return "Core"
+	}
+	sort.SliceStable(sorted, func(i, j int) bool {
+		return groupOf(sorted[i]) < groupOf(sorted[j])
+	})
 
 	var buf bytes.Buffer
 	buf.WriteString(fileHeader("types_generated.go"))
 
 	buf.WriteString("package gokalshi\n\n")
 
+	currentGroup := ""
 	for _, name := range sorted {
+		group := groupOf(name)
+		if group != currentGroup {
+			buf.WriteString("// ---------------------------------------------------------------------------\n")
+			buf.WriteString(fmt.Sprintf("// %s\n", group))
+			buf.WriteString("// ---------------------------------------------------------------------------\n\n")
+			currentGroup = group
+		}
 		schema := schemas[name]
 		if schema == nil {
 			continue

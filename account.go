@@ -4,8 +4,6 @@ import (
 	"context"
 )
 
-const pathAccount = "/trade-api/v2/account"
-
 // GetAccountAPILimits — Get Account API Limits
 //
 // GET /trade-api/v2/account/limits

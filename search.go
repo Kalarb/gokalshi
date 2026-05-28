@@ -4,8 +4,6 @@ import (
 	"context"
 )
 
-const pathSearch = "/trade-api/v2/search"
-
 // GetTagsByCategories — Get Tags for Series Categories
 //
 // GET /trade-api/v2/search/tags_by_categories

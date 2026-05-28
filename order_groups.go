@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathOrderGroups = pathPortfolio + "/order_groups"
-
 // CreateOrderGroup — Create Order Group
 //
 // POST /trade-api/v2/portfolio/order_groups/create
