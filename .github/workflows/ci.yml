@@ -1,14 +1,50 @@
-name: HTTP Integration Tests
+name: CI
 
 on:
   push:
     branches: [main]
+  pull_request:
   schedule:
     - cron: "0 14 * * *"
   workflow_dispatch:
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v7
+        with:
+          version: latest
+
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run unit tests with coverage
+        run: go test ./... -v -count=1 -coverprofile=coverage.out
+
+      - name: Display coverage
+        run: go tool cover -func=coverage.out | tail -1
+
+      - name: Run with race detector
+        run: go test -race ./... -count=1
+
   exchange-gate:
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
@@ -65,3 +101,29 @@ jobs:
 
       - name: Run HTTP integration tests
         run: go test -tags integration -run TestHTTPIntegration -v -count=1 -timeout 120s
+
+  ws-integration:
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Write credentials
+        run: |
+          echo "$KALSHI_PROD_READ_ONLY_PRIVATE_KEY_PEM" > /tmp/prod-ro-key.pem
+          chmod 600 /tmp/prod-ro-key.pem
+          cat > .env << EOF
+          KALSHI_PROD_READ_ONLY_API_KEY_ID=$KALSHI_PROD_READ_ONLY_API_KEY_ID
+          KALSHI_PROD_READ_ONLY_PRIVATE_KEY_FILE=/tmp/prod-ro-key.pem
+          EOF
+        env:
+          KALSHI_PROD_READ_ONLY_API_KEY_ID: ${{ secrets.KALSHI_PROD_READ_ONLY_API_KEY_ID }}
+          KALSHI_PROD_READ_ONLY_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_PROD_READ_ONLY_PRIVATE_KEY_PEM }}
+
+      - name: Run WS integration tests
+        run: go test -tags integration -run TestWSIntegration -v -count=1 -timeout 120s
