@@ -133,12 +133,16 @@ jobs:
     needs: [unit-tests]
     runs-on: ubuntu-latest
     timeout-minutes: 2
-    permissions:
-      contents: write
     steps:
+      - uses: actions/create-github-app-token@v2
+        id: app-token
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - uses: actions/checkout@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - uses: actions/setup-go@v6
         with:
@@ -149,8 +153,8 @@ jobs:
 
       - name: Commit and push
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "gokalshi-release-bot[bot]"
+          git config user.email "gokalshi-release-bot[bot]@users.noreply.github.com"
           git add docs/API_COVERAGE.md
           git diff --cached --quiet || git commit -m "docs: update API coverage report"
           git push
