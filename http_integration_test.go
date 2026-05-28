@@ -61,6 +61,12 @@ func TestHTTPIntegration_Exchange(t *testing.T) {
 		require.NoError(t, err)
 		t.Logf("fee changes count=%d", len(resp.SeriesFeeChangeArr))
 	})
+
+	t.Run("GetIncentivePrograms", func(t *testing.T) {
+		resp, err := c.GetIncentivePrograms(ctx)
+		require.NoError(t, err)
+		t.Logf("incentive programs count=%d", len(resp.IncentivePrograms))
+	})
 }
 
 func TestHTTPIntegration_Markets(t *testing.T) {
@@ -215,6 +221,12 @@ func TestHTTPIntegration_Events(t *testing.T) {
 		skipOnAPIError(t, err, 400, 404)
 		require.NoError(t, err)
 	})
+
+	t.Run("GetEventFeeChanges", func(t *testing.T) {
+		resp, err := c.GetEventFeeChanges(ctx, GetEventFeeChangesParams{})
+		require.NoError(t, err)
+		t.Logf("event fee changes count=%d", len(resp.EventFeeChanges))
+	})
 }
 
 func TestHTTPIntegration_Series(t *testing.T) {
@@ -263,6 +275,22 @@ func TestHTTPIntegration_Portfolio(t *testing.T) {
 
 	t.Run("GetSettlements", func(t *testing.T) {
 		_, err := c.GetSettlements(ctx, GetSettlementsParams{})
+		require.NoError(t, err)
+	})
+
+	t.Run("GetDeposits", func(t *testing.T) {
+		_, err := c.GetDeposits(ctx, GetDepositsParams{})
+		require.NoError(t, err)
+	})
+
+	t.Run("GetWithdrawals", func(t *testing.T) {
+		_, err := c.GetWithdrawals(ctx, GetWithdrawalsParams{})
+		require.NoError(t, err)
+	})
+
+	t.Run("GetPortfolioRestingOrderTotalValue", func(t *testing.T) {
+		_, err := c.GetPortfolioRestingOrderTotalValue(ctx)
+		skipOnAPIError(t, err, 400, 403)
 		require.NoError(t, err)
 	})
 }
@@ -448,6 +476,19 @@ func TestHTTPIntegration_Account(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, resp.UsageTier)
 		t.Logf("tier=%s read=%d write=%d", resp.UsageTier, resp.Read.RefillRate, resp.Write.RefillRate)
+	})
+
+	t.Run("GetAccountEndpointCosts", func(t *testing.T) {
+		resp, err := c.GetAccountEndpointCosts(ctx)
+		require.NoError(t, err)
+		t.Logf("default_cost=%d endpoint_costs=%d", resp.DefaultCost, len(resp.EndpointCosts))
+	})
+
+	t.Run("GetAPIKeys", func(t *testing.T) {
+		resp, err := c.GetAPIKeys(ctx)
+		skipOnAPIError(t, err, 400, 403)
+		require.NoError(t, err)
+		t.Logf("api keys count=%d", len(resp.APIKeys))
 	})
 }
 
