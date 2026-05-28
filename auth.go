@@ -100,6 +100,47 @@ func (c *Credentials) SignPSSText(text string) (string, error) {
 	return base64.StdEncoding.EncodeToString(signature), nil
 }
 
+// LoadCredentialsFromPEM parses an RSA private key from a PEM-encoded string
+// and returns Credentials. This is useful when the key is stored in an
+// environment variable rather than a file (e.g. CI/CD secrets).
+func LoadCredentialsFromPEM(keyID, pemString string) (*Credentials, error) {
+	block, _ := pem.Decode([]byte(pemString))
+	if block == nil {
+		return nil, &AuthError{Op: "load_credentials_pem", Err: fmt.Errorf("failed to decode PEM block from string")}
+	}
+
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		// Fallback: try PKCS1 format
+		pkcs1Key, pkcs1Err := x509.ParsePKCS1PrivateKey(block.Bytes)
+		if pkcs1Err != nil {
+			return nil, &AuthError{Op: "load_credentials_pem", Err: fmt.Errorf("failed to parse private key from PEM string: %w (also tried PKCS1: %v)", err, pkcs1Err)}
+		}
+		key = pkcs1Key
+	}
+
+	rsaKey, ok := key.(*rsa.PrivateKey)
+	if !ok {
+		return nil, &AuthError{Op: "load_credentials_pem", Err: fmt.Errorf("PEM string does not contain an RSA private key")}
+	}
+
+	return &Credentials{
+		KeyID:      keyID,
+		PrivateKey: rsaKey,
+		Rand:       cryptorand.Reader,
+	}, nil
+}
+
+// NewCredentials creates Credentials from a pre-loaded RSA private key.
+// Use this when you have already parsed the key yourself.
+func NewCredentials(keyID string, key *rsa.PrivateKey) *Credentials {
+	return &Credentials{
+		KeyID:      keyID,
+		PrivateKey: key,
+		Rand:       cryptorand.Reader,
+	}
+}
+
 func (c *Credentials) randReader() io.Reader {
 	if c.Rand != nil {
 		return c.Rand

@@ -1,0 +1,110 @@
+name: Version Bump & Release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: version-bump
+  cancel-in-progress: false
+
+jobs:
+  version-bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
+      bumped: ${{ steps.bump.outputs.bumped }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Determine bump type and compute new version
+        id: bump
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          msg="$COMMIT_MSG"
+
+          # Extract conventional commit type from first line
+          type=$(echo "$msg" | head -1 | sed -n 's/^[[:space:]]*\([a-z]*\).*/\1/p')
+
+          # Skip version bump for non-functional changes
+          case "$type" in
+            docs|ci|test|chore|style)
+              echo "bumped=false" >> "$GITHUB_OUTPUT"
+              echo "Skipping version bump for commit type: $type"
+              exit 0
+              ;;
+            feat|fix|refactor|perf)
+              ;; # continue to bump
+            *)
+              echo "bumped=false" >> "$GITHUB_OUTPUT"
+              echo "Skipping version bump for unrecognized type: $type"
+              exit 0
+              ;;
+          esac
+
+          # Determine bump level
+          if echo "$msg" | grep -qP 'BREAKING CHANGE:' || echo "$msg" | head -1 | grep -qP '^\s*[a-z]+(\(.*\))?!:'; then
+            bump="major"
+          elif [ "$type" = "feat" ]; then
+            bump="minor"
+          else
+            bump="patch"
+          fi
+
+          # Get latest tag, default to v0.0.0 if none
+          latest=$(git tag -l 'v*' --sort=-version:refname | head -1)
+          if [ -z "$latest" ]; then
+            latest="v0.0.0"
+          fi
+
+          current="${latest#v}"
+          IFS='.' read -r major minor patch <<< "$current"
+
+          # Compute new version
+          case "$bump" in
+            major) new="$((major+1)).0.0" ;;
+            minor) new="${major}.$((minor+1)).0" ;;
+            patch) new="${major}.${minor}.$((patch+1))" ;;
+          esac
+
+          echo "new_version=${new}" >> "$GITHUB_OUTPUT"
+          echo "bumped=true" >> "$GITHUB_OUTPUT"
+          echo "Bumping $current -> $new ($bump from $type)"
+
+  release:
+    needs: version-bump
+    if: needs.version-bump.outputs.bumped == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          tag="v${{ needs.version-bump.outputs.new_version }}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists, skipping"
+            exit 1
+          fi
+          git tag "$tag"
+          git push origin "$tag"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version-bump.outputs.new_version }}
+          name: v${{ needs.version-bump.outputs.new_version }}
+          generate_release_notes: true

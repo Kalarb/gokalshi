@@ -136,6 +136,21 @@ func main() {
 | `WithWSBackoff(min, max)` | 1s / 32s | Reconnection backoff |
 | `WithWSLogger(*slog.Logger)` | discard | Structured logger for lifecycle events |
 
+### Credential Loading
+
+Three ways to create credentials:
+
+```go
+// From a PEM file on disk
+creds, err := gokalshi.LoadCredentials("key-id", "/path/to/key.pem")
+
+// From a PEM string (useful for CI/CD env vars)
+creds, err := gokalshi.LoadCredentialsFromPEM("key-id", os.Getenv("PRIVATE_KEY_PEM"))
+
+// From a pre-loaded *rsa.PrivateKey
+creds := gokalshi.NewCredentials("key-id", myRSAKey)
+```
+
 ## API Coverage & Tests
 
 Every implemented endpoint has a unit test (mock HTTP server). Integration tests hit the real Kalshi DEMO API (HTTP) or PROD API (WebSocket, read-only).

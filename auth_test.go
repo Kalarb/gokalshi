@@ -168,6 +168,110 @@ func TestLoadCredentials_PKCS1(t *testing.T) {
 	assert.NotNil(t, creds.PrivateKey)
 }
 
+func generateTestPEMString(t *testing.T) (string, *rsa.PrivateKey) {
+	t.Helper()
+
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	der, err := x509.MarshalPKCS8PrivateKey(key)
+	require.NoError(t, err)
+
+	pemBlock := pem.EncodeToMemory(&pem.Block{
+		Type:  "PRIVATE KEY",
+		Bytes: der,
+	})
+
+	return string(pemBlock), key
+}
+
+func TestLoadCredentialsFromPEM(t *testing.T) {
+	pemStr, _ := generateTestPEMString(t)
+
+	creds, err := LoadCredentialsFromPEM("pem-key-id", pemStr)
+	require.NoError(t, err)
+
+	assert.Equal(t, "pem-key-id", creds.KeyID)
+	assert.NotNil(t, creds.PrivateKey)
+
+	// Verify signing works
+	sig, err := creds.SignPSSText("test message")
+	require.NoError(t, err)
+	assert.NotEmpty(t, sig)
+}
+
+func TestLoadCredentialsFromPEM_PKCS1(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	der := x509.MarshalPKCS1PrivateKey(key)
+	pemStr := string(pem.EncodeToMemory(&pem.Block{
+		Type:  "RSA PRIVATE KEY",
+		Bytes: der,
+	}))
+
+	creds, err := LoadCredentialsFromPEM("pkcs1-pem", pemStr)
+	require.NoError(t, err)
+	assert.Equal(t, "pkcs1-pem", creds.KeyID)
+	assert.NotNil(t, creds.PrivateKey)
+}
+
+func TestLoadCredentialsFromPEM_InvalidPEM(t *testing.T) {
+	_, err := LoadCredentialsFromPEM("key-id", "not a pem string")
+	assert.Error(t, err)
+
+	var authErr *AuthError
+	assert.True(t, errors.As(err, &authErr))
+	assert.Equal(t, "load_credentials_pem", authErr.Op)
+}
+
+func TestLoadCredentialsFromPEM_EmptyString(t *testing.T) {
+	_, err := LoadCredentialsFromPEM("key-id", "")
+	assert.Error(t, err)
+
+	var authErr *AuthError
+	assert.True(t, errors.As(err, &authErr))
+}
+
+func TestNewCredentials(t *testing.T) {
+	key, err := rsa.GenerateKey(rand.Reader, 2048)
+	require.NoError(t, err)
+
+	creds := NewCredentials("pre-loaded-key", key)
+
+	assert.Equal(t, "pre-loaded-key", creds.KeyID)
+	assert.Equal(t, key, creds.PrivateKey)
+	assert.NotNil(t, creds.Rand)
+
+	// Verify signing works
+	sig, err := creds.SignPSSText("test message")
+	require.NoError(t, err)
+	assert.NotEmpty(t, sig)
+}
+
+func TestNewCredentials_RoundTrip(t *testing.T) {
+	// Generate PEM string, load it, then create new credentials from the key
+	pemStr, originalKey := generateTestPEMString(t)
+
+	credsFromPEM, err := LoadCredentialsFromPEM("key-1", pemStr)
+	require.NoError(t, err)
+
+	credsFromKey := NewCredentials("key-2", originalKey)
+
+	// Both should produce valid signatures
+	sig1, err := credsFromPEM.SignPSSText("same message")
+	require.NoError(t, err)
+	sig2, err := credsFromKey.SignPSSText("same message")
+	require.NoError(t, err)
+
+	// RSA-PSS is randomized, so sigs differ — but both should be valid base64
+	decoded1, err := base64.StdEncoding.DecodeString(sig1)
+	require.NoError(t, err)
+	decoded2, err := base64.StdEncoding.DecodeString(sig2)
+	require.NoError(t, err)
+	assert.Equal(t, len(decoded1), len(decoded2))
+}
+
 func TestCredentials_NilRand(t *testing.T) {
 	pemPath := generateTestPEM(t)
 	creds, err := LoadCredentials("test-key", pemPath)
