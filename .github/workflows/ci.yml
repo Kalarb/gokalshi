@@ -127,3 +127,30 @@ jobs:
 
       - name: Run WS integration tests
         run: go test -tags integration -run TestWSIntegration -v -count=1 -timeout 120s
+
+  coverage-report:
+    if: github.ref == 'refs/heads/main'
+    needs: [unit-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Generate coverage report
+        run: go run ./tools/generate_coverage
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/API_COVERAGE.md
+          git diff --cached --quiet || git commit -m "docs: update API coverage report"
+          git push
