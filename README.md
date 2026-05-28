@@ -153,7 +153,7 @@ creds := gokalshi.NewCredentials("key-id", myRSAKey)
 
 ## API Coverage & Tests
 
-Every implemented endpoint has a unit test (mock HTTP server). Integration tests hit the real Kalshi DEMO API (HTTP) or PROD API (WebSocket, read-only).
+Every implemented endpoint has a unit test (mock HTTP server). Integration tests hit the real Kalshi DEMO API (HTTP) or PROD API (WebSocket, read-only). Tests marked `skip` have integration tests that exercise the endpoint but skip on DEMO due to feature gating (FCM-only, tier restrictions, or deprecated endpoints).
 
 ### HTTP (97 methods)
 
@@ -162,7 +162,7 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
 | `GetAccountAPILimits` | Y | Y | Y |
-| `GetAccountEndpointCosts` | Y | Y | |
+| `GetAccountEndpointCosts` | Y | Y | Y |
 
 #### Exchange
 
@@ -193,12 +193,12 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `CreateOrderV2` | Y | Y | |
-| `BatchCreateOrdersV2` | Y | Y | |
-| `BatchCancelOrdersV2` | Y | Y | |
-| `CancelOrderV2` | Y | Y | |
-| `AmendOrderV2` | Y | Y | |
-| `DecreaseOrderV2` | Y | Y | |
+| `CreateOrderV2` | Y | Y | Y |
+| `BatchCreateOrdersV2` | Y | Y | Y |
+| `BatchCancelOrdersV2` | Y | Y | Y |
+| `CancelOrderV2` | Y | Y | Y |
+| `AmendOrderV2` | Y | Y | Y |
+| `DecreaseOrderV2` | Y | Y | Y |
 
 #### Portfolio
 
@@ -208,32 +208,32 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `GetPositions` | Y | Y | Y |
 | `GetFills` | Y | Y | Y |
 | `GetSettlements` | Y | Y | Y |
-| `GetDeposits` | Y | Y | |
-| `GetWithdrawals` | Y | Y | |
-| `GetPortfolioRestingOrderTotalValue` | Y | Y | |
+| `GetDeposits` | Y | Y | Y |
+| `GetWithdrawals` | Y | Y | Y |
+| `GetPortfolioRestingOrderTotalValue` | Y | Y | skip |
 
 #### Subaccounts
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `CreateSubaccount` | Y | Y | |
-| `GetSubaccountBalances` | Y | Y | |
-| `GetSubaccountNetting` | Y | Y | |
-| `UpdateSubaccountNetting` | Y | Y | |
-| `ApplySubaccountTransfer` | Y | Y | |
-| `GetSubaccountTransfers` | Y | Y | |
+| `CreateSubaccount` | Y | Y | Y |
+| `GetSubaccountBalances` | Y | Y | Y |
+| `GetSubaccountNetting` | Y | Y | Y |
+| `UpdateSubaccountNetting` | Y | Y | Y |
+| `ApplySubaccountTransfer` | Y | Y | skip |
+| `GetSubaccountTransfers` | Y | Y | Y |
 
 #### Order Groups
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `CreateOrderGroup` | Y | Y | |
-| `GetOrderGroups` | Y | Y | |
-| `GetOrderGroup` | Y | Y | |
-| `DeleteOrderGroup` | Y | Y | |
-| `ResetOrderGroup` | Y | Y | |
-| `TriggerOrderGroup` | Y | Y | |
-| `UpdateOrderGroupLimit` | Y | Y | |
+| `CreateOrderGroup` | Y | Y | Y |
+| `GetOrderGroups` | Y | Y | Y |
+| `GetOrderGroup` | Y | Y | Y |
+| `DeleteOrderGroup` | Y | Y | Y |
+| `ResetOrderGroup` | Y | Y | Y |
+| `TriggerOrderGroup` | Y | Y | Y |
+| `UpdateOrderGroupLimit` | Y | Y | Y |
 
 #### Markets
 
@@ -256,8 +256,8 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `GetEventMetadata` | Y | Y | Y |
 | `GetMultivariateEvents` | Y | Y | Y |
 | `GetEventCandlesticks` | Y | Y | Y |
-| `GetEventForecastPercentileHistory` | Y | Y | Y |
-| `GetEventFeeChanges` | Y | Y | |
+| `GetEventForecastPercentileHistory` | Y | Y | skip |
+| `GetEventFeeChanges` | Y | Y | Y |
 
 #### Series
 
@@ -277,77 +277,77 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetCommunicationsID` | Y | Y | |
-| `CreateRFQ` | Y | Y | |
-| `GetRFQs` | Y | Y | |
-| `GetRFQ` | Y | Y | |
-| `DeleteRFQ` | Y | Y | |
-| `CreateQuote` | Y | Y | |
-| `GetQuotes` | Y | Y | |
-| `GetQuote` | Y | Y | |
-| `DeleteQuote` | Y | Y | |
-| `AcceptQuote` | Y | Y | |
-| `ConfirmQuote` | Y | Y | |
+| `GetCommunicationsID` | Y | Y | Y |
+| `CreateRFQ` | Y | Y | Y |
+| `GetRFQs` | Y | Y | Y |
+| `GetRFQ` | Y | Y | Y |
+| `DeleteRFQ` | Y | Y | Y |
+| `CreateQuote` | Y | Y | skip |
+| `GetQuotes` | Y | Y | skip |
+| `GetQuote` | Y | Y | skip |
+| `DeleteQuote` | Y | Y | skip |
+| `AcceptQuote` | Y | Y | skip |
+| `ConfirmQuote` | Y | Y | skip |
 
 #### API Keys
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetAPIKeys` | Y | Y | |
-| `CreateAPIKey` | Y | Y | |
-| `GenerateAPIKey` | Y | Y | |
-| `DeleteAPIKey` | Y | Y | |
+| `GetAPIKeys` | Y | Y | Y |
+| `CreateAPIKey` | Y | Y | Y |
+| `GenerateAPIKey` | Y | Y | Y |
+| `DeleteAPIKey` | Y | Y | Y |
 
 #### Historical
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetHistoricalCutoff` | Y | Y | |
-| `GetHistoricalFills` | Y | Y | |
-| `GetHistoricalOrders` | Y | Y | |
-| `GetHistoricalTrades` | Y | Y | |
-| `GetHistoricalMarkets` | Y | Y | |
-| `GetHistoricalMarket` | Y | Y | |
-| `GetHistoricalMarketCandlesticks` | Y | Y | |
+| `GetHistoricalCutoff` | Y | Y | Y |
+| `GetHistoricalFills` | Y | Y | Y |
+| `GetHistoricalOrders` | Y | Y | Y |
+| `GetHistoricalTrades` | Y | Y | Y |
+| `GetHistoricalMarkets` | Y | Y | Y |
+| `GetHistoricalMarket` | Y | Y | Y |
+| `GetHistoricalMarketCandlesticks` | Y | Y | Y |
 
 #### Incentive Programs
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetIncentivePrograms` | Y | Y | |
+| `GetIncentivePrograms` | Y | Y | Y |
 
 #### Live Data
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetLiveDataBatch` | Y | Y | |
-| `GetLiveDataByMilestone` | Y | Y | |
-| `GetMilestoneGameStats` | Y | Y | |
-| `GetLiveData` | Y | Y | |
+| `GetLiveDataBatch` | Y | Y | Y |
+| `GetLiveDataByMilestone` | Y | Y | Y |
+| `GetMilestoneGameStats` | Y | Y | Y |
+| `GetLiveData` | Y | Y | Y |
 
 #### Milestones
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetMilestones` | Y | Y | |
-| `GetMilestone` | Y | Y | |
+| `GetMilestones` | Y | Y | Y |
+| `GetMilestone` | Y | Y | Y |
 
 #### Multivariate Event Collections
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetMultivariateEventCollections` | Y | Y | |
-| `GetMultivariateEventCollection` | Y | Y | |
-| `GetMultivariateEventCollectionLookupHistory` | Y | Y | |
-| `CreateMarketInMultivariateEventCollection` | Y | Y | |
-| `LookupTickersForMarketInMultivariateEventCollection` | Y | Y | |
+| `GetMultivariateEventCollections` | Y | Y | Y |
+| `GetMultivariateEventCollection` | Y | Y | Y |
+| `GetMultivariateEventCollectionLookupHistory` | Y | Y | skip |
+| `CreateMarketInMultivariateEventCollection` | Y | Y | skip |
+| `LookupTickersForMarketInMultivariateEventCollection` | Y | Y | skip |
 
 #### Structured Targets
 
 | Method | Impl | Unit | Integration |
 |---|:---:|:---:|:---:|
-| `GetStructuredTargets` | Y | Y | |
-| `GetStructuredTarget` | Y | Y | |
+| `GetStructuredTargets` | Y | Y | Y |
+| `GetStructuredTarget` | Y | Y | Y |
 
 ### WebSocket
 

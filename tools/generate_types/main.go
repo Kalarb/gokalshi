@@ -391,6 +391,16 @@ func generateObjects(names []string, schemas map[string]*Schema) string {
 			continue
 		}
 
+		// Handle primitive-type schemas (integer, string, number, boolean with no properties)
+		if len(schema.Properties) == 0 && schema.Type != "" && schema.Type != "object" {
+			goType := resolveGoTypeInner(schema, schemas)
+			if schema.Description != "" {
+				buf.WriteString(fmt.Sprintf("// %s %s\n", name, cleanDescription(schema.Description)))
+			}
+			buf.WriteString(fmt.Sprintf("type %s = %s\n\n", name, goType))
+			continue
+		}
+
 		// Handle object schemas
 		requiredSet := make(map[string]bool)
 		for _, r := range schema.Required {
