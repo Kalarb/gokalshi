@@ -6,7 +6,7 @@ If you discover a security vulnerability in gokalshi, please report it responsib
 
 **Do not open a public GitHub issue for security vulnerabilities.**
 
-Instead, please email **gokalshi@kalarb.com** with:
+Instead, please email **baileyfaulk2003@gmail.com** with:
 
 - A description of the vulnerability
 - Steps to reproduce
