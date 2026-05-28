@@ -10,8 +10,7 @@ type AcceptQuoteRequest struct {
 }
 
 // ExchangeIndex Identifier for an exchange shard. Defaults to 0 if unspecified. Note: currently only 0 supported.
-type ExchangeIndex struct {
-}
+type ExchangeIndex = int
 
 // AmendOrderRequest is a generated type from the Kalshi OpenAPI spec.
 type AmendOrderRequest struct {
