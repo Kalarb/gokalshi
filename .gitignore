@@ -31,4 +31,5 @@ Thumbs.db
 
 # Claude Code
 .claude/
-generate_types
+/generate_types
+/generate_coverage
