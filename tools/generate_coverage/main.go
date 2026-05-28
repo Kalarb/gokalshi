@@ -93,8 +93,9 @@ func main() {
 	unitTests := discoverUnitTests(dir)
 	integrationTests := discoverIntegrationTests(dir)
 	wsChannels := discoverWSChannels(dir)
-	wsUnitTests := discoverWSUnitTests(dir)
-	wsIntegrationTests := discoverWSIntegrationTests(dir)
+	channelNames := wsChannelNames(wsChannels)
+	wsUnitTests := scanFileForChannels(filepath.Join(dir, "ws_client_test.go"), channelNames)
+	wsIntegrationTests := scanFileForChannels(filepath.Join(dir, "ws_integration_test.go"), channelNames)
 
 	report := generateMarkdown(methods, unitTests, integrationTests, wsChannels, wsUnitTests, wsIntegrationTests)
 
@@ -370,17 +371,18 @@ func discoverWSChannels(dir string) []WSChannel {
 	return channels
 }
 
-// discoverWSUnitTests checks ws_client_test.go for channel name references.
-func discoverWSUnitTests(dir string) map[string]bool {
-	return scanFileForChannels(filepath.Join(dir, "ws_client_test.go"))
+// wsChannelNames extracts the name strings from a slice of WSChannel.
+func wsChannelNames(channels []WSChannel) []string {
+	names := make([]string, len(channels))
+	for i, ch := range channels {
+		names[i] = ch.Name
+	}
+	return names
 }
 
-// discoverWSIntegrationTests checks ws_integration_test.go for channel name references.
-func discoverWSIntegrationTests(dir string) map[string]bool {
-	return scanFileForChannels(filepath.Join(dir, "ws_integration_test.go"))
-}
-
-func scanFileForChannels(path string) map[string]bool {
+// scanFileForChannels checks whether a file references each channel name
+// as a quoted string (e.g. "orderbook_delta") to avoid substring false positives.
+func scanFileForChannels(path string, channels []string) map[string]bool {
 	result := make(map[string]bool)
 	src, err := os.ReadFile(path)
 	if err != nil {
@@ -388,15 +390,8 @@ func scanFileForChannels(path string) map[string]bool {
 	}
 	text := string(src)
 
-	// Known channel names to search for
-	knownChannels := []string{
-		"orderbook_delta", "ticker", "trade", "fill",
-		"market_positions", "user_orders",
-		"market_lifecycle_v2", "multivariate_market_lifecycle",
-		"multivariate", "communications", "order_group_updates",
-	}
-	for _, ch := range knownChannels {
-		if strings.Contains(text, ch) {
+	for _, ch := range channels {
+		if strings.Contains(text, `"`+ch+`"`) {
 			result[ch] = true
 		}
 	}
