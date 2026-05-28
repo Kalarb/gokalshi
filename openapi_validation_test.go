@@ -3,9 +3,12 @@
 package gokalshi
 
 import (
+	"fmt"
 	"io"
 	"net/http"
-	"reflect"
+	"os"
+	"regexp"
+	"sort"
 	"strings"
 	"testing"
 
@@ -29,6 +32,38 @@ func shouldSkipPath(path string) bool {
 	return false
 }
 
+// endpointRe matches godoc comments like "// GET /trade-api/v2/markets".
+var endpointRe = regexp.MustCompile(`^//\s+(GET|POST|PUT|DELETE|PATCH)\s+(/trade-api/v2\S+)`)
+
+// parseImplementedEndpoints scans all .go source files (excluding tests) for
+// godoc comments containing "METHOD /trade-api/v2/..." and returns the set of
+// implemented endpoints as "METHOD /path" strings.
+func parseImplementedEndpoints(t *testing.T) map[string]bool {
+	t.Helper()
+
+	entries, err := os.ReadDir(".")
+	require.NoError(t, err)
+
+	implemented := make(map[string]bool)
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		data, err := os.ReadFile(name)
+		require.NoError(t, err)
+
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if m := endpointRe.FindStringSubmatch(line); m != nil {
+				key := m[1] + " " + m[2]
+				implemented[key] = true
+			}
+		}
+	}
+	return implemented
+}
+
 func TestOpenAPICoverage(t *testing.T) {
 	resp, err := http.Get("https://docs.kalshi.com/openapi.yaml")
 	require.NoError(t, err, "fetch OpenAPI spec")
@@ -43,11 +78,8 @@ func TestOpenAPICoverage(t *testing.T) {
 	}
 	require.NoError(t, yaml.Unmarshal(body, &spec))
 
-	type endpoint struct {
-		method string
-		path   string
-	}
-	var specEndpoints []endpoint
+	// Build set of spec endpoints.
+	specEndpoints := make(map[string]bool)
 	for path, methods := range spec.Paths {
 		fullPath := path
 		if !strings.HasPrefix(path, "/trade-api") {
@@ -59,29 +91,30 @@ func TestOpenAPICoverage(t *testing.T) {
 		for method := range methods {
 			upper := strings.ToUpper(method)
 			if upper == "GET" || upper == "POST" || upper == "PUT" || upper == "DELETE" || upper == "PATCH" {
-				specEndpoints = append(specEndpoints, endpoint{upper, fullPath})
+				specEndpoints[upper+" "+fullPath] = true
 			}
 		}
 	}
 
-	// Count our HTTPClient interface methods (excluding Close which is lifecycle, not an API endpoint).
-	httpClientType := reflect.TypeOf((*HTTPClient)(nil)).Elem()
-	clientMethods := 0
-	for i := 0; i < httpClientType.NumMethod(); i++ {
-		name := httpClientType.Method(i).Name
-		if name != "Close" {
-			clientMethods++
+	// Parse implemented endpoints from godoc comments.
+	implemented := parseImplementedEndpoints(t)
+
+	// Find spec endpoints not implemented in the SDK.
+	var missing []string
+	for ep := range specEndpoints {
+		if !implemented[ep] {
+			missing = append(missing, ep)
 		}
 	}
+	sort.Strings(missing)
 
 	t.Logf("OpenAPI spec endpoints: %d (after skipping %v)", len(specEndpoints), skippedPathPrefixes)
-	t.Logf("HTTPClient interface methods: %d", clientMethods)
+	t.Logf("SDK implemented endpoints: %d", len(implemented))
+	t.Logf("Missing endpoints: %d", len(missing))
 
-	assert.GreaterOrEqual(t, len(specEndpoints), 40, "expected 40+ spec endpoints")
-	assert.GreaterOrEqual(t, clientMethods, 36, "expected 36+ client methods")
-
-	// Log all spec endpoints for visibility.
-	for _, ep := range specEndpoints {
-		t.Logf("  spec: %s %s", ep.method, ep.path)
+	for _, ep := range missing {
+		t.Logf("  missing: %s", ep)
 	}
+
+	assert.Empty(t, missing, fmt.Sprintf("%d spec endpoints not implemented in SDK", len(missing)))
 }
