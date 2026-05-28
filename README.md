@@ -1,3 +1,4 @@
+[![Go Reference](https://pkg.go.dev/badge/github.com/Kalarb/gokalshi.svg)](https://pkg.go.dev/github.com/Kalarb/gokalshi)
 [![CI](https://github.com/Kalarb/gokalshi/actions/workflows/ci.yml/badge.svg)](https://github.com/Kalarb/gokalshi/actions/workflows/ci.yml)
 [![OpenAPI](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/yardboy27/65579a629076066fcbf09520ca76301a/raw/go-openapi-status.json)](https://github.com/Kalarb/gokalshi/actions/workflows/openapi-validation.yml)
 [![AsyncAPI](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/yardboy27/65579a629076066fcbf09520ca76301a/raw/go-asyncapi-status.json)](https://github.com/Kalarb/gokalshi/actions/workflows/asyncapi-validation.yml)
