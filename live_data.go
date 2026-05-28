@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathLiveData = "/trade-api/v2/live_data"
-
 // GetLiveDataBatch — Get Live Data Batch
 //
 // GET /trade-api/v2/live_data/batch

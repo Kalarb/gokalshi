@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathStructuredTargets = "/trade-api/v2/structured_targets"
-
 // GetStructuredTargets — Get Structured Targets
 //
 // GET /trade-api/v2/structured_targets

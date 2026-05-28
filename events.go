@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathEvents = "/trade-api/v2/events"
-
 // GetEvent — Get Event
 //
 // GET /trade-api/v2/events/{event_ticker}

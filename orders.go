@@ -5,11 +5,6 @@ import (
 	"fmt"
 )
 
-const (
-	pathPortfolio = "/trade-api/v2/portfolio"
-	pathOrders    = pathPortfolio + "/orders"
-)
-
 // CreateOrder — Create Order
 //
 // POST /trade-api/v2/portfolio/orders

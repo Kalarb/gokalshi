@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathMilestones = "/trade-api/v2/milestones"
-
 // GetMilestones — Get Milestones
 //
 // GET /trade-api/v2/milestones

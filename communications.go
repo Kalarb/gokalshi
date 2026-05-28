@@ -5,8 +5,6 @@ import (
 	"fmt"
 )
 
-const pathCommunications = "/trade-api/v2/communications"
-
 // --- Communications ID ---
 
 // GetCommunicationsID — Get Communications ID
