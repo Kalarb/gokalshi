@@ -140,84 +140,199 @@ func main() {
 
 Every implemented endpoint has a unit test (mock HTTP server). Integration tests hit the real Kalshi DEMO API (HTTP) or PROD API (WebSocket, read-only).
 
-### HTTP (37 methods)
+### HTTP (97 methods)
 
 #### Account
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetAccountAPILimits` | Y | Y | Y | |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetAccountAPILimits` | Y | Y | Y |
+| `GetAccountEndpointCosts` | Y | Y | |
 
 #### Exchange
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetExchangeStatus` | Y | Y | Y | |
-| `GetExchangeAnnouncements` | Y | Y | Y | |
-| `GetExchangeSchedule` | Y | Y | Y | |
-| `GetUserDataTimestamp` | Y | Y | Y | |
-| `GetSeriesFeeChanges` | Y | Y | Y | |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetExchangeStatus` | Y | Y | Y |
+| `GetExchangeAnnouncements` | Y | Y | Y |
+| `GetExchangeSchedule` | Y | Y | Y |
+| `GetUserDataTimestamp` | Y | Y | Y |
+| `GetSeriesFeeChanges` | Y | Y | Y |
 
 #### Orders
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetOrders` | Y | Y | Y | |
-| `GetOrder` | Y | Y | Y | retry for propagation delay |
-| `CreateOrder` | Y | Y | Y | places at 1c, won't fill |
-| `CancelOrder` | Y | Y | Y | cleans up created order |
-| `AmendOrder` | Y | Y | Y | create -> amend price -> cancel |
-| `DecreaseOrder` | Y | Y | Y | create count=2 -> decrease to 1 -> cancel |
-| `BatchCreateOrders` | Y | Y | Y | batch create 3 -> batch cancel all |
-| `BatchCancelOrders` | Y | Y | Y | same test as batch_create |
-| `GetQueuePositions` | Y | Y | Y | filters by market ticker |
-| `GetQueuePosition` | Y | Y | Y | skips if 404 on DEMO |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetOrders` | Y | Y | Y |
+| `GetOrder` | Y | Y | Y |
+| `CreateOrder` | Y | Y | Y |
+| `CancelOrder` | Y | Y | Y |
+| `AmendOrder` | Y | Y | Y |
+| `DecreaseOrder` | Y | Y | Y |
+| `BatchCreateOrders` | Y | Y | Y |
+| `BatchCancelOrders` | Y | Y | Y |
+| `GetQueuePositions` | Y | Y | Y |
+| `GetQueuePosition` | Y | Y | Y |
+
+#### Event Orders (V2)
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `CreateOrderV2` | Y | Y | |
+| `BatchCreateOrdersV2` | Y | Y | |
+| `BatchCancelOrdersV2` | Y | Y | |
+| `CancelOrderV2` | Y | Y | |
+| `AmendOrderV2` | Y | Y | |
+| `DecreaseOrderV2` | Y | Y | |
 
 #### Portfolio
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetBalance` | Y | Y | Y | |
-| `GetPositions` | Y | Y | Y | |
-| `GetFills` | Y | Y | Y | |
-| `GetSettlements` | Y | Y | Y | |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetBalance` | Y | Y | Y |
+| `GetPositions` | Y | Y | Y |
+| `GetFills` | Y | Y | Y |
+| `GetSettlements` | Y | Y | Y |
+| `GetDeposits` | Y | Y | |
+| `GetWithdrawals` | Y | Y | |
+| `GetPortfolioRestingOrderTotalValue` | Y | Y | |
+
+#### Subaccounts
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `CreateSubaccount` | Y | Y | |
+| `GetSubaccountBalances` | Y | Y | |
+| `GetSubaccountNetting` | Y | Y | |
+| `UpdateSubaccountNetting` | Y | Y | |
+| `ApplySubaccountTransfer` | Y | Y | |
+| `GetSubaccountTransfers` | Y | Y | |
+
+#### Order Groups
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `CreateOrderGroup` | Y | Y | |
+| `GetOrderGroups` | Y | Y | |
+| `GetOrderGroup` | Y | Y | |
+| `DeleteOrderGroup` | Y | Y | |
+| `ResetOrderGroup` | Y | Y | |
+| `TriggerOrderGroup` | Y | Y | |
+| `UpdateOrderGroupLimit` | Y | Y | |
 
 #### Markets
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetMarket` | Y | Y | Y | |
-| `GetMarkets` | Y | Y | Y | |
-| `GetMarketOrderbook` | Y | Y | Y | |
-| `GetMarketOrderbooks` | Y | Y | Y | batch, multiple tickers |
-| `GetTrades` | Y | Y | Y | |
-| `GetMarketCandlesticks` | Y | Y | Y | via series + market ticker |
-| `GetBatchMarketCandlesticks` | Y | Y | Y | |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetMarket` | Y | Y | Y |
+| `GetMarkets` | Y | Y | Y |
+| `GetMarketOrderbook` | Y | Y | Y |
+| `GetMarketOrderbooks` | Y | Y | Y |
+| `GetTrades` | Y | Y | Y |
+| `GetMarketCandlesticks` | Y | Y | Y |
+| `GetBatchMarketCandlesticks` | Y | Y | Y |
 
 #### Events
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetEvent` | Y | Y | Y | |
-| `GetEvents` | Y | Y | Y | |
-| `GetEventMetadata` | Y | Y | Y | |
-| `GetMultivariateEvents` | Y | Y | Y | |
-| `GetEventCandlesticks` | Y | Y | Y | via series + event ticker |
-| `GetEventForecastPercentileHistory` | Y | Y | Y | skips if 400 on DEMO |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetEvent` | Y | Y | Y |
+| `GetEvents` | Y | Y | Y |
+| `GetEventMetadata` | Y | Y | Y |
+| `GetMultivariateEvents` | Y | Y | Y |
+| `GetEventCandlesticks` | Y | Y | Y |
+| `GetEventForecastPercentileHistory` | Y | Y | Y |
+| `GetEventFeeChanges` | Y | Y | |
 
 #### Series
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetSeries` | Y | Y | Y | |
-| `GetSeriesList` | Y | Y | Y | |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetSeries` | Y | Y | Y |
+| `GetSeriesList` | Y | Y | Y |
 
 #### Search
 
-| Method | Impl | Unit | Integration | Notes |
-|---|:---:|:---:|:---:|---|
-| `GetTagsByCategories` | Y | Y | Y | |
-| `GetFiltersBySport` | Y | Y | Y | |
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetTagsByCategories` | Y | Y | Y |
+| `GetFiltersBySport` | Y | Y | Y |
+
+#### Communications (RFQs & Quotes)
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetCommunicationsID` | Y | Y | |
+| `CreateRFQ` | Y | Y | |
+| `GetRFQs` | Y | Y | |
+| `GetRFQ` | Y | Y | |
+| `DeleteRFQ` | Y | Y | |
+| `CreateQuote` | Y | Y | |
+| `GetQuotes` | Y | Y | |
+| `GetQuote` | Y | Y | |
+| `DeleteQuote` | Y | Y | |
+| `AcceptQuote` | Y | Y | |
+| `ConfirmQuote` | Y | Y | |
+
+#### API Keys
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetAPIKeys` | Y | Y | |
+| `CreateAPIKey` | Y | Y | |
+| `GenerateAPIKey` | Y | Y | |
+| `DeleteAPIKey` | Y | Y | |
+
+#### Historical
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetHistoricalCutoff` | Y | Y | |
+| `GetHistoricalFills` | Y | Y | |
+| `GetHistoricalOrders` | Y | Y | |
+| `GetHistoricalTrades` | Y | Y | |
+| `GetHistoricalMarkets` | Y | Y | |
+| `GetHistoricalMarket` | Y | Y | |
+| `GetHistoricalMarketCandlesticks` | Y | Y | |
+
+#### Incentive Programs
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetIncentivePrograms` | Y | Y | |
+
+#### Live Data
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetLiveDataBatch` | Y | Y | |
+| `GetLiveDataByMilestone` | Y | Y | |
+| `GetMilestoneGameStats` | Y | Y | |
+| `GetLiveData` | Y | Y | |
+
+#### Milestones
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetMilestones` | Y | Y | |
+| `GetMilestone` | Y | Y | |
+
+#### Multivariate Event Collections
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetMultivariateEventCollections` | Y | Y | |
+| `GetMultivariateEventCollection` | Y | Y | |
+| `GetMultivariateEventCollectionLookupHistory` | Y | Y | |
+| `CreateMarketInMultivariateEventCollection` | Y | Y | |
+| `LookupTickersForMarketInMultivariateEventCollection` | Y | Y | |
+
+#### Structured Targets
+
+| Method | Impl | Unit | Integration |
+|---|:---:|:---:|:---:|
+| `GetStructuredTargets` | Y | Y | |
+| `GetStructuredTarget` | Y | Y | |
 
 ### WebSocket
 
@@ -231,7 +346,7 @@ Every implemented endpoint has a unit test (mock HTTP server). Integration tests
 | `fill` | Y | `fill` | Y | Y | Y | subscription-only in integration |
 | `market_positions` | Y | `market_position` | Y | Y | Y | subscription-only in integration |
 | `user_orders` | Y | `user_order` | Y | Y | Y | subscription-only in integration |
-| `market_lifecycle_v2` | | `market_lifecycle_v2`, `event_lifecycle` | Y | Y | Y | subscription-only in integration |
+| `market_lifecycle_v2` | | `market_lifecycle_v2`, `event_lifecycle`, `event_fee_update` | Y | Y | Y | subscription-only in integration |
 | `multivariate_market_lifecycle` | | `multivariate_market_lifecycle`, `event_lifecycle` | Y | Y | Y | subscription-only in integration |
 | `multivariate` | | `multivariate_lookup` | Y | Y | Y | subscription-only in integration |
 | `communications` | Y | `rfq_created`, `rfq_deleted`, `quote_created`, `quote_accepted`, `quote_executed` | Y | Y | Y | subscription-only in integration |
@@ -317,14 +432,26 @@ gokalshi/
     enums.go           Typed string enums
 
   Domains (methods + params + responses per file):
-    account.go         Account API limits
-    events.go          Events, metadata, candlesticks, forecasts
+    account.go         Account API limits, endpoint costs
+    api_keys.go        API key management
+    communications.go  RFQs, quotes, communications ID
+    event_orders.go    V2 event orders (create, batch, amend, decrease)
+    events.go          Events, metadata, candlesticks, forecasts, fee changes
     exchange.go        Exchange status, schedule, announcements
+    historical.go      Historical data (cutoff, fills, orders, trades, markets)
+    incentive.go       Incentive programs
+    live_data.go       Live data, game stats
     markets.go         Markets, orderbooks, trades, candlesticks
+    milestones.go      Milestones
+    mve_collections.go Multivariate event collections
+    order_groups.go    Order group lifecycle
     orders.go          Orders CRUD, batch, amend, decrease, queue
-    portfolio.go       Balance, positions, fills, settlements
+    portfolio.go       Balance, positions, fills, settlements, deposits, withdrawals
     search.go          Tags, filters
     series.go          Series, fee changes
+    structured_targets.go Structured targets
+    subaccounts.go     Subaccount management
+    summary.go         Portfolio resting order total value
 
   WebSocket:
     ws_types.go        ChannelState, WSMessage, MsgTypeToChannel
