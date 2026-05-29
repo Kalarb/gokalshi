@@ -165,6 +165,10 @@ jobs:
             echo "No changes to commit"
           else
             git commit -m "docs: update API coverage report"
-            git pull --rebase
+            if ! git pull --rebase; then
+              echo "Rebase conflict — skipping push (next run will retry)"
+              git rebase --abort
+              exit 0
+            fi
             git push
           fi
