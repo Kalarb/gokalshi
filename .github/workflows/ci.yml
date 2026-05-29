@@ -49,6 +49,11 @@ jobs:
     timeout-minutes: 2
     outputs:
       active: ${{ steps.gate.outputs.active }}
+    env:
+      KALSHI_ENVIRONMENT: DEMO
+      KALSHI_DEMO_API_KEY_ID: ${{ secrets.KALSHI_DEMO_API_KEY_ID }}
+      KALSHI_DEMO_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_DEMO_PRIVATE_KEY_PEM }}
+      KALSHI_DEMO_PRIVATE_KEY_FILE: /tmp/demo-key.pem
     steps:
       - uses: actions/checkout@v6
 
@@ -64,9 +69,6 @@ jobs:
           KALSHI_DEMO_API_KEY_ID=$KALSHI_DEMO_API_KEY_ID
           KALSHI_DEMO_PRIVATE_KEY_FILE=/tmp/demo-key.pem
           EOF
-        env:
-          KALSHI_DEMO_API_KEY_ID: ${{ secrets.KALSHI_DEMO_API_KEY_ID }}
-          KALSHI_DEMO_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_DEMO_PRIVATE_KEY_PEM }}
 
       - name: Check exchange status
         id: gate
@@ -80,6 +82,11 @@ jobs:
     if: needs.exchange-gate.outputs.active == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      KALSHI_ENVIRONMENT: DEMO
+      KALSHI_DEMO_API_KEY_ID: ${{ secrets.KALSHI_DEMO_API_KEY_ID }}
+      KALSHI_DEMO_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_DEMO_PRIVATE_KEY_PEM }}
+      KALSHI_DEMO_PRIVATE_KEY_FILE: /tmp/demo-key.pem
     steps:
       - uses: actions/checkout@v6
 
@@ -95,9 +102,6 @@ jobs:
           KALSHI_DEMO_API_KEY_ID=$KALSHI_DEMO_API_KEY_ID
           KALSHI_DEMO_PRIVATE_KEY_FILE=/tmp/demo-key.pem
           EOF
-        env:
-          KALSHI_DEMO_API_KEY_ID: ${{ secrets.KALSHI_DEMO_API_KEY_ID }}
-          KALSHI_DEMO_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_DEMO_PRIVATE_KEY_PEM }}
 
       - name: Run HTTP integration tests
         run: go test -tags integration -run TestHTTPIntegration -v -count=1 -timeout 120s
@@ -106,6 +110,10 @@ jobs:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      KALSHI_PROD_READ_ONLY_API_KEY_ID: ${{ secrets.KALSHI_PROD_READ_ONLY_API_KEY_ID }}
+      KALSHI_PROD_READ_ONLY_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_PROD_READ_ONLY_PRIVATE_KEY_PEM }}
+      KALSHI_PROD_READ_ONLY_PRIVATE_KEY_FILE: /tmp/prod-ro-key.pem
     steps:
       - uses: actions/checkout@v6
 
@@ -121,9 +129,6 @@ jobs:
           KALSHI_PROD_READ_ONLY_API_KEY_ID=$KALSHI_PROD_READ_ONLY_API_KEY_ID
           KALSHI_PROD_READ_ONLY_PRIVATE_KEY_FILE=/tmp/prod-ro-key.pem
           EOF
-        env:
-          KALSHI_PROD_READ_ONLY_API_KEY_ID: ${{ secrets.KALSHI_PROD_READ_ONLY_API_KEY_ID }}
-          KALSHI_PROD_READ_ONLY_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_PROD_READ_ONLY_PRIVATE_KEY_PEM }}
 
       - name: Run WS integration tests
         run: go test -tags integration -run TestWSIntegration -v -count=1 -timeout 120s
