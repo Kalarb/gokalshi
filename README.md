@@ -36,7 +36,10 @@ func main() {
         log.Fatal(err)
     }
 
-    client := gokalshi.NewClient(cfg)
+    client, err := gokalshi.NewClient(cfg)
+    if err != nil {
+        log.Fatal(err)
+    }
     defer client.Close()
 
     ctx := context.Background()

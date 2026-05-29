@@ -141,6 +141,7 @@ type HTTPClient interface {
 	ConfirmQuote(ctx context.Context, quoteID string) error
 
 	// Lifecycle
+	ConfigureRateLimits(ctx context.Context) error
 	Close()
 }
 

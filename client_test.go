@@ -53,7 +53,8 @@ func testClientConfig(t *testing.T, serverURL string) *ClientConfig {
 	}
 }
 
-// newTestClient creates a Client with a fast rate limiter and no retry delay.
+// newTestClient creates a Client with a fast rate limiter, no retry delay,
+// and auto-config disabled (WithRateLimiter skips the startup API calls).
 func newTestClient(t *testing.T, serverURL string) *Client {
 	t.Helper()
 	cfg := testClientConfig(t, serverURL)
@@ -61,7 +62,9 @@ func newTestClient(t *testing.T, serverURL string) *Client {
 		ReadRate: 100, WriteRate: 100,
 		WindowSize: 1.0, SafetyPadding: 0,
 	})
-	return NewClient(cfg, WithRateLimiter(limiter), WithBaseDelay(1*time.Millisecond))
+	c, err := NewClient(cfg, WithRateLimiter(limiter), WithBaseDelay(1*time.Millisecond))
+	require.NoError(t, err)
+	return c
 }
 
 // ---------------------------------------------------------------------------
@@ -245,19 +248,25 @@ func TestClient_EmptyQueryParamsSkipped(t *testing.T) {
 func TestWithHTTPClient(t *testing.T) {
 	custom := &http.Client{Timeout: 99 * time.Second}
 	cfg := testClientConfig(t, "http://localhost")
-	c := NewClient(cfg, WithHTTPClient(custom))
+	limiter := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+	c, err := NewClient(cfg, WithHTTPClient(custom), WithRateLimiter(limiter))
+	require.NoError(t, err)
 	assert.Equal(t, custom, c.httpClient)
 }
 
 func TestWithMaxRetries(t *testing.T) {
 	cfg := testClientConfig(t, "http://localhost")
-	c := NewClient(cfg, WithMaxRetries(10))
+	limiter := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+	c, err := NewClient(cfg, WithMaxRetries(10), WithRateLimiter(limiter))
+	require.NoError(t, err)
 	assert.Equal(t, 10, c.maxRetries)
 }
 
 func TestClient_Close(t *testing.T) {
 	cfg := testClientConfig(t, "http://localhost")
-	c := NewClient(cfg)
+	limiter := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+	c, err := NewClient(cfg, WithRateLimiter(limiter))
+	require.NoError(t, err)
 	c.Close()
 }
 

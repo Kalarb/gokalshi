@@ -20,7 +20,12 @@ func main() {
 		os.Exit(0)
 	}
 
-	client := gokalshi.NewClient(cfg)
+	client, err := gokalshi.NewClient(cfg)
+	if err != nil {
+		fmt.Println("active=false")
+		log.Printf("failed to create client: %v", err)
+		os.Exit(0)
+	}
 	defer client.Close()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)

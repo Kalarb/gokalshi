@@ -62,7 +62,10 @@ func integrationHTTPClient(t *testing.T) *Client {
 		HTTPBaseURL: demoHTTPBase,
 		WSBaseURL:   demoWSBase,
 	}
-	c := NewClient(cfg)
+	c, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
 	t.Cleanup(c.Close)
 	return c
 }
@@ -81,7 +84,10 @@ func integrationProdHTTPClient(t *testing.T) *Client {
 		HTTPBaseURL: prodHTTPBase,
 		WSBaseURL:   prodWSBase,
 	}
-	c := NewClient(cfg)
+	c, err := NewClient(cfg)
+	if err != nil {
+		t.Fatalf("create client: %v", err)
+	}
 	t.Cleanup(c.Close)
 	return c
 }
