@@ -13,6 +13,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -53,7 +54,8 @@ func testClientConfig(t *testing.T, serverURL string) *ClientConfig {
 	}
 }
 
-// newTestClient creates a Client with a fast rate limiter and no retry delay.
+// newTestClient creates a Client with a fast rate limiter, no retry delay,
+// and auto-config disabled (WithRateLimiter skips the startup API calls).
 func newTestClient(t *testing.T, serverURL string) *Client {
 	t.Helper()
 	cfg := testClientConfig(t, serverURL)
@@ -61,7 +63,9 @@ func newTestClient(t *testing.T, serverURL string) *Client {
 		ReadRate: 100, WriteRate: 100,
 		WindowSize: 1.0, SafetyPadding: 0,
 	})
-	return NewClient(cfg, WithRateLimiter(limiter), WithBaseDelay(1*time.Millisecond))
+	c, err := NewClient(cfg, WithRateLimiter(limiter), WithBaseDelay(1*time.Millisecond))
+	require.NoError(t, err)
+	return c
 }
 
 // ---------------------------------------------------------------------------
@@ -245,19 +249,25 @@ func TestClient_EmptyQueryParamsSkipped(t *testing.T) {
 func TestWithHTTPClient(t *testing.T) {
 	custom := &http.Client{Timeout: 99 * time.Second}
 	cfg := testClientConfig(t, "http://localhost")
-	c := NewClient(cfg, WithHTTPClient(custom))
+	limiter := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+	c, err := NewClient(cfg, WithHTTPClient(custom), WithRateLimiter(limiter))
+	require.NoError(t, err)
 	assert.Equal(t, custom, c.httpClient)
 }
 
 func TestWithMaxRetries(t *testing.T) {
 	cfg := testClientConfig(t, "http://localhost")
-	c := NewClient(cfg, WithMaxRetries(10))
+	limiter := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+	c, err := NewClient(cfg, WithMaxRetries(10), WithRateLimiter(limiter))
+	require.NoError(t, err)
 	assert.Equal(t, 10, c.maxRetries)
 }
 
 func TestClient_Close(t *testing.T) {
 	cfg := testClientConfig(t, "http://localhost")
-	c := NewClient(cfg)
+	limiter := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+	c, err := NewClient(cfg, WithRateLimiter(limiter))
+	require.NoError(t, err)
 	c.Close()
 }
 
@@ -1619,4 +1629,116 @@ func TestGetStructuredTarget(t *testing.T) {
 	c := newTestClient(t, srv.URL)
 	_, err := c.GetStructuredTarget(context.Background(), "st-1")
 	require.NoError(t, err)
+}
+
+// ---------------------------------------------------------------------------
+// resolveCosts tests
+// ---------------------------------------------------------------------------
+
+func TestResolveCosts_ParameterizedPath(t *testing.T) {
+	c := &Client{
+		costPatterns: []endpointCostPattern{
+			{
+				method:  "DELETE",
+				pattern: regexp.MustCompile(`^/trade-api/v2/portfolio/orders/[^/]+$`),
+				cost:    20,
+			},
+			{
+				method:  "GET",
+				pattern: regexp.MustCompile(`^/trade-api/v2/markets/[^/]+$`),
+				cost:    5,
+			},
+		},
+		defaultCost: 10,
+	}
+
+	// Parameterized path should match the pattern
+	read, write := c.resolveCosts("DELETE", "/trade-api/v2/portfolio/orders/abc-123-def", 1, 1)
+	assert.Equal(t, 0.0, read, "DELETE should have zero read cost")
+	assert.Equal(t, 20.0, write, "DELETE should use matched pattern cost")
+
+	read, write = c.resolveCosts("GET", "/trade-api/v2/markets/KXBTC-100K", 1, 1)
+	assert.Equal(t, 5.0, read, "GET should use matched pattern cost")
+	assert.Equal(t, 0.0, write, "GET should have zero write cost")
+}
+
+func TestResolveCosts_DefaultCost(t *testing.T) {
+	c := &Client{
+		costPatterns: []endpointCostPattern{
+			{
+				method:  "GET",
+				pattern: regexp.MustCompile(`^/trade-api/v2/markets$`),
+				cost:    5,
+			},
+		},
+		defaultCost: 10,
+	}
+
+	// Unmatched path falls back to defaultCost
+	read, write := c.resolveCosts("GET", "/trade-api/v2/some/unknown/path", 1, 1)
+	assert.Equal(t, 10.0, read)
+	assert.Equal(t, 0.0, write)
+
+	read, write = c.resolveCosts("POST", "/trade-api/v2/some/unknown/path", 1, 1)
+	assert.Equal(t, 0.0, read)
+	assert.Equal(t, 10.0, write)
+}
+
+func TestResolveCosts_NilPatterns(t *testing.T) {
+	c := &Client{} // no costPatterns, no defaultCost
+
+	// Should passthrough caller defaults
+	read, write := c.resolveCosts("GET", "/trade-api/v2/exchange/status", 0.5, 0)
+	assert.Equal(t, 0.5, read)
+	assert.Equal(t, 0.0, write)
+}
+
+func TestNewClient_AutoConfigFailure(t *testing.T) {
+	// Mock server that returns 500 for all requests
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprint(w, `{"error":"server error"}`)
+	}))
+	defer srv.Close()
+
+	cfg := testClientConfig(t, srv.URL)
+	c, err := NewClient(cfg)
+
+	// Should succeed despite API failure — non-fatal fallback to defaults
+	require.NoError(t, err)
+	require.NotNil(t, c)
+	assert.NotNil(t, c.limiter, "should have default limiter")
+}
+
+func TestConfigureRateLimits_Concurrent(t *testing.T) {
+	var callCount atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		callCount.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case strings.Contains(r.URL.Path, "/limits"):
+			fmt.Fprint(w, `{"read":{"refill_rate":20,"bucket_capacity":20},"write":{"refill_rate":10,"bucket_capacity":10},"usage_tier":"standard"}`)
+		case strings.Contains(r.URL.Path, "/endpoint_costs"):
+			fmt.Fprint(w, `{"default_cost":10,"endpoint_costs":[{"method":"GET","path":"/markets","cost":5}]}`)
+		default:
+			fmt.Fprint(w, `{"status":"open"}`)
+		}
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+
+	// Run ConfigureRateLimits and concurrent do() requests in parallel
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for i := 0; i < 10; i++ {
+			_ = c.ConfigureRateLimits(context.Background())
+		}
+	}()
+
+	for i := 0; i < 10; i++ {
+		_, _ = c.GetExchangeStatus(context.Background())
+	}
+	<-done
 }

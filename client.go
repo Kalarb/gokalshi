@@ -6,20 +6,39 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
+	"regexp"
+	"strings"
+	"sync"
 	"time"
 )
 
+// endpointCostPattern maps an HTTP method + path pattern to a token cost.
+// Patterns use regex to match parameterized paths (e.g. /orders/{order_id}).
+type endpointCostPattern struct {
+	method  string
+	pattern *regexp.Regexp
+	cost    float64
+}
+
 // Client is the Kalshi HTTP API client.
 // It wraps net/http with authentication, rate limiting, and retry logic.
+// On creation, it fetches account rate limits and endpoint costs from the
+// API to configure the rate limiter automatically.
 type Client struct {
-	httpClient  *http.Client
-	baseURL     string
-	credentials *Credentials
-	limiter     *ReadWriteTokenBucket
-	maxRetries  int
-	baseDelay   time.Duration
+	httpClient     *http.Client
+	baseURL        string
+	credentials    *Credentials
+	maxRetries     int
+	baseDelay      time.Duration
+	skipAutoConfig bool
+
+	mu           sync.RWMutex           // guards limiter, costPatterns, defaultCost
+	limiter      *ReadWriteTokenBucket
+	costPatterns []endpointCostPattern  // nil = use caller defaults
+	defaultCost  float64                // fallback cost when no pattern matches; 0 = use caller defaults
 }
 
 // ClientOption configures a Client.
@@ -40,13 +59,20 @@ func WithBaseDelay(d time.Duration) ClientOption {
 	return func(cl *Client) { cl.baseDelay = d }
 }
 
-// WithRateLimiter sets a custom rate limiter.
+// WithRateLimiter sets a custom rate limiter and disables auto-configuration.
+// Use this to opt out of the automatic rate limit fetch at startup.
 func WithRateLimiter(l *ReadWriteTokenBucket) ClientOption {
-	return func(cl *Client) { cl.limiter = l }
+	return func(cl *Client) {
+		cl.limiter = l
+		cl.skipAutoConfig = true
+	}
 }
 
 // NewClient creates a new Kalshi HTTP client from a ClientConfig.
-func NewClient(cfg *ClientConfig, opts ...ClientOption) *Client {
+// It fetches account rate limits and endpoint costs from the API to
+// configure the rate limiter automatically. To skip auto-configuration,
+// pass WithRateLimiter with a custom limiter.
+func NewClient(cfg *ClientConfig, opts ...ClientOption) (*Client, error) {
 	c := &Client{
 		httpClient:  &http.Client{Timeout: 30 * time.Second},
 		baseURL:     cfg.HTTPBaseURL,
@@ -58,7 +84,17 @@ func NewClient(cfg *ClientConfig, opts ...ClientOption) *Client {
 	for _, opt := range opts {
 		opt(c)
 	}
-	return c
+
+	if !c.skipAutoConfig {
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := c.ConfigureRateLimits(ctx); err != nil {
+			log.Printf("gokalshi: auto-configure rate limits failed (using defaults): %v", err)
+		}
+	}
+
+	return c, nil
 }
 
 // Close releases resources held by the client.
@@ -66,9 +102,92 @@ func (c *Client) Close() {
 	c.httpClient.CloseIdleConnections()
 }
 
+// paramRe matches {param} placeholders in API paths.
+var paramRe = regexp.MustCompile(`\{[^}]+\}`)
+
+// ConfigureRateLimits fetches account API limits and endpoint costs from the
+// Kalshi API and configures the client's rate limiter and cost map accordingly.
+// Called automatically during NewClient. Can be called again to refresh.
+// Safe for concurrent use — holds no lock during API calls, applies changes atomically.
+func (c *Client) ConfigureRateLimits(ctx context.Context) error {
+	limits, err := c.GetAccountAPILimits(ctx)
+	if err != nil {
+		return fmt.Errorf("fetch account limits: %w", err)
+	}
+
+	newLimiter := NewReadWriteTokenBucket(TokenBucketConfig{
+		ReadRate:      float64(limits.Read.RefillRate),
+		WriteRate:     float64(limits.Write.RefillRate),
+		WindowSize:    1.0,
+		SafetyPadding: 0.1,
+	})
+
+	endpointCosts, err := c.GetAccountEndpointCosts(ctx)
+	if err != nil {
+		return fmt.Errorf("fetch endpoint costs: %w", err)
+	}
+
+	var patterns []endpointCostPattern
+	for _, ec := range endpointCosts.EndpointCosts {
+		path := ec.Path
+		if !strings.HasPrefix(path, "/trade-api") {
+			path = "/trade-api/v2" + path
+		}
+		regexStr := regexp.QuoteMeta(path)
+		regexStr = paramRe.ReplaceAllString(regexStr, `[^/]+`)
+		patterns = append(patterns, endpointCostPattern{
+			method:  strings.ToUpper(ec.Method),
+			pattern: regexp.MustCompile("^" + regexStr + "$"),
+			cost:    float64(ec.Cost),
+		})
+	}
+
+	c.mu.Lock()
+	c.limiter = newLimiter
+	c.costPatterns = patterns
+	c.defaultCost = float64(endpointCosts.DefaultCost)
+	c.mu.Unlock()
+
+	return nil
+}
+
+// resolveCosts returns the effective read/write costs for a request.
+// If a cost pattern matches, it overrides the caller's values.
+// Must be called with c.mu held for reading (or from a non-concurrent context).
+func (c *Client) resolveCosts(method, path string, readCost, writeCost float64) (float64, float64) {
+	if c.costPatterns == nil {
+		return readCost, writeCost
+	}
+	var cost float64
+	matched := false
+	for _, p := range c.costPatterns {
+		if p.method == method && p.pattern.MatchString(path) {
+			cost = p.cost
+			matched = true
+			break
+		}
+	}
+	if !matched {
+		if c.defaultCost > 0 {
+			cost = c.defaultCost
+		} else {
+			return readCost, writeCost
+		}
+	}
+	if method == http.MethodGet {
+		return cost, 0
+	}
+	return 0, cost
+}
+
 // do executes an HTTP request with rate limiting, auth headers, and 429 retry.
 func (c *Client) do(ctx context.Context, method, path string, readCost, writeCost float64, body any, params map[string]string) (json.RawMessage, error) {
-	if err := c.limiter.Acquire(ctx, readCost, writeCost); err != nil {
+	c.mu.RLock()
+	readCost, writeCost = c.resolveCosts(method, path, readCost, writeCost)
+	limiter := c.limiter
+	c.mu.RUnlock()
+
+	if err := limiter.Acquire(ctx, readCost, writeCost); err != nil {
 		return nil, fmt.Errorf("rate limit acquire: %w", err)
 	}
 
