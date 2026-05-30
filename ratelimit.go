@@ -65,7 +65,11 @@ func (cfg TokenBucketConfig) writeCap() float64 {
 }
 
 // NewReadWriteTokenBucket creates a new rate limiter with the given config.
+// Panics if ReadRate or WriteRate is not positive.
 func NewReadWriteTokenBucket(cfg TokenBucketConfig) *ReadWriteTokenBucket {
+	if cfg.ReadRate <= 0 || cfg.WriteRate <= 0 {
+		panic("gokalshi: ReadRate and WriteRate must be positive")
+	}
 	b := &ReadWriteTokenBucket{
 		cfg:         cfg,
 		readTokens:  cfg.readCap(),

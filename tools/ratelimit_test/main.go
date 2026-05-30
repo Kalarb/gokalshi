@@ -211,8 +211,8 @@ func printHeader(tier tierInfo, costs endpointCost) {
 // Phase 1: Sequential (single goroutine)
 // ---------------------------------------------------------------------------
 
-func seqBurstRead(ctx context.Context, client *gokalshi.Client, count int) result {
-	var r result
+func seqBurstRead(ctx context.Context, client *gokalshi.Client, count int) *result {
+	r := &result{}
 	start := time.Now()
 	for i := 0; i < count; i++ {
 		_, err := client.GetBalance(ctx)
@@ -222,8 +222,8 @@ func seqBurstRead(ctx context.Context, client *gokalshi.Client, count int) resul
 	return r
 }
 
-func seqSustainedRead(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) result {
-	var r result
+func seqSustainedRead(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) *result {
+	r := &result{}
 	interval := time.Duration(float64(time.Second) / rps)
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
@@ -239,8 +239,8 @@ func seqSustainedRead(ctx context.Context, client *gokalshi.Client, rps float64,
 	}
 }
 
-func seqBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (result, []string) {
-	var r result
+func seqBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (*result, []string) {
+	r := &result{}
 	var ids []string
 	start := time.Now()
 	for i := 0; i < count; i++ {
@@ -257,8 +257,8 @@ func seqBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (res
 	return r, ids
 }
 
-func seqSustainedWrite(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) (result, []string) {
-	var r result
+func seqSustainedWrite(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) (*result, []string) {
+	r := &result{}
 	var ids []string
 	interval := time.Duration(float64(time.Second) / rps)
 	ticker := time.NewTicker(interval)
@@ -285,8 +285,8 @@ func seqSustainedWrite(ctx context.Context, client *gokalshi.Client, rps float64
 // Phase 2: Concurrent (goroutine pool)
 // ---------------------------------------------------------------------------
 
-func concBurstRead(ctx context.Context, client *gokalshi.Client, count int) result {
-	var r result
+func concBurstRead(ctx context.Context, client *gokalshi.Client, count int) *result {
+	r := &result{}
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, concurrency)
 	start := time.Now()
@@ -306,8 +306,8 @@ func concBurstRead(ctx context.Context, client *gokalshi.Client, count int) resu
 	return r
 }
 
-func concSustainedRead(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) result {
-	var r result
+func concSustainedRead(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) *result {
+	r := &result{}
 	var wg sync.WaitGroup
 	sem := make(chan struct{}, concurrency)
 	interval := time.Duration(float64(time.Second) / rps)
@@ -333,8 +333,8 @@ func concSustainedRead(ctx context.Context, client *gokalshi.Client, rps float64
 	}
 }
 
-func concBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (result, []string) {
-	var r result
+func concBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (*result, []string) {
+	r := &result{}
 	var ids []string
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -364,8 +364,8 @@ func concBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (re
 	return r, ids
 }
 
-func concSustainedWrite(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) (result, []string) {
-	var r result
+func concSustainedWrite(ctx context.Context, client *gokalshi.Client, rps float64, dur time.Duration) (*result, []string) {
+	r := &result{}
 	var ids []string
 	var mu sync.Mutex
 	var wg sync.WaitGroup
@@ -480,7 +480,7 @@ func runMixedTest(ctx context.Context, client *gokalshi.Client, tier tierInfo, c
 	fmt.Println("--- Test 3: Mixed Read + Write (Concurrent) ---")
 	fmt.Println("Exhaust write bucket while reads at 50% read rate (buckets should be independent)")
 
-	var readR, writeR result
+	readR, writeR := &result{}, &result{}
 	var orderIDs []string
 	var idsMu sync.Mutex
 
@@ -578,7 +578,7 @@ func runBatchTest(ctx context.Context, client *gokalshi.Client, tier tierInfo, c
 
 		waitRefill()
 
-		var r result
+		r := &result{}
 		var ids []string
 		var mu sync.Mutex
 		var wg sync.WaitGroup
@@ -631,41 +631,59 @@ func runBatchTest(ctx context.Context, client *gokalshi.Client, tier tierInfo, c
 // ---------------------------------------------------------------------------
 
 func runClientLimiterTest(ctx context.Context, cfg *gokalshi.ClientConfig, tier tierInfo, costs endpointCost) {
-	fmt.Println("--- Test 5: Client-Side Limiter (auto-configured) ---")
+	fmt.Println("--- Test 5: Client-Side Limiter Stress Test (auto-configured) ---")
 	fmt.Println("Uses a client with real auto-configured rate limits (no bypass)")
-	fmt.Println("Sustained load at 100% budget — expects 0 429s")
+	fmt.Println("Escalating demand at 100%, 200%, 300% of budget — expects 0 429s at every level")
 
-	// Create a fresh client with auto-configured rate limits (default behavior).
 	limiterClient, err := gokalshi.NewClient(cfg)
 	if err != nil {
 		log.Fatalf("create limiter client: %v", err)
 	}
 	defer limiterClient.Close()
 
-	readRPS := float64(tier.ReadRate) / costs.ReadCost
-	writeRPS := float64(tier.WriteRate) / costs.WriteCost
+	baseReadRPS := float64(tier.ReadRate) / costs.ReadCost
+	baseWriteRPS := float64(tier.WriteRate) / costs.WriteCost
+	var allIDs []string
+	passed := true
 
-	fmt.Printf("\n  Read sustained at 100%% budget (%.0f req/sec, %s)\n", readRPS, sustainedDur)
-	waitRefill()
-	readR := concSustainedRead(ctx, limiterClient, readRPS, sustainedDur)
-	printResult("Read (limiter-gated)", readR, 0)
-	if readR.rate429.Load() == 0 {
-		fmt.Println("      PASS: 0 read 429s")
-	} else {
-		fmt.Printf("      FAIL: %d read 429s — client limiter too permissive\n", readR.rate429.Load())
+	for _, mult := range []float64{1.0, 2.0, 3.0} {
+		pct := int(mult * 100)
+		readRPS := baseReadRPS * mult
+		writeRPS := baseWriteRPS * mult
+
+		fmt.Printf("\n  === %d%% budget ===\n", pct)
+
+		fmt.Printf("  Read at %.0f req/sec (%.0fx budget, %s)\n", readRPS, mult, sustainedDur)
+		waitRefill()
+		readR := concSustainedRead(ctx, limiterClient, readRPS, sustainedDur)
+		printResult(fmt.Sprintf("Read (%dx)", pct), readR, 0)
+		if readR.rate429.Load() == 0 {
+			fmt.Println("      PASS: 0 read 429s")
+		} else {
+			fmt.Printf("      FAIL: %d read 429s — client limiter too permissive\n", readR.rate429.Load())
+			passed = false
+		}
+
+		fmt.Printf("\n  Write at %.0f req/sec (%.0fx budget, %s)\n", writeRPS, mult, sustainedDur)
+		waitRefill()
+		writeR, ids := concSustainedWrite(ctx, limiterClient, writeRPS, sustainedDur)
+		allIDs = append(allIDs, ids...)
+		printResult(fmt.Sprintf("Write (%dx)", pct), writeR, 0)
+		if writeR.rate429.Load() == 0 {
+			fmt.Println("      PASS: 0 write 429s")
+		} else {
+			fmt.Printf("      FAIL: %d write 429s — client limiter too permissive\n", writeR.rate429.Load())
+			passed = false
+		}
 	}
 
-	fmt.Printf("\n  Write sustained at 100%% budget (%.0f req/sec, %s)\n", writeRPS, sustainedDur)
-	waitRefill()
-	writeR, ids := concSustainedWrite(ctx, limiterClient, writeRPS, sustainedDur)
-	printResult("Write (limiter-gated)", writeR, 0)
-	if writeR.rate429.Load() == 0 {
-		fmt.Println("      PASS: 0 write 429s")
+	if passed {
+		fmt.Println("\n  ALL LEVELS PASSED: limiter prevents 429s at 100-300% budget")
 	} else {
-		fmt.Printf("      FAIL: %d write 429s — client limiter too permissive\n", writeR.rate429.Load())
+		fmt.Println("\n  SOME LEVELS FAILED: limiter leaked 429s under stress")
 	}
 
-	cleanupOrders(ctx, limiterClient, ids)
+	cleanupOrders(ctx, limiterClient, allIDs)
 }
 
 // ---------------------------------------------------------------------------
@@ -712,7 +730,7 @@ func is429(err error) bool {
 	return false
 }
 
-func printResult(name string, r result, expected int) {
+func printResult(name string, r *result, expected int) {
 	fmt.Printf("\n    %s:\n", name)
 	fmt.Printf("      Requests sent: %d\n", r.sent.Load())
 	fmt.Printf("      Succeeded:     %d", r.success.Load())

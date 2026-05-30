@@ -308,3 +308,15 @@ func TestCapacityIndependentFromRate(t *testing.T) {
 	assert.Equal(t, 50.0, status.ReadTokens)
 	assert.Equal(t, 25.0, status.WriteTokens)
 }
+
+func TestNewReadWriteTokenBucket_PanicsOnZeroRate(t *testing.T) {
+	assert.Panics(t, func() {
+		NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 0, WriteRate: 1})
+	})
+	assert.Panics(t, func() {
+		NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 1, WriteRate: 0})
+	})
+	assert.Panics(t, func() {
+		NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: -1, WriteRate: 1})
+	})
+}
