@@ -299,12 +299,10 @@ func TestHTTPIntegration_Orders(t *testing.T) {
 	c := integrationHTTPClient(t)
 	ctx := context.Background()
 
-	markets, err := c.GetMarkets(ctx, GetMarketsParams{Status: "open", Limit: 5})
-	require.NoError(t, err)
-	if len(markets.Markets) == 0 {
-		t.Skip("no active markets for order test")
-	}
-	ticker := markets.Markets[0].Ticker
+	// Use a stable, far-future market to avoid flaky "market_closed" errors
+	// from short-lived markets (e.g. MLB games) closing between discovery
+	// and order placement.
+	const ticker = "KXELONMARS-99"
 
 	t.Run("GetOrders", func(t *testing.T) {
 		resp, err := c.GetOrders(ctx, GetOrdersParams{Limit: 5})
@@ -417,7 +415,7 @@ func TestHTTPIntegration_Orders(t *testing.T) {
 
 		var cancelOrders []BatchCancelOrdersRequestOrder
 		for _, entry := range created.Orders {
-			if entry.Order.OrderID != "" {
+			if entry.Order != nil && entry.Order.OrderID != "" {
 				cancelOrders = append(cancelOrders, BatchCancelOrdersRequestOrder{OrderID: entry.Order.OrderID})
 			}
 		}
