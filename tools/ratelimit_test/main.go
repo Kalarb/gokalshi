@@ -8,10 +8,11 @@
 //
 // Usage:
 //
-//	go run ./tools/ratelimit_test               # run all tests
-//	go run ./tools/ratelimit_test -test read    # read-only test
-//	go run ./tools/ratelimit_test -test write   # write-only test
-//	go run ./tools/ratelimit_test -test mixed   # mixed test
+//	go run ./tools/ratelimit_test                 # run all tests
+//	go run ./tools/ratelimit_test -test read     # read-only test
+//	go run ./tools/ratelimit_test -test write    # write-only test
+//	go run ./tools/ratelimit_test -test mixed    # mixed test
+//	go run ./tools/ratelimit_test -test limiter  # client-side limiter prevents 429s
 package main
 
 import (
@@ -140,6 +141,8 @@ func main() {
 		runMixedTest(ctx, client, tier, costs)
 	case "batch":
 		runBatchTest(ctx, client, tier, costs)
+	case "limiter":
+		runClientLimiterTest(ctx, cfg, tier, costs)
 	case "all":
 		runReadTest(ctx, client, tier, costs)
 		fmt.Println()
@@ -148,6 +151,8 @@ func main() {
 		runMixedTest(ctx, client, tier, costs)
 		fmt.Println()
 		runBatchTest(ctx, client, tier, costs)
+		fmt.Println()
+		runClientLimiterTest(ctx, cfg, tier, costs)
 	default:
 		log.Fatalf("unknown test: %s", *testFlag)
 	}
@@ -619,6 +624,48 @@ func runBatchTest(ctx context.Context, client *gokalshi.Client, tier tierInfo, c
 	}
 
 	cleanupOrders(ctx, client, allIDs)
+}
+
+// ---------------------------------------------------------------------------
+// Test 5: Client-side limiter prevents 429s
+// ---------------------------------------------------------------------------
+
+func runClientLimiterTest(ctx context.Context, cfg *gokalshi.ClientConfig, tier tierInfo, costs endpointCost) {
+	fmt.Println("--- Test 5: Client-Side Limiter (auto-configured) ---")
+	fmt.Println("Uses a client with real auto-configured rate limits (no bypass)")
+	fmt.Println("Sustained load at 100% budget — expects 0 429s")
+
+	// Create a fresh client with auto-configured rate limits (default behavior).
+	limiterClient, err := gokalshi.NewClient(cfg)
+	if err != nil {
+		log.Fatalf("create limiter client: %v", err)
+	}
+	defer limiterClient.Close()
+
+	readRPS := float64(tier.ReadRate) / costs.ReadCost
+	writeRPS := float64(tier.WriteRate) / costs.WriteCost
+
+	fmt.Printf("\n  Read sustained at 100%% budget (%.0f req/sec, %s)\n", readRPS, sustainedDur)
+	waitRefill()
+	readR := concSustainedRead(ctx, limiterClient, readRPS, sustainedDur)
+	printResult("Read (limiter-gated)", readR, 0)
+	if readR.rate429.Load() == 0 {
+		fmt.Println("      PASS: 0 read 429s")
+	} else {
+		fmt.Printf("      FAIL: %d read 429s — client limiter too permissive\n", readR.rate429.Load())
+	}
+
+	fmt.Printf("\n  Write sustained at 100%% budget (%.0f req/sec, %s)\n", writeRPS, sustainedDur)
+	waitRefill()
+	writeR, ids := concSustainedWrite(ctx, limiterClient, writeRPS, sustainedDur)
+	printResult("Write (limiter-gated)", writeR, 0)
+	if writeR.rate429.Load() == 0 {
+		fmt.Println("      PASS: 0 write 429s")
+	} else {
+		fmt.Printf("      FAIL: %d write 429s — client limiter too permissive\n", writeR.rate429.Load())
+	}
+
+	cleanupOrders(ctx, limiterClient, ids)
 }
 
 // ---------------------------------------------------------------------------
