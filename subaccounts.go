@@ -12,7 +12,7 @@ import "context"
 //
 // See https://trading-api.readme.io/reference/createsubaccount
 func (c *Client) CreateSubaccount(ctx context.Context) (CreateSubaccountResponse, error) {
-	return postJSON[CreateSubaccountResponse](c, ctx, pathSubaccounts, nil, 1.0)
+	return postJSON[CreateSubaccountResponse](c, ctx, pathSubaccounts, nil, 10.0)
 }
 
 // GetSubaccountBalances — Get All Subaccount Balances
@@ -46,7 +46,7 @@ func (c *Client) GetSubaccountNetting(ctx context.Context) (GetSubaccountNetting
 //
 // See https://trading-api.readme.io/reference/updatesubaccountnetting
 func (c *Client) UpdateSubaccountNetting(ctx context.Context, req UpdateSubaccountNettingRequest) error {
-	_, err := c.put(ctx, pathSubaccounts+"/netting", req, 1.0)
+	_, err := c.put(ctx, pathSubaccounts+"/netting", req, 10.0)
 	return err
 }
 
@@ -59,7 +59,7 @@ func (c *Client) UpdateSubaccountNetting(ctx context.Context, req UpdateSubaccou
 //
 // See https://trading-api.readme.io/reference/applysubaccounttransfer
 func (c *Client) ApplySubaccountTransfer(ctx context.Context, req ApplySubaccountTransferRequest) (ApplySubaccountTransferResponse, error) {
-	return postJSON[ApplySubaccountTransferResponse](c, ctx, pathSubaccounts+"/transfer", req, 1.0)
+	return postJSON[ApplySubaccountTransferResponse](c, ctx, pathSubaccounts+"/transfer", req, 10.0)
 }
 
 // GetSubaccountTransfers — Get Subaccount Transfers

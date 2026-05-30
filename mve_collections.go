@@ -54,7 +54,7 @@ func (c *Client) GetMultivariateEventCollectionLookupHistory(ctx context.Context
 // See https://trading-api.readme.io/reference/createmarketinmultivariateeventcollection
 func (c *Client) CreateMarketInMultivariateEventCollection(ctx context.Context, collectionTicker string, req CreateMarketInMultivariateEventCollectionRequest) (CreateMarketInMultivariateEventCollectionResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathMVECollections, collectionTicker)
-	return postJSON[CreateMarketInMultivariateEventCollectionResponse](c, ctx, path, req, 1.0)
+	return postJSON[CreateMarketInMultivariateEventCollectionResponse](c, ctx, path, req, 10.0)
 }
 
 // LookupTickersForMarketInMultivariateEventCollection — Lookup Tickers For Market In Multivariate Event Collection
@@ -69,7 +69,7 @@ func (c *Client) CreateMarketInMultivariateEventCollection(ctx context.Context, 
 // See https://trading-api.readme.io/reference/lookuptickersformarketinmultivariateeventcollection
 func (c *Client) LookupTickersForMarketInMultivariateEventCollection(ctx context.Context, collectionTicker string, req LookupTickersForMarketInMultivariateEventCollectionRequest) (LookupTickersForMarketInMultivariateEventCollectionResponse, error) {
 	path := fmt.Sprintf("%s/%s/lookup", pathMVECollections, collectionTicker)
-	return putJSON[LookupTickersForMarketInMultivariateEventCollectionResponse](c, ctx, path, req, 1.0)
+	return putJSON[LookupTickersForMarketInMultivariateEventCollectionResponse](c, ctx, path, req, 10.0)
 }
 
 // GetMultivariateEventCollectionsParams are query parameters for GetMultivariateEventCollections.

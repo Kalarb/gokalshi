@@ -29,7 +29,7 @@ func (c *Client) GetCommunicationsID(ctx context.Context) (GetCommunicationsIDRe
 //
 // See https://trading-api.readme.io/reference/createrfq
 func (c *Client) CreateRFQ(ctx context.Context, req CreateRFQRequest) (CreateRFQResponse, error) {
-	return postJSON[CreateRFQResponse](c, ctx, pathCommunications+"/rfqs", req, 1.0)
+	return postJSON[CreateRFQResponse](c, ctx, pathCommunications+"/rfqs", req, 10.0)
 }
 
 // GetRFQs — Get RFQs
@@ -64,7 +64,7 @@ func (c *Client) GetRFQ(ctx context.Context, rfqID string) (GetRFQResponse, erro
 // See https://trading-api.readme.io/reference/deleterfq
 func (c *Client) DeleteRFQ(ctx context.Context, rfqID string) error {
 	path := fmt.Sprintf("%s/rfqs/%s", pathCommunications, rfqID)
-	_, err := c.delete(ctx, path, nil, 1.0)
+	_, err := c.delete(ctx, path, nil, 10.0)
 	return err
 }
 
@@ -101,7 +101,7 @@ func (p GetRFQsParams) toMap() map[string]string {
 //
 // See https://trading-api.readme.io/reference/createquote
 func (c *Client) CreateQuote(ctx context.Context, req CreateQuoteRequest) (CreateQuoteResponse, error) {
-	return postJSON[CreateQuoteResponse](c, ctx, pathCommunications+"/quotes", req, 1.0)
+	return postJSON[CreateQuoteResponse](c, ctx, pathCommunications+"/quotes", req, 10.0)
 }
 
 // GetQuotes — Get Quotes
@@ -136,7 +136,7 @@ func (c *Client) GetQuote(ctx context.Context, quoteID string) (GetQuoteResponse
 // See https://trading-api.readme.io/reference/deletequote
 func (c *Client) DeleteQuote(ctx context.Context, quoteID string) error {
 	path := fmt.Sprintf("%s/quotes/%s", pathCommunications, quoteID)
-	_, err := c.delete(ctx, path, nil, 1.0)
+	_, err := c.delete(ctx, path, nil, 10.0)
 	return err
 }
 
@@ -149,7 +149,7 @@ func (c *Client) DeleteQuote(ctx context.Context, quoteID string) error {
 // See https://trading-api.readme.io/reference/acceptquote
 func (c *Client) AcceptQuote(ctx context.Context, quoteID string, req AcceptQuoteRequest) error {
 	path := fmt.Sprintf("%s/quotes/%s/accept", pathCommunications, quoteID)
-	_, err := c.put(ctx, path, req, 1.0)
+	_, err := c.put(ctx, path, req, 10.0)
 	return err
 }
 
@@ -162,7 +162,7 @@ func (c *Client) AcceptQuote(ctx context.Context, quoteID string, req AcceptQuot
 // See https://trading-api.readme.io/reference/confirmquote
 func (c *Client) ConfirmQuote(ctx context.Context, quoteID string) error {
 	path := fmt.Sprintf("%s/quotes/%s/confirm", pathCommunications, quoteID)
-	_, err := c.put(ctx, path, nil, 1.0)
+	_, err := c.put(ctx, path, nil, 10.0)
 	return err
 }
 

@@ -118,6 +118,8 @@ func (c *Client) ConfigureRateLimits(ctx context.Context) error {
 	newLimiter := NewReadWriteTokenBucket(TokenBucketConfig{
 		ReadRate:      float64(limits.Read.RefillRate),
 		WriteRate:     float64(limits.Write.RefillRate),
+		ReadCapacity:  float64(limits.Read.BucketCapacity),
+		WriteCapacity: float64(limits.Write.BucketCapacity),
 		WindowSize:    1.0,
 		SafetyPadding: 0.1,
 	})
@@ -321,11 +323,11 @@ func doJSON[T any](c *Client, ctx context.Context, method, path string, readCost
 // Convenience methods for HTTP verbs.
 
 func (c *Client) get(ctx context.Context, path string, params map[string]string) (json.RawMessage, error) {
-	return c.do(ctx, http.MethodGet, path, 1.0, 0, nil, params)
+	return c.do(ctx, http.MethodGet, path, 10.0, 0, nil, params)
 }
 
 func getJSON[T any](c *Client, ctx context.Context, path string, params map[string]string) (T, error) {
-	return doJSON[T](c, ctx, http.MethodGet, path, 1.0, 0, nil, params)
+	return doJSON[T](c, ctx, http.MethodGet, path, 10.0, 0, nil, params)
 }
 
 func (c *Client) post(ctx context.Context, path string, body any, writeCost float64) (json.RawMessage, error) {

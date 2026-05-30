@@ -15,7 +15,7 @@ import (
 //
 // See https://trading-api.readme.io/reference/createordergroup
 func (c *Client) CreateOrderGroup(ctx context.Context, req CreateOrderGroupRequest) (CreateOrderGroupResponse, error) {
-	return postJSON[CreateOrderGroupResponse](c, ctx, pathOrderGroups+"/create", req, 1.0)
+	return postJSON[CreateOrderGroupResponse](c, ctx, pathOrderGroups+"/create", req, 10.0)
 }
 
 // GetOrderGroups — Get Order Groups
@@ -52,7 +52,7 @@ func (c *Client) GetOrderGroup(ctx context.Context, orderGroupID string, params 
 // See https://trading-api.readme.io/reference/deleteordergroup
 func (c *Client) DeleteOrderGroup(ctx context.Context, orderGroupID string, params DeleteOrderGroupParams) error {
 	path := fmt.Sprintf("%s/%s", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "DELETE", path, 0, 1.0, nil, params.toMap())
+	_, err := c.do(ctx, "DELETE", path, 0, 10.0, nil, params.toMap())
 	return err
 }
 
@@ -66,7 +66,7 @@ func (c *Client) DeleteOrderGroup(ctx context.Context, orderGroupID string, para
 // See https://trading-api.readme.io/reference/resetordergroup
 func (c *Client) ResetOrderGroup(ctx context.Context, orderGroupID string, params OrderGroupActionParams) error {
 	path := fmt.Sprintf("%s/%s/reset", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "PUT", path, 0, 1.0, nil, params.toMap())
+	_, err := c.do(ctx, "PUT", path, 0, 10.0, nil, params.toMap())
 	return err
 }
 
@@ -80,7 +80,7 @@ func (c *Client) ResetOrderGroup(ctx context.Context, orderGroupID string, param
 // See https://trading-api.readme.io/reference/triggerordergroup
 func (c *Client) TriggerOrderGroup(ctx context.Context, orderGroupID string, params OrderGroupActionParams) error {
 	path := fmt.Sprintf("%s/%s/trigger", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "PUT", path, 0, 1.0, nil, params.toMap())
+	_, err := c.do(ctx, "PUT", path, 0, 10.0, nil, params.toMap())
 	return err
 }
 
@@ -95,7 +95,7 @@ func (c *Client) TriggerOrderGroup(ctx context.Context, orderGroupID string, par
 // See https://trading-api.readme.io/reference/updateordergrouplimit
 func (c *Client) UpdateOrderGroupLimit(ctx context.Context, orderGroupID string, req UpdateOrderGroupLimitRequest, params UpdateOrderGroupLimitParams) error {
 	path := fmt.Sprintf("%s/%s/limit", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "PUT", path, 0, 1.0, req, params.toMap())
+	_, err := c.do(ctx, "PUT", path, 0, 10.0, req, params.toMap())
 	return err
 }
 

@@ -218,8 +218,10 @@ func TestConcurrentAcquire(t *testing.T) {
 
 func TestDefaultTokenBucketConfig(t *testing.T) {
 	cfg := DefaultTokenBucketConfig()
-	assert.Equal(t, 20.0, cfg.ReadRate)
-	assert.Equal(t, 10.0, cfg.WriteRate)
+	assert.Equal(t, 200.0, cfg.ReadRate)
+	assert.Equal(t, 100.0, cfg.WriteRate)
+	assert.Equal(t, 200.0, cfg.ReadCapacity)
+	assert.Equal(t, 100.0, cfg.WriteCapacity)
 	assert.Equal(t, 1.0, cfg.WindowSize)
 	assert.Equal(t, 0.1, cfg.SafetyPadding)
 }
