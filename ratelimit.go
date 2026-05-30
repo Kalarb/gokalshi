@@ -11,9 +11,9 @@ import (
 type TokenBucketConfig struct {
 	ReadRate      float64 // read token refill rate (tokens per second)
 	WriteRate     float64 // write token refill rate (tokens per second)
-	ReadCapacity  float64 // max read tokens; 0 = ReadRate * WindowSize
-	WriteCapacity float64 // max write tokens; 0 = WriteRate * WindowSize
-	WindowSize    float64 // sliding window duration in seconds (default: 1.0)
+	ReadCapacity  float64 // max read tokens; 0 = ReadRate
+	WriteCapacity float64 // max write tokens; 0 = WriteRate
+	WindowSize    float64 // Deprecated: retained for API compatibility; ignored by the algorithm.
 	SafetyPadding float64 // extra wait buffer in seconds (default: 0.1)
 }
 
@@ -29,31 +29,23 @@ func DefaultTokenBucketConfig() TokenBucketConfig {
 	}
 }
 
-// tokenRecord stores a single consumption event in the sliding window.
-type tokenRecord struct {
-	timestamp float64
-	cost      float64
-}
-
 // TokenBucketStatus is a read-only snapshot of the bucket state.
 type TokenBucketStatus struct {
-	ReadTokens      float64
-	WriteTokens     float64
-	ReadHistoryLen  int
-	WriteHistoryLen int
+	ReadTokens  float64
+	WriteTokens float64
 }
 
-// ReadWriteTokenBucket implements disjoint read/write sliding-window rate limiting.
+// ReadWriteTokenBucket implements disjoint read/write token bucket rate limiting.
 // A request consumes EITHER read tokens OR write tokens, never both.
+// Tokens refill continuously at the configured rate up to capacity.
 // Goroutine-safe via sync.Mutex.
 type ReadWriteTokenBucket struct {
-	mu           sync.Mutex
-	cfg          TokenBucketConfig
-	readTokens   float64
-	writeTokens  float64
-	readHistory  []tokenRecord
-	writeHistory []tokenRecord
-	clock        func() float64 // injectable for testing; returns monotonic seconds
+	mu          sync.Mutex
+	cfg         TokenBucketConfig
+	readTokens  float64
+	writeTokens float64
+	lastRefill  float64        // timestamp of last refill (monotonic seconds)
+	clock       func() float64 // injectable for testing; returns monotonic seconds
 }
 
 // readCap returns the effective read capacity.
@@ -61,7 +53,7 @@ func (cfg TokenBucketConfig) readCap() float64 {
 	if cfg.ReadCapacity > 0 {
 		return cfg.ReadCapacity
 	}
-	return cfg.ReadRate * cfg.WindowSize
+	return cfg.ReadRate
 }
 
 // writeCap returns the effective write capacity.
@@ -69,17 +61,19 @@ func (cfg TokenBucketConfig) writeCap() float64 {
 	if cfg.WriteCapacity > 0 {
 		return cfg.WriteCapacity
 	}
-	return cfg.WriteRate * cfg.WindowSize
+	return cfg.WriteRate
 }
 
 // NewReadWriteTokenBucket creates a new rate limiter with the given config.
 func NewReadWriteTokenBucket(cfg TokenBucketConfig) *ReadWriteTokenBucket {
-	return &ReadWriteTokenBucket{
+	b := &ReadWriteTokenBucket{
 		cfg:         cfg,
 		readTokens:  cfg.readCap(),
 		writeTokens: cfg.writeCap(),
 		clock:       defaultClock,
 	}
+	b.lastRefill = b.clock()
+	return b
 }
 
 func defaultClock() float64 {
@@ -147,10 +141,8 @@ func (b *ReadWriteTokenBucket) Status() TokenBucketStatus {
 	b.refill()
 
 	return TokenBucketStatus{
-		ReadTokens:      b.readTokens,
-		WriteTokens:     b.writeTokens,
-		ReadHistoryLen:  len(b.readHistory),
-		WriteHistoryLen: len(b.writeHistory),
+		ReadTokens:  b.readTokens,
+		WriteTokens: b.writeTokens,
 	}
 }
 
@@ -169,45 +161,27 @@ func (b *ReadWriteTokenBucket) tryAcquireOrWait(readCost, writeCost float64) tim
 	return b.calculateWaitTime(readCost, writeCost)
 }
 
-// refill expires old entries from the sliding window and restores tokens.
+// refill adds tokens based on elapsed time since last refill, up to capacity.
 // Must be called with mu held.
 func (b *ReadWriteTokenBucket) refill() {
 	now := b.clock()
-	cutoff := now - b.cfg.WindowSize
+	elapsed := now - b.lastRefill
+	if elapsed <= 0 {
+		return
+	}
+	b.lastRefill = now
 
-	b.readTokens, b.readHistory = refillBucket(
-		b.readTokens, b.cfg.readCap(), b.readHistory, cutoff,
-	)
-	b.writeTokens, b.writeHistory = refillBucket(
-		b.writeTokens, b.cfg.writeCap(), b.writeHistory, cutoff,
-	)
-}
-
-// refillBucket expires old records and restores their token costs.
-func refillBucket(tokens, maxTokens float64, history []tokenRecord, cutoff float64) (float64, []tokenRecord) {
-	firstValid := len(history) // assume all expired
-	for i, rec := range history {
-		if rec.timestamp > cutoff {
-			firstValid = i
-			break
-		}
-		tokens += rec.cost
+	readCap := b.cfg.readCap()
+	b.readTokens += elapsed * b.cfg.ReadRate
+	if b.readTokens > readCap {
+		b.readTokens = readCap
 	}
 
-	if tokens > maxTokens {
-		tokens = maxTokens
+	writeCap := b.cfg.writeCap()
+	b.writeTokens += elapsed * b.cfg.WriteRate
+	if b.writeTokens > writeCap {
+		b.writeTokens = writeCap
 	}
-
-	if firstValid == 0 {
-		return tokens, history
-	}
-
-	// Compact slice to avoid holding expired records in memory.
-	remaining := history[firstValid:]
-	compacted := make([]tokenRecord, len(remaining))
-	copy(compacted, remaining)
-
-	return tokens, compacted
 }
 
 // canProceed checks whether sufficient tokens exist.
@@ -222,35 +196,33 @@ func (b *ReadWriteTokenBucket) canProceed(readCost, writeCost float64) bool {
 	return true
 }
 
-// consume deducts tokens and records the consumption.
+// consume deducts tokens.
 // Must be called with mu held.
 func (b *ReadWriteTokenBucket) consume(readCost, writeCost float64) {
-	now := b.clock()
-
 	if readCost > 0 {
 		b.readTokens -= readCost
-		b.readHistory = append(b.readHistory, tokenRecord{timestamp: now, cost: readCost})
 	}
 	if writeCost > 0 {
 		b.writeTokens -= writeCost
-		b.writeHistory = append(b.writeHistory, tokenRecord{timestamp: now, cost: writeCost})
 	}
 }
 
 // calculateWaitTime estimates how long until enough tokens are available.
+// wait = deficit / rate + SafetyPadding
 // Must be called with mu held.
 func (b *ReadWriteTokenBucket) calculateWaitTime(readCost, writeCost float64) time.Duration {
-	now := b.clock()
 	var maxWait float64
 
 	if readCost > 0 && b.readTokens < readCost {
-		wait := waitForBucket(b.readHistory, b.readTokens, readCost, now, b.cfg.WindowSize)
+		deficit := readCost - b.readTokens
+		wait := deficit / b.cfg.ReadRate
 		if wait > maxWait {
 			maxWait = wait
 		}
 	}
 	if writeCost > 0 && b.writeTokens < writeCost {
-		wait := waitForBucket(b.writeHistory, b.writeTokens, writeCost, now, b.cfg.WindowSize)
+		deficit := writeCost - b.writeTokens
+		wait := deficit / b.cfg.WriteRate
 		if wait > maxWait {
 			maxWait = wait
 		}
@@ -258,26 +230,4 @@ func (b *ReadWriteTokenBucket) calculateWaitTime(readCost, writeCost float64) ti
 
 	maxWait += b.cfg.SafetyPadding
 	return time.Duration(maxWait * float64(time.Second))
-}
-
-// waitForBucket calculates how long until enough tokens expire from the window.
-func waitForBucket(history []tokenRecord, currentTokens, needed float64, now, windowSize float64) float64 {
-	deficit := needed - currentTokens
-	var accumulated float64
-
-	for _, rec := range history {
-		accumulated += rec.cost
-		if accumulated >= deficit {
-			// This record's expiry time will free enough tokens
-			expiresAt := rec.timestamp + windowSize
-			wait := expiresAt - now
-			if wait < 0 {
-				return 0
-			}
-			return wait
-		}
-	}
-
-	// Should not happen if called correctly, but return a safe default
-	return windowSize
 }
