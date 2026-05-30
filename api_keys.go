@@ -29,7 +29,7 @@ func (c *Client) GetAPIKeys(ctx context.Context) (GetApiKeysResponse, error) {
 //
 // See https://trading-api.readme.io/reference/createapikey
 func (c *Client) CreateAPIKey(ctx context.Context, req CreateApiKeyRequest) (CreateApiKeyResponse, error) {
-	return postJSON[CreateApiKeyResponse](c, ctx, pathAPIKeys, req, 1.0)
+	return postJSON[CreateApiKeyResponse](c, ctx, pathAPIKeys, req, 10.0)
 }
 
 // GenerateAPIKey — Generate API Key
@@ -44,7 +44,7 @@ func (c *Client) CreateAPIKey(ctx context.Context, req CreateApiKeyRequest) (Cre
 //
 // See https://trading-api.readme.io/reference/generateapikey
 func (c *Client) GenerateAPIKey(ctx context.Context, req GenerateApiKeyRequest) (GenerateApiKeyResponse, error) {
-	return postJSON[GenerateApiKeyResponse](c, ctx, pathAPIKeys+"/generate", req, 1.0)
+	return postJSON[GenerateApiKeyResponse](c, ctx, pathAPIKeys+"/generate", req, 10.0)
 }
 
 // DeleteAPIKey — Delete API Key
@@ -58,6 +58,6 @@ func (c *Client) GenerateAPIKey(ctx context.Context, req GenerateApiKeyRequest) 
 // See https://trading-api.readme.io/reference/deleteapikey
 func (c *Client) DeleteAPIKey(ctx context.Context, apiKey string) error {
 	path := fmt.Sprintf("%s/%s", pathAPIKeys, apiKey)
-	_, err := c.delete(ctx, path, nil, 1.0)
+	_, err := c.delete(ctx, path, nil, 10.0)
 	return err
 }

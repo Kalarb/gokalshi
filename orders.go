@@ -14,7 +14,7 @@ import (
 //
 // See https://trading-api.readme.io/reference/createorder
 func (c *Client) CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error) {
-	return postJSON[CreateOrderResponse](c, ctx, pathOrders, req, 1.0)
+	return postJSON[CreateOrderResponse](c, ctx, pathOrders, req, 10.0)
 }
 
 // CancelOrder — Cancel Order
@@ -32,7 +32,7 @@ func (c *Client) CreateOrder(ctx context.Context, req CreateOrderRequest) (Creat
 // See https://trading-api.readme.io/reference/cancelorder
 func (c *Client) CancelOrder(ctx context.Context, orderID string) (CancelOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathOrders, orderID)
-	return deleteJSON[CancelOrderResponse](c, ctx, path, nil, 0.2)
+	return deleteJSON[CancelOrderResponse](c, ctx, path, nil, 10.0)
 }
 
 // GetOrder — Get Order
@@ -74,7 +74,7 @@ func (c *Client) GetOrders(ctx context.Context, params GetOrdersParams) (GetOrde
 // See https://trading-api.readme.io/reference/batchcreateorders
 func (c *Client) BatchCreateOrders(ctx context.Context, orders []CreateOrderRequest) (BatchCreateOrdersResponse, error) {
 	body := BatchCreateOrdersRequest{Orders: orders}
-	cost := float64(len(orders))
+	cost := float64(len(orders)) * 10.0
 	return postJSON[BatchCreateOrdersResponse](c, ctx, pathOrders+"/batched", body, cost)
 }
 
@@ -89,7 +89,7 @@ func (c *Client) BatchCreateOrders(ctx context.Context, orders []CreateOrderRequ
 // See https://trading-api.readme.io/reference/batchcancelorders
 func (c *Client) BatchCancelOrders(ctx context.Context, orders []BatchCancelOrdersRequestOrder) (BatchCancelOrdersResponse, error) {
 	body := BatchCancelOrdersRequest{Orders: orders}
-	cost := float64(len(orders)) * 0.2
+	cost := float64(len(orders)) * 10.0
 	return deleteJSON[BatchCancelOrdersResponse](c, ctx, pathOrders+"/batched", body, cost)
 }
 
@@ -104,7 +104,7 @@ func (c *Client) BatchCancelOrders(ctx context.Context, orders []BatchCancelOrde
 // See https://trading-api.readme.io/reference/amendorder
 func (c *Client) AmendOrder(ctx context.Context, orderID string, req AmendOrderRequest) (AmendOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s/amend", pathOrders, orderID)
-	return postJSON[AmendOrderResponse](c, ctx, path, req, 1.0)
+	return postJSON[AmendOrderResponse](c, ctx, path, req, 10.0)
 }
 
 // DecreaseOrder — Decrease Order
@@ -118,7 +118,7 @@ func (c *Client) AmendOrder(ctx context.Context, orderID string, req AmendOrderR
 // See https://trading-api.readme.io/reference/decreaseorder
 func (c *Client) DecreaseOrder(ctx context.Context, orderID string, req DecreaseOrderRequest) (CreateOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s/decrease", pathOrders, orderID)
-	return postJSON[CreateOrderResponse](c, ctx, path, req, 1.0)
+	return postJSON[CreateOrderResponse](c, ctx, path, req, 10.0)
 }
 
 // GetQueuePositions — Get Queue Positions for Orders

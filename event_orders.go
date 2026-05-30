@@ -16,7 +16,7 @@ import (
 //
 // See https://trading-api.readme.io/reference/createorderv2
 func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (CreateOrderV2Response, error) {
-	return postJSON[CreateOrderV2Response](c, ctx, pathEventOrders, req, 1.0)
+	return postJSON[CreateOrderV2Response](c, ctx, pathEventOrders, req, 10.0)
 }
 
 // BatchCreateOrdersV2 — Batch Create Orders (V2)
@@ -29,7 +29,7 @@ func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (C
 //
 // See https://trading-api.readme.io/reference/batchcreateordersv2
 func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV2Request) (BatchCreateOrdersV2Response, error) {
-	return postJSON[BatchCreateOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders)))
+	return postJSON[BatchCreateOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
 }
 
 // BatchCancelOrdersV2 — Batch Cancel Orders (V2)
@@ -42,7 +42,7 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 //
 // See https://trading-api.readme.io/reference/batchcancelordersv2
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
-	return deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders)))
+	return deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
 }
 
 // CancelOrderV2 — Cancel Order (V2)
@@ -72,7 +72,7 @@ func (c *Client) CancelOrderV2(ctx context.Context, orderID string, params Cance
 // See https://trading-api.readme.io/reference/amendorderv2
 func (c *Client) AmendOrderV2(ctx context.Context, orderID string, req AmendOrderV2Request) (AmendOrderV2Response, error) {
 	path := fmt.Sprintf("%s/%s/amend", pathEventOrders, orderID)
-	return postJSON[AmendOrderV2Response](c, ctx, path, req, 1.0)
+	return postJSON[AmendOrderV2Response](c, ctx, path, req, 10.0)
 }
 
 // DecreaseOrderV2 — Decrease Order (V2)
@@ -86,7 +86,7 @@ func (c *Client) AmendOrderV2(ctx context.Context, orderID string, req AmendOrde
 // See https://trading-api.readme.io/reference/decreaseorderv2
 func (c *Client) DecreaseOrderV2(ctx context.Context, orderID string, req DecreaseOrderV2Request) (DecreaseOrderV2Response, error) {
 	path := fmt.Sprintf("%s/%s/decrease", pathEventOrders, orderID)
-	return postJSON[DecreaseOrderV2Response](c, ctx, path, req, 1.0)
+	return postJSON[DecreaseOrderV2Response](c, ctx, path, req, 10.0)
 }
 
 // CancelOrderV2Params are query parameters for CancelOrderV2.

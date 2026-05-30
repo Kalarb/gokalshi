@@ -9,17 +9,21 @@ import (
 
 // TokenBucketConfig holds rate limiter settings.
 type TokenBucketConfig struct {
-	ReadRate      float64 // tokens per second for reads (default: 20.0)
-	WriteRate     float64 // tokens per second for writes (default: 10.0)
+	ReadRate      float64 // read token refill rate (tokens per second)
+	WriteRate     float64 // write token refill rate (tokens per second)
+	ReadCapacity  float64 // max read tokens; 0 = ReadRate * WindowSize
+	WriteCapacity float64 // max write tokens; 0 = WriteRate * WindowSize
 	WindowSize    float64 // sliding window duration in seconds (default: 1.0)
 	SafetyPadding float64 // extra wait buffer in seconds (default: 0.1)
 }
 
-// DefaultTokenBucketConfig returns production defaults matching Kalshi API limits.
+// DefaultTokenBucketConfig returns production defaults matching Kalshi Basic tier.
 func DefaultTokenBucketConfig() TokenBucketConfig {
 	return TokenBucketConfig{
-		ReadRate:      20.0,
-		WriteRate:     10.0,
+		ReadRate:      200.0,
+		WriteRate:     100.0,
+		ReadCapacity:  200.0,
+		WriteCapacity: 100.0,
 		WindowSize:    1.0,
 		SafetyPadding: 0.1,
 	}
@@ -52,12 +56,28 @@ type ReadWriteTokenBucket struct {
 	clock        func() float64 // injectable for testing; returns monotonic seconds
 }
 
+// readCap returns the effective read capacity.
+func (cfg TokenBucketConfig) readCap() float64 {
+	if cfg.ReadCapacity > 0 {
+		return cfg.ReadCapacity
+	}
+	return cfg.ReadRate * cfg.WindowSize
+}
+
+// writeCap returns the effective write capacity.
+func (cfg TokenBucketConfig) writeCap() float64 {
+	if cfg.WriteCapacity > 0 {
+		return cfg.WriteCapacity
+	}
+	return cfg.WriteRate * cfg.WindowSize
+}
+
 // NewReadWriteTokenBucket creates a new rate limiter with the given config.
 func NewReadWriteTokenBucket(cfg TokenBucketConfig) *ReadWriteTokenBucket {
 	return &ReadWriteTokenBucket{
 		cfg:         cfg,
-		readTokens:  cfg.ReadRate,
-		writeTokens: cfg.WriteRate,
+		readTokens:  cfg.readCap(),
+		writeTokens: cfg.writeCap(),
 		clock:       defaultClock,
 	}
 }
@@ -156,10 +176,10 @@ func (b *ReadWriteTokenBucket) refill() {
 	cutoff := now - b.cfg.WindowSize
 
 	b.readTokens, b.readHistory = refillBucket(
-		b.readTokens, b.cfg.ReadRate, b.readHistory, cutoff,
+		b.readTokens, b.cfg.readCap(), b.readHistory, cutoff,
 	)
 	b.writeTokens, b.writeHistory = refillBucket(
-		b.writeTokens, b.cfg.WriteRate, b.writeHistory, cutoff,
+		b.writeTokens, b.cfg.writeCap(), b.writeHistory, cutoff,
 	)
 }
 
