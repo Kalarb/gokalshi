@@ -543,3 +543,79 @@ func TestWSClient_HandleIncoming_SubscribedFlushPending(t *testing.T) {
 
 	assert.Empty(t, state.PendingMarkets)
 }
+
+func TestWSClient_AddMarkets_NilTickers_ReturnsError(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		<-time.After(2 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	err := ws.Connect(ctx)
+	require.NoError(t, err)
+	defer ws.Close()
+
+	err = ws.AddMarkets(ctx, nil, []string{"ticker"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tickers must not be nil or empty")
+}
+
+func TestWSClient_AddMarkets_EmptyTickers_ReturnsError(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		<-time.After(2 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	err := ws.Connect(ctx)
+	require.NoError(t, err)
+	defer ws.Close()
+
+	err = ws.AddMarkets(ctx, []string{}, []string{"ticker"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tickers must not be nil or empty")
+}
+
+func TestWSClient_RemoveMarkets_NilTickers_ReturnsError(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		<-time.After(2 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	err := ws.Connect(ctx)
+	require.NoError(t, err)
+	defer ws.Close()
+
+	err = ws.RemoveMarkets(ctx, nil, []string{"ticker"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tickers must not be nil or empty")
+}
+
+func TestWSClient_RemoveMarkets_EmptyTickers_ReturnsError(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		<-time.After(2 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	err := ws.Connect(ctx)
+	require.NoError(t, err)
+	defer ws.Close()
+
+	err = ws.RemoveMarkets(ctx, []string{}, []string{"ticker"})
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "tickers must not be nil or empty")
+}
