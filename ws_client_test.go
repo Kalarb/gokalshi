@@ -543,3 +543,39 @@ func TestWSClient_HandleIncoming_SubscribedFlushPending(t *testing.T) {
 
 	assert.Empty(t, state.PendingMarkets)
 }
+
+func TestWSClient_AddRemoveMarkets_InvalidArgs(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	cases := []struct {
+		name     string
+		method   string
+		tickers  []string
+		channels []string
+		wantMsg  string
+	}{
+		{"AddMarkets/nil_tickers", "add", nil, []string{"ticker"}, "tickers must not be empty"},
+		{"AddMarkets/empty_tickers", "add", []string{}, []string{"ticker"}, "tickers must not be empty"},
+		{"AddMarkets/nil_channels", "add", []string{"TICK-1"}, nil, "channels must not be empty"},
+		{"AddMarkets/empty_channels", "add", []string{"TICK-1"}, []string{}, "channels must not be empty"},
+		{"RemoveMarkets/nil_tickers", "remove", nil, []string{"ticker"}, "tickers must not be empty"},
+		{"RemoveMarkets/empty_tickers", "remove", []string{}, []string{"ticker"}, "tickers must not be empty"},
+		{"RemoveMarkets/nil_channels", "remove", []string{"TICK-1"}, nil, "channels must not be empty"},
+		{"RemoveMarkets/empty_channels", "remove", []string{"TICK-1"}, []string{}, "channels must not be empty"},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			var err error
+			if tc.method == "add" {
+				err = ws.AddMarkets(ctx, tc.tickers, tc.channels)
+			} else {
+				err = ws.RemoveMarkets(ctx, tc.tickers, tc.channels)
+			}
+			require.ErrorIs(t, err, ErrInvalidArgument)
+			assert.ErrorContains(t, err, tc.wantMsg)
+		})
+	}
+}

@@ -321,7 +321,17 @@ func (c *WSClient) handleDataMessage(msg WSMessage, raw []byte) []byte {
 }
 
 // AddMarkets subscribes to the given channels for the given tickers.
+// tickers and channels must not be nil or empty. Global subscriptions
+// (nil tickers) are not yet supported; see
+// https://github.com/Kalarb/gokalshi/issues/25.
 func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []string) error {
+	// Validate before acquiring mu — no state access needed.
+	if len(tickers) == 0 {
+		return fmt.Errorf("tickers must not be empty: %w", ErrInvalidArgument)
+	}
+	if len(channels) == 0 {
+		return fmt.Errorf("channels must not be empty: %w", ErrInvalidArgument)
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -377,7 +387,16 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 }
 
 // RemoveMarkets unsubscribes the given tickers from the given channels.
+// tickers and channels must not be nil or empty. See
+// https://github.com/Kalarb/gokalshi/issues/25.
 func (c *WSClient) RemoveMarkets(ctx context.Context, tickers []string, channels []string) error {
+	// Validate before acquiring mu — no state access needed.
+	if len(tickers) == 0 {
+		return fmt.Errorf("tickers must not be empty: %w", ErrInvalidArgument)
+	}
+	if len(channels) == 0 {
+		return fmt.Errorf("channels must not be empty: %w", ErrInvalidArgument)
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 

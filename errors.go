@@ -2,6 +2,7 @@ package gokalshi
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -100,3 +101,6 @@ type SequenceGapError struct {
 func (e *SequenceGapError) Error() string {
 	return fmt.Sprintf("kalshi sequence gap on %s: expected %d, got %d", e.Channel, e.Expected, e.Got)
 }
+
+// ErrInvalidArgument is returned when a method receives an invalid argument.
+var ErrInvalidArgument = errors.New("invalid argument")
