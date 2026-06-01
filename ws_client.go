@@ -27,6 +27,7 @@ type WSClient struct {
 	sidMap      map[int]*ChannelState
 	pendingInit map[int]string // msgID → channel name
 
+	readLimit    int64 // max WS message size in bytes (0 = library default)
 	minBackoff   time.Duration
 	maxBackoff   time.Duration
 	OnDisconnect func() // called when connection is lost (before reconnect)
@@ -42,6 +43,14 @@ type WSClientOption func(*WSClient)
 // WithWSMsgBufSize sets the message channel buffer size.
 func WithWSMsgBufSize(n int) WSClientOption {
 	return func(c *WSClient) { c.msgCh = make(chan []byte, n) }
+}
+
+// WithWSReadLimit sets the maximum size of a single WebSocket message in bytes.
+// The nhooyr.io/websocket library defaults to 32768 (32KB), which is too small
+// for channels with many subscribed tickers. A value of 1<<20 (1MB) is
+// recommended for production use.
+func WithWSReadLimit(bytes int64) WSClientOption {
+	return func(c *WSClient) { c.readLimit = bytes }
 }
 
 // WithWSBackoff sets min/max backoff durations for reconnection.
@@ -91,6 +100,9 @@ func (c *WSClient) Connect(ctx context.Context) error {
 		return fmt.Errorf("WS dial %s: %w", url, err)
 	}
 
+	if c.readLimit > 0 {
+		conn.SetReadLimit(c.readLimit)
+	}
 	c.conn = conn
 	c.logger.LogAttrs(ctx, slog.LevelInfo, "ws_connected", slog.String("url", url))
 	return nil
