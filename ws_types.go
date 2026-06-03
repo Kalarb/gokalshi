@@ -36,6 +36,7 @@ type ChannelState struct {
 	PendingMarkets map[string]struct{}
 	SID            *int
 	Seq            int
+	Global         bool // true = subscribed without tickers (receives all markets)
 }
 
 // NewChannelState creates a new ChannelState for the given channel name.

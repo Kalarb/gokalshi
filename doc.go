@@ -34,7 +34,12 @@
 //
 //	ws := gokalshi.NewWSClient(cfg, gokalshi.WithWSLogger(slog.Default()))
 //	go ws.ListenLoop(ctx)
-//	ws.AddMarkets(ctx, []string{"KXBTC-100K"}, []string{"orderbook_delta", "ticker"})
+//
+//	// Ticker-scoped subscription
+//	ws.Subscribe(ctx, []string{"orderbook_delta", "ticker"}, []string{"KXBTC-100K"})
+//
+//	// Global subscription (all markets — pass nil for tickers)
+//	ws.Subscribe(ctx, []string{"trade"}, nil)
 //
 //	for raw := range ws.MsgCh() {
 //	    // process message
