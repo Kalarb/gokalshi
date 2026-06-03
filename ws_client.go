@@ -103,7 +103,9 @@ func (c *WSClient) Connect(ctx context.Context) error {
 	if c.readLimit > 0 {
 		conn.SetReadLimit(c.readLimit)
 	}
+	c.mu.Lock()
 	c.conn = conn
+	c.mu.Unlock()
 	c.logger.LogAttrs(ctx, slog.LevelInfo, "ws_connected", slog.String("url", url))
 	return nil
 }
@@ -131,7 +133,10 @@ func (c *WSClient) ListenLoop(ctx context.Context) {
 			return
 		}
 
-		if c.conn == nil {
+		c.mu.Lock()
+		noConn := c.conn == nil
+		c.mu.Unlock()
+		if noConn {
 			if err := c.Connect(ctx); err != nil {
 				c.logger.LogAttrs(ctx, slog.LevelError, "ws_connect_failed",
 					slog.String("error", err.Error()), slog.String("retry_in", backoff.String()))
@@ -175,8 +180,11 @@ func (c *WSClient) ListenLoop(ctx context.Context) {
 }
 
 func (c *WSClient) readLoop(ctx context.Context) error {
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
 	for {
-		_, data, err := c.conn.Read(ctx)
+		_, data, err := conn.Read(ctx)
 		if err != nil {
 			return err
 		}
