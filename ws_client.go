@@ -349,6 +349,9 @@ func (c *WSClient) Subscribe(ctx context.Context, channels []string, tickers []s
 	if len(channels) == 0 {
 		return fmt.Errorf("channels must not be empty: %w", ErrInvalidArgument)
 	}
+	if tickers != nil && len(tickers) == 0 {
+		return fmt.Errorf("tickers must be nil (global) or non-empty: %w", ErrInvalidArgument)
+	}
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -371,6 +374,8 @@ func (c *WSClient) Subscribe(ctx context.Context, channels []string, tickers []s
 		err := c.sendSubscribe(ctx, ch, tickers)
 		c.mu.Lock()
 		if err != nil {
+			delete(c.channels, ch)
+			c.deletePendingInitForChannel(ch)
 			return err
 		}
 	}
@@ -402,6 +407,9 @@ func (c *WSClient) Unsubscribe(ctx context.Context, channels []string) error {
 				return err
 			}
 			delete(c.sidMap, sid)
+		} else {
+			// No SID yet — clean up any pending subscribe for this channel.
+			c.deletePendingInitForChannel(ch)
 		}
 		delete(c.channels, ch)
 	}
@@ -471,6 +479,11 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 			err := c.sendSubscribe(ctx, ch, newTickers)
 			c.mu.Lock()
 			if err != nil {
+				if !ok {
+					// Channel was newly created in this call — clean up.
+					delete(c.channels, ch)
+					c.deletePendingInitForChannel(ch)
+				}
 				return err
 			}
 			for _, t := range newTickers {
@@ -530,6 +543,15 @@ func (c *WSClient) pendingInitForChannel(ch string) (int, bool) {
 		}
 	}
 	return 0, false
+}
+
+func (c *WSClient) deletePendingInitForChannel(ch string) {
+	for id, name := range c.pendingInit {
+		if name == ch {
+			delete(c.pendingInit, id)
+			return
+		}
+	}
 }
 
 func (c *WSClient) handleConnectionLoss() {

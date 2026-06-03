@@ -724,6 +724,61 @@ func TestWSClient_Subscribe_InvalidArgs(t *testing.T) {
 	}
 }
 
+func TestWSClient_Subscribe_EmptyTickers(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	err := ws.Subscribe(context.Background(), []string{"trade"}, []string{})
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	assert.ErrorContains(t, err, "tickers must be nil (global) or non-empty")
+}
+
+func TestWSClient_Subscribe_ErrorCleansUpState(t *testing.T) {
+	// Don't connect — writeJSON will fail, causing sendSubscribe to error.
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	err := ws.Subscribe(context.Background(), []string{"trade"}, nil)
+	require.Error(t, err)
+
+	// Verify the channel state was cleaned up.
+	assert.Empty(t, ws.channels, "channels should be empty after failed Subscribe")
+	assert.Empty(t, ws.pendingInit, "pendingInit should be empty after failed Subscribe")
+}
+
+func TestWSClient_AddMarkets_ErrorCleansUpNewChannel(t *testing.T) {
+	// Don't connect — writeJSON will fail for the new channel's sendSubscribe.
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	err := ws.AddMarkets(context.Background(), []string{"TICK-1"}, []string{"trade"})
+	require.Error(t, err)
+
+	// Verify the newly created channel state was cleaned up.
+	_, exists := ws.channels["trade"]
+	assert.False(t, exists, "new channel should be cleaned up after failed AddMarkets")
+	assert.Empty(t, ws.pendingInit, "pendingInit should be empty after failed AddMarkets")
+}
+
+func TestWSClient_Unsubscribe_PendingCleanup(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	// Simulate a pending subscribe: channel exists, no SID, pendingInit has an entry.
+	state := NewChannelState("trade")
+	state.Global = true
+	ws.channels["trade"] = state
+	ws.pendingInit[42] = "trade"
+
+	err := ws.Unsubscribe(context.Background(), []string{"trade"})
+	require.NoError(t, err)
+
+	_, chExists := ws.channels["trade"]
+	assert.False(t, chExists, "channel should be removed")
+	_, piExists := ws.pendingInit[42]
+	assert.False(t, piExists, "pendingInit entry should be cleaned up")
+}
+
 func TestWSClient_AddMarkets_GlobalToTickerScoped(t *testing.T) {
 	done := make(chan []byte, 5)
 	srv := mockWSServer(t, func(conn *websocket.Conn) {
