@@ -364,10 +364,8 @@ func (c *WSClient) Subscribe(ctx context.Context, channels []string, tickers []s
 		state.Global = tickers == nil
 		c.channels[ch] = state
 
-		if tickers != nil {
-			for _, t := range tickers {
-				state.Markets[t] = struct{}{}
-			}
+		for _, t := range tickers {
+			state.Markets[t] = struct{}{}
 		}
 
 		c.mu.Unlock()

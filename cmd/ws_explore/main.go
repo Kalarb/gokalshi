@@ -103,7 +103,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("dial: %v", err)
 	}
-	defer conn.Close(websocket.StatusNormalClosure, "done")
+	defer func() { _ = conn.Close(websocket.StatusNormalClosure, "done") }()
 	conn.SetReadLimit(10 * 1024 * 1024)
 
 	fmt.Fprintf(os.Stderr, "connected to %s\n\n", url)
@@ -128,7 +128,7 @@ func main() {
 		if msg.Type == "subscribed" && msg.ID == 1 {
 			// Parse SID from msg body.
 			var body struct{ SID int `json:"sid"` }
-			json.Unmarshal(msg.Msg, &body)
+			_ = json.Unmarshal(msg.Msg, &body)
 			tradeSID = body.SID
 			fmt.Fprintf(os.Stderr, ">>> Got SID=%d for trade channel\n\n", tradeSID)
 			break
