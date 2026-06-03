@@ -96,7 +96,13 @@ func main() {
     ctx := context.Background()
     go ws.ListenLoop(ctx)
 
-    if err := ws.AddMarkets(ctx, []string{"KXBTC-100K"}, []string{"orderbook_delta", "ticker"}); err != nil {
+    // Ticker-scoped subscription
+    if err := ws.Subscribe(ctx, []string{"orderbook_delta", "ticker"}, []string{"KXBTC-100K"}); err != nil {
+        log.Fatal(err)
+    }
+
+    // Global subscription (all markets — pass nil for tickers)
+    if err := ws.Subscribe(ctx, []string{"trade"}, nil); err != nil {
         log.Fatal(err)
     }
 
@@ -168,8 +174,10 @@ See **[docs/API_COVERAGE.md](docs/API_COVERAGE.md)** for the full per-endpoint b
 | `Close` | Graceful close | |
 | `ListenLoop` | Read loop with auto-reconnect | exponential backoff |
 | `MsgCh` | Channel for incoming messages | |
-| `AddMarkets` | Subscribe tickers to channels | |
-| `RemoveMarkets` | Unsubscribe tickers from channels | |
+| `Subscribe` | Create a subscription | pass `nil` tickers for global |
+| `Unsubscribe` | Tear down a subscription | works for global and ticker-scoped |
+| `AddMarkets` | Add tickers to an existing subscription | converts global to ticker-scoped with warning |
+| `RemoveMarkets` | Remove tickers from a subscription | |
 
 ## Typed Errors
 
@@ -201,7 +209,7 @@ func fetchBalance(client gokalshi.HTTPClient) (int64, error) {
 }
 
 func subscribe(ws gokalshi.WebSocketClient, ticker string) error {
-    return ws.AddMarkets(context.Background(), []string{ticker}, []string{"orderbook_delta"})
+    return ws.Subscribe(context.Background(), []string{"orderbook_delta"}, []string{ticker})
 }
 ```
 

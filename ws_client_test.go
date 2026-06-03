@@ -579,3 +579,441 @@ func TestWSClient_AddRemoveMarkets_InvalidArgs(t *testing.T) {
 		})
 	}
 }
+
+// ---------------------------------------------------------------------------
+// Subscribe / Unsubscribe
+// ---------------------------------------------------------------------------
+
+func TestWSClient_Subscribe_Global(t *testing.T) {
+	done := make(chan []byte, 5)
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			done <- data
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.NoError(t, ws.Connect(ctx))
+	defer ws.Close()
+
+	err := ws.Subscribe(ctx, []string{"market_lifecycle_v2"}, nil)
+	require.NoError(t, err)
+
+	// Verify the subscribe command has no market_tickers field.
+	select {
+	case raw := <-done:
+		var cmd map[string]any
+		require.NoError(t, json.Unmarshal(raw, &cmd))
+		assert.Equal(t, "subscribe", cmd["cmd"])
+		params := cmd["params"].(map[string]any)
+		assert.Equal(t, []any{"market_lifecycle_v2"}, params["channels"])
+		_, hasTickers := params["market_tickers"]
+		assert.False(t, hasTickers, "global subscribe must not include market_tickers")
+	case <-time.After(2 * time.Second):
+		t.Fatal("no subscribe command sent")
+	}
+
+	// Verify channel state.
+	state, ok := ws.channels["market_lifecycle_v2"]
+	require.True(t, ok)
+	assert.True(t, state.Global)
+	assert.Empty(t, state.Markets)
+}
+
+func TestWSClient_Subscribe_TickerScoped(t *testing.T) {
+	done := make(chan []byte, 5)
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			done <- data
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.NoError(t, ws.Connect(ctx))
+	defer ws.Close()
+
+	err := ws.Subscribe(ctx, []string{"trade"}, []string{"TICK-1", "TICK-2"})
+	require.NoError(t, err)
+
+	// Verify the subscribe command includes market_tickers.
+	select {
+	case raw := <-done:
+		var cmd map[string]any
+		require.NoError(t, json.Unmarshal(raw, &cmd))
+		assert.Equal(t, "subscribe", cmd["cmd"])
+		params := cmd["params"].(map[string]any)
+		assert.Equal(t, []any{"trade"}, params["channels"])
+		tickers := params["market_tickers"].([]any)
+		assert.ElementsMatch(t, []any{"TICK-1", "TICK-2"}, tickers)
+	case <-time.After(2 * time.Second):
+		t.Fatal("no subscribe command sent")
+	}
+
+	// Verify channel state.
+	state, ok := ws.channels["trade"]
+	require.True(t, ok)
+	assert.False(t, state.Global)
+	assert.Contains(t, state.Markets, "TICK-1")
+	assert.Contains(t, state.Markets, "TICK-2")
+}
+
+func TestWSClient_Subscribe_AlreadySubscribed(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	// Set up an existing global channel.
+	state := NewChannelState("trade")
+	state.Global = true
+	ws.channels["trade"] = state
+
+	// Subscribe again — should error.
+	err := ws.Subscribe(context.Background(), []string{"trade"}, nil)
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	assert.ErrorContains(t, err, "already subscribed")
+}
+
+func TestWSClient_Subscribe_AlreadySubscribed_TickerScoped(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	// Set up an existing ticker-scoped channel.
+	state := NewChannelState("ticker")
+	state.Markets["TICK-1"] = struct{}{}
+	ws.channels["ticker"] = state
+
+	// Subscribe again — should error regardless of tickers.
+	err := ws.Subscribe(context.Background(), []string{"ticker"}, []string{"TICK-1"})
+	require.ErrorIs(t, err, ErrInvalidArgument)
+	assert.ErrorContains(t, err, "already subscribed")
+}
+
+func TestWSClient_Subscribe_InvalidArgs(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	cases := []struct {
+		name     string
+		channels []string
+	}{
+		{"nil_channels", nil},
+		{"empty_channels", []string{}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ws.Subscribe(ctx, tc.channels, nil)
+			require.ErrorIs(t, err, ErrInvalidArgument)
+			assert.ErrorContains(t, err, "channels must not be empty")
+		})
+	}
+}
+
+func TestWSClient_AddMarkets_GlobalToTickerScoped(t *testing.T) {
+	done := make(chan []byte, 5)
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			done <- data
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.NoError(t, ws.Connect(ctx))
+	defer ws.Close()
+
+	// Set up a global channel with SID.
+	state := NewChannelState("trade")
+	state.Global = true
+	sid := 1
+	state.SID = &sid
+	ws.channels["trade"] = state
+	ws.sidMap[1] = state
+
+	// AddMarkets on global channel — should succeed with warning.
+	err := ws.AddMarkets(ctx, []string{"TICK-1"}, []string{"trade"})
+	require.NoError(t, err)
+
+	// Verify update_subscription sent.
+	select {
+	case raw := <-done:
+		var cmd map[string]any
+		require.NoError(t, json.Unmarshal(raw, &cmd))
+		assert.Equal(t, "update_subscription", cmd["cmd"])
+	case <-time.After(2 * time.Second):
+		t.Fatal("no update_subscription command sent")
+	}
+
+	// Verify state converted to ticker-scoped.
+	assert.False(t, state.Global)
+	assert.Contains(t, state.Markets, "TICK-1")
+}
+
+func TestWSClient_RemoveMarkets_GlobalWarning(t *testing.T) {
+	done := make(chan []byte, 5)
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			done <- data
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.NoError(t, ws.Connect(ctx))
+	defer ws.Close()
+
+	// Set up a global channel with SID.
+	state := NewChannelState("trade")
+	state.Global = true
+	sid := 1
+	state.SID = &sid
+	ws.channels["trade"] = state
+	ws.sidMap[1] = state
+
+	// RemoveMarkets on global channel — should succeed with warning.
+	err := ws.RemoveMarkets(ctx, []string{"TICK-1"}, []string{"trade"})
+	require.NoError(t, err)
+
+	// Verify delete_markets sent.
+	select {
+	case raw := <-done:
+		var cmd map[string]any
+		require.NoError(t, json.Unmarshal(raw, &cmd))
+		assert.Equal(t, "update_subscription", cmd["cmd"])
+		params := cmd["params"].(map[string]any)
+		assert.Equal(t, "delete_markets", params["action"])
+	case <-time.After(2 * time.Second):
+		t.Fatal("no delete_markets command sent")
+	}
+
+	// Verify state converted from global.
+	assert.False(t, state.Global)
+}
+
+func TestWSClient_Unsubscribe(t *testing.T) {
+	done := make(chan []byte, 5)
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			done <- data
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.NoError(t, ws.Connect(ctx))
+	defer ws.Close()
+
+	// Set up a global channel with SID.
+	state := NewChannelState("trade")
+	state.Global = true
+	sid := 5
+	state.SID = &sid
+	ws.channels["trade"] = state
+	ws.sidMap[5] = state
+
+	err := ws.Unsubscribe(ctx, []string{"trade"})
+	require.NoError(t, err)
+
+	// Verify unsubscribe command sent.
+	select {
+	case raw := <-done:
+		var cmd map[string]any
+		require.NoError(t, json.Unmarshal(raw, &cmd))
+		assert.Equal(t, "unsubscribe", cmd["cmd"])
+		params := cmd["params"].(map[string]any)
+		sids := params["sids"].([]any)
+		assert.Equal(t, float64(5), sids[0])
+	case <-time.After(2 * time.Second):
+		t.Fatal("no unsubscribe command sent")
+	}
+
+	// Verify state cleaned up.
+	_, chExists := ws.channels["trade"]
+	assert.False(t, chExists)
+	_, sidExists := ws.sidMap[5]
+	assert.False(t, sidExists)
+}
+
+func TestWSClient_Unsubscribe_TickerScoped(t *testing.T) {
+	done := make(chan []byte, 5)
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			done <- data
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.NoError(t, ws.Connect(ctx))
+	defer ws.Close()
+
+	// Set up a ticker-scoped channel.
+	state := NewChannelState("ticker")
+	sid := 10
+	state.SID = &sid
+	state.Markets["TICK-1"] = struct{}{}
+	ws.channels["ticker"] = state
+	ws.sidMap[10] = state
+
+	err := ws.Unsubscribe(ctx, []string{"ticker"})
+	require.NoError(t, err)
+
+	select {
+	case raw := <-done:
+		var cmd map[string]any
+		require.NoError(t, json.Unmarshal(raw, &cmd))
+		assert.Equal(t, "unsubscribe", cmd["cmd"])
+	case <-time.After(2 * time.Second):
+		t.Fatal("no unsubscribe command sent")
+	}
+
+	_, chExists := ws.channels["ticker"]
+	assert.False(t, chExists)
+}
+
+func TestWSClient_Unsubscribe_NotSubscribed(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	// Unsubscribing from a channel that doesn't exist — no error, just a no-op.
+	err := ws.Unsubscribe(context.Background(), []string{"nonexistent"})
+	require.NoError(t, err)
+}
+
+func TestWSClient_Unsubscribe_NoSID(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	// Channel exists but has no SID yet (subscribe pending).
+	state := NewChannelState("trade")
+	state.Global = true
+	ws.channels["trade"] = state
+
+	err := ws.Unsubscribe(context.Background(), []string{"trade"})
+	require.NoError(t, err)
+
+	_, exists := ws.channels["trade"]
+	assert.False(t, exists, "channel state should be removed")
+}
+
+func TestWSClient_Unsubscribe_InvalidArgs(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	err := ws.Unsubscribe(context.Background(), nil)
+	require.ErrorIs(t, err, ErrInvalidArgument)
+
+	err = ws.Unsubscribe(context.Background(), []string{})
+	require.ErrorIs(t, err, ErrInvalidArgument)
+}
+
+func TestWSClient_RecoverSubscriptions_Global(t *testing.T) {
+	var mu sync.Mutex
+	var cmds []map[string]any
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			var cmd map[string]any
+			if json.Unmarshal(data, &cmd) == nil {
+				mu.Lock()
+				cmds = append(cmds, cmd)
+				mu.Unlock()
+			}
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.NoError(t, ws.Connect(ctx))
+	defer ws.Close()
+
+	// Set up a global channel (SID cleared as if after disconnect).
+	globalState := NewChannelState("market_lifecycle_v2")
+	globalState.Global = true
+	ws.channels["market_lifecycle_v2"] = globalState
+
+	// Set up a ticker-scoped channel.
+	tickerState := NewChannelState("ticker")
+	tickerState.Markets["TICK-1"] = struct{}{}
+	ws.channels["ticker"] = tickerState
+
+	err := ws.recoverSubscriptions(ctx)
+	require.NoError(t, err)
+
+	// Wait for commands to arrive.
+	time.Sleep(200 * time.Millisecond)
+
+	mu.Lock()
+	defer mu.Unlock()
+
+	assert.Len(t, cmds, 2, "expected 2 subscribe commands (global + ticker-scoped)")
+
+	// Find the global subscribe and verify no market_tickers.
+	var foundGlobal, foundTicker bool
+	for _, cmd := range cmds {
+		params := cmd["params"].(map[string]any)
+		channels := params["channels"].([]any)
+		ch := channels[0].(string)
+		if ch == "market_lifecycle_v2" {
+			foundGlobal = true
+			_, hasTickers := params["market_tickers"]
+			assert.False(t, hasTickers, "global recovery must not include market_tickers")
+		}
+		if ch == "ticker" {
+			foundTicker = true
+			tickers := params["market_tickers"].([]any)
+			assert.Contains(t, tickers, "TICK-1")
+		}
+	}
+	assert.True(t, foundGlobal, "global channel not recovered")
+	assert.True(t, foundTicker, "ticker-scoped channel not recovered")
+}

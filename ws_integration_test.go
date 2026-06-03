@@ -341,6 +341,63 @@ func TestWSIntegration_SubscribeOrderGroupUpdates(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
+// Global (ticker-less) subscriptions
+// ---------------------------------------------------------------------------
+
+func TestWSIntegration_SubscribeGlobal_Trade(t *testing.T) {
+	_, wsClient, collector, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	err := wsClient.Subscribe(ctx, []string{"trade"}, nil)
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "trade", 10*time.Second)
+
+	// Trade channel is high-volume on PROD; we should receive data quickly.
+	msg := collector.waitForType(t, "trade", 15*time.Second)
+	var body TradeData
+	require.NoError(t, json.Unmarshal(msg.Msg, &body))
+	assert.NotEmpty(t, body.MarketTicker, "global trade should include market_ticker")
+	t.Logf("received global trade for %s", body.MarketTicker)
+}
+
+func TestWSIntegration_SubscribeGlobal_MarketLifecycleV2(t *testing.T) {
+	_, wsClient, _, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	err := wsClient.Subscribe(ctx, []string{"market_lifecycle_v2"}, nil)
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "market_lifecycle_v2", 10*time.Second)
+	t.Logf("market_lifecycle_v2 globally subscribed")
+}
+
+func TestWSIntegration_Unsubscribe(t *testing.T) {
+	_, wsClient, collector, ctx, cancel := wsTestSetup(t)
+	defer cancel()
+
+	// Subscribe globally to trade.
+	err := wsClient.Subscribe(ctx, []string{"trade"}, nil)
+	require.NoError(t, err)
+
+	waitForSID(t, wsClient, "trade", 10*time.Second)
+
+	// Confirm data is flowing.
+	collector.waitForType(t, "trade", 15*time.Second)
+
+	// Unsubscribe.
+	err = wsClient.Unsubscribe(ctx, []string{"trade"})
+	require.NoError(t, err)
+
+	// Clear and wait — should receive no more trade messages.
+	collector.clear()
+	time.Sleep(3 * time.Second)
+
+	trades := collector.ofType("trade")
+	assert.Empty(t, trades, "should not receive trades after unsubscribe")
+}
+
+// ---------------------------------------------------------------------------
 // Subscription management operations
 // ---------------------------------------------------------------------------
 

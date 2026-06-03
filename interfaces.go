@@ -151,6 +151,8 @@ type WebSocketClient interface {
 	Close() error
 	MsgCh() <-chan []byte
 	ListenLoop(ctx context.Context)
+	Subscribe(ctx context.Context, channels []string, tickers []string) error
+	Unsubscribe(ctx context.Context, channels []string) error
 	AddMarkets(ctx context.Context, tickers []string, channels []string) error
 	RemoveMarkets(ctx context.Context, tickers []string, channels []string) error
 }
