@@ -8,6 +8,7 @@ type HTTPClient interface {
 	// Account
 	GetAccountAPILimits(ctx context.Context) (GetAccountApiLimitsResponse, error)
 	GetAccountEndpointCosts(ctx context.Context) (GetAccountEndpointCostsResponse, error)
+	UpgradeAPIUsageLevel(ctx context.Context) error
 
 	// Exchange
 	GetExchangeStatus(ctx context.Context) (ExchangeStatus, error)

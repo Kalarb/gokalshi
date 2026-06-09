@@ -27,3 +27,17 @@ func (c *Client) GetAccountAPILimits(ctx context.Context) (GetAccountApiLimitsRe
 func (c *Client) GetAccountEndpointCosts(ctx context.Context) (GetAccountEndpointCostsResponse, error) {
 	return getJSON[GetAccountEndpointCostsResponse](c, ctx, pathAccount+"/endpoint_costs", nil)
 }
+
+// UpgradeAPIUsageLevel — Upgrade Account API Usage Level
+//
+// POST /trade-api/v2/account/api_usage_level/upgrade
+//
+// Grants a permanent Advanced API usage-level grant. Criteria: at least 1 of
+// the user's last 100 orders was created via API. Use GetAccountAPILimits to
+// inspect the resulting usage tier and grants.
+//
+// See https://trading-api.readme.io/reference/upgradeaccountapiusagelevel
+func (c *Client) UpgradeAPIUsageLevel(ctx context.Context) error {
+	_, err := c.post(ctx, pathAccount+"/api_usage_level/upgrade", nil, 30.0)
+	return err
+}
