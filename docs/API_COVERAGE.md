@@ -225,15 +225,16 @@
 
 | Channel | Unit | Integration | Notes |
 |---------|:----:|:-----------:|-------|
-| `orderbook_delta` | Y | Y | |
-| `ticker` | Y | Y | |
-| `trade` | Y | Y | |
-| `fill` | Y | Y | |
-| `market_positions` | Y | Y | |
+| `cfbenchmarks_value` | Y | — | |
 | `market_lifecycle_v2` | Y | Y | |
 | `multivariate_market_lifecycle` | Y | Y | |
+| `fill` | Y | Y | |
+| `market_positions` | Y | Y | |
 | `multivariate` | Y | Y | |
-| `user_orders` | Y | Y | |
 | `order_group_updates` | Y | Y | |
+| `orderbook_delta` | Y | Y | |
 | `communications` | Y | Y | |
+| `ticker` | Y | Y | |
+| `trade` | Y | Y | |
+| `user_orders` | Y | Y | |
 
