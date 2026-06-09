@@ -688,6 +688,19 @@ func TestGetAccountAPILimits(t *testing.T) {
 	assert.Equal(t, "basic", resp.UsageTier)
 }
 
+func TestUpgradeAPIUsageLevel(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, http.MethodPost, r.Method)
+		assert.Equal(t, "/trade-api/v2/account/api_usage_level/upgrade", r.URL.Path)
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer srv.Close()
+
+	c := newTestClient(t, srv.URL)
+	err := c.UpgradeAPIUsageLevel(context.Background())
+	assert.NoError(t, err)
+}
+
 // ---------------------------------------------------------------------------
 // Exchange endpoint tests (missing 4)
 // ---------------------------------------------------------------------------
