@@ -326,9 +326,9 @@ func discoverIntegrationTests(dir string) map[string]bool {
 	return result
 }
 
-// discoverWSChannels extracts unique WebSocket channel names from ws_types.go.
+// discoverWSChannels extracts unique WebSocket channel names from ws_messages_generated.go.
 func discoverWSChannels(dir string) []WSChannel {
-	src, err := os.ReadFile(filepath.Join(dir, "ws_types.go"))
+	src, err := os.ReadFile(filepath.Join(dir, "ws_messages_generated.go"))
 	if err != nil {
 		return nil
 	}

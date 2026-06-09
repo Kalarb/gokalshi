@@ -491,6 +491,8 @@ func TestMsgTypeToChannel(t *testing.T) {
 		WSMsgQuoteAccepted:               {"communications"},
 		WSMsgQuoteExecuted:               {"communications"},
 		WSMsgEventFeeUpdate:              {"market_lifecycle_v2"},
+		WSMsgCfbenchmarksValue:           {"cfbenchmarks_value"},
+		WSMsgCfbenchmarksValueIndexlist:  {"cfbenchmarks_value"},
 	}
 
 	for msgType, expectedChannels := range expected {

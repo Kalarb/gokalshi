@@ -187,8 +187,12 @@ const (
 type WSUpdateAction string
 
 const (
-	WSUpdateAddMarkets    WSUpdateAction = "add_markets"
-	WSUpdateDeleteMarkets WSUpdateAction = "delete_markets"
+	WSUpdateAddMarkets         WSUpdateAction = "add_markets"
+	WSUpdateDeleteMarkets      WSUpdateAction = "delete_markets"
+	WSUpdateGetSnapshot        WSUpdateAction = "get_snapshot"
+	WSUpdateSubscribeIndices   WSUpdateAction = "subscribe_indices"
+	WSUpdateUnsubscribeIndices WSUpdateAction = "unsubscribe_indices"
+	WSUpdateIndexlist          WSUpdateAction = "indexlist"
 )
 
 // WSMessageType represents the type field of an incoming WebSocket message.
@@ -213,6 +217,8 @@ const (
 	WSMsgQuoteAccepted               WSMessageType = "quote_accepted"
 	WSMsgQuoteExecuted               WSMessageType = "quote_executed"
 	WSMsgEventFeeUpdate              WSMessageType = "event_fee_update"
+	WSMsgCfbenchmarksValue           WSMessageType = "cfbenchmarks_value"
+	WSMsgCfbenchmarksValueIndexlist  WSMessageType = "cfbenchmarks_value_indexlist"
 )
 
 // WSResponseType represents the type field of a WebSocket command response.
