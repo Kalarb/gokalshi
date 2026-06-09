@@ -148,6 +148,7 @@ type HTTPClient interface {
 // WebSocketClient defines the contract for the Kalshi WebSocket client.
 type WebSocketClient interface {
 	Connect(ctx context.Context) error
+	Connected() bool
 	Close() error
 	MsgCh() <-chan []byte
 	ListenLoop(ctx context.Context)

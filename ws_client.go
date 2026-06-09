@@ -79,6 +79,13 @@ func NewWSClient(cfg *ClientConfig, opts ...WSClientOption) *WSClient {
 // MsgCh returns the read-only channel for incoming messages.
 func (c *WSClient) MsgCh() <-chan []byte { return c.msgCh }
 
+// Connected reports whether the WebSocket connection is currently established.
+func (c *WSClient) Connected() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return c.conn != nil
+}
+
 // Connect dials the Kalshi WebSocket endpoint with auth headers.
 func (c *WSClient) Connect(ctx context.Context) error {
 	url := c.cfg.WSBaseURL + wsPathSuffix
@@ -116,6 +123,7 @@ func (c *WSClient) Close() error {
 	c.closed.Store(true)
 	c.mu.Lock()
 	conn := c.conn
+	c.conn = nil
 	c.mu.Unlock()
 	if conn != nil {
 		return conn.Close(websocket.StatusNormalClosure, "client closing")
@@ -328,14 +336,18 @@ func (c *WSClient) handleDataMessage(msg WSMessage, raw []byte) []byte {
 	}
 
 	state, ok := c.sidMap[msg.SID]
-	if ok {
-		if state.Seq != 0 && (state.Seq+1) != msg.Seq {
-			c.logger.LogAttrs(context.Background(), slog.LevelWarn, "ws_sequence_gap",
-				slog.String("channel", state.Name), slog.Int("expected", state.Seq+1), slog.Int("got", msg.Seq))
-			c.forceReconnect.Store(true)
-		}
-		state.Seq = msg.Seq
+	if !ok {
+		c.logger.LogAttrs(context.Background(), slog.LevelWarn, "ws_unknown_sid_dropped",
+			slog.String("type", string(msg.Type)), slog.Int("sid", msg.SID))
+		return nil
 	}
+
+	if state.Seq != 0 && (state.Seq+1) != msg.Seq {
+		c.logger.LogAttrs(context.Background(), slog.LevelWarn, "ws_sequence_gap",
+			slog.String("channel", state.Name), slog.Int("expected", state.Seq+1), slog.Int("got", msg.Seq))
+		c.forceReconnect.Store(true)
+	}
+	state.Seq = msg.Seq
 
 	return raw
 }
