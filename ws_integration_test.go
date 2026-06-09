@@ -143,8 +143,15 @@ func wsTestSetup(t *testing.T) (*Client, *WSClient, *messageCollector, context.C
 	go collector.run(ctx, wsClient.MsgCh())
 	go wsClient.ListenLoop(ctx)
 
-	// Give connection time to establish.
-	time.Sleep(500 * time.Millisecond)
+	// Wait for the connection to actually establish.
+	deadline := time.Now().Add(10 * time.Second)
+	for !wsClient.Connected() {
+		if time.Now().After(deadline) {
+			cancel()
+			t.Fatal("ws connection not established within 10s")
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
 
 	return httpClient, wsClient, collector, ctx, cancel
 }

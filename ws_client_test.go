@@ -91,6 +91,27 @@ func TestWSClient_Connect(t *testing.T) {
 	ws.Close()
 }
 
+func TestWSClient_Connected(t *testing.T) {
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		<-time.After(2 * time.Second)
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+
+	assert.False(t, ws.Connected(), "should be false before Connect")
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	require.NoError(t, ws.Connect(ctx))
+	assert.True(t, ws.Connected(), "should be true after Connect")
+
+	ws.Close()
+	assert.False(t, ws.Connected(), "should be false after Close")
+}
+
 func TestWSClient_Close(t *testing.T) {
 	cfg := testWSConfig(t, "http://localhost")
 	ws := NewWSClient(cfg)
@@ -136,6 +157,22 @@ func TestWSClient_HandleIncoming_DataMessage(t *testing.T) {
 		assert.Contains(t, string(raw), "orderbook_delta")
 	case <-time.After(time.Second):
 		t.Fatal("message not dispatched")
+	}
+}
+
+func TestWSClient_HandleIncoming_DataMessage_UnknownSID(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+
+	// No SID 99 in sidMap — simulates a message arriving after unsubscribe.
+	msg := `{"type":"trade","sid":99,"seq":1,"msg":{"market_ticker":"TEST"}}`
+	ws.handleIncoming([]byte(msg))
+
+	select {
+	case <-ws.MsgCh():
+		t.Fatal("message with unknown SID should have been dropped")
+	case <-time.After(200 * time.Millisecond):
+		// Expected: message was dropped.
 	}
 }
 
