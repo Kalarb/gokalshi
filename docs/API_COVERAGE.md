@@ -6,7 +6,7 @@
 
 | Category | Endpoints | Unit Tests | Integration Tests |
 |----------|:---------:|:----------:|:-----------------:|
-| Account | 2 | 2/2 | 2/2 |
+| Account | 3 | 3/3 | 2/3 |
 | Exchange | 5 | 5/5 | 5/5 |
 | Orders | 10 | 10/10 | 10/10 |
 | Event Orders (V2) | 6 | 6/6 | 6/6 |
@@ -25,7 +25,7 @@
 | Milestones | 2 | 2/2 | 2/2 |
 | Multivariate Event Collections | 5 | 5/5 | 5/5 |
 | Structured Targets | 2 | 2/2 | 2/2 |
-| **Total** | **97** | **97/97** | **97/97** |
+| **Total** | **98** | **98/98** | **97/98** |
 
 ## HTTP Endpoints
 
@@ -35,6 +35,7 @@
 |--------|----------|:----:|:-----------:|-------|
 | `GetAccountAPILimits` | `GET /account/limits` | Y | Y | |
 | `GetAccountEndpointCosts` | `GET /account/endpoint_costs` | Y | Y | |
+| `UpgradeAPIUsageLevel` | `POST /account/api_usage_level/upgrade` | Y | — | |
 
 ### Exchange
 
