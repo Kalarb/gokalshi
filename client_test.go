@@ -69,6 +69,53 @@ func newTestClient(t *testing.T, serverURL string) *Client {
 }
 
 // ---------------------------------------------------------------------------
+// NewClient URL resolution tests
+// ---------------------------------------------------------------------------
+
+func TestNewClient_DerivesURLFromEnvironment(t *testing.T) {
+	tests := []struct {
+		name        string
+		env         Environment
+		expectedURL string
+	}{
+		{"prod", Prod, prodHTTPBase},
+		{"demo", Demo, demoHTTPBase},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := testClientConfig(t, "")
+			cfg.Environment = tt.env
+			cfg.HTTPBaseURL = "" // empty -- should derive from Environment
+
+			limiter := NewReadWriteTokenBucket(TokenBucketConfig{
+				ReadRate: 100, WriteRate: 100,
+				WindowSize: 1.0, SafetyPadding: 0,
+			})
+			c, err := NewClient(cfg, WithRateLimiter(limiter))
+			require.NoError(t, err)
+
+			assert.Equal(t, tt.expectedURL, c.baseURL)
+		})
+	}
+}
+
+func TestNewClient_ExplicitURLTakesPrecedence(t *testing.T) {
+	cfg := testClientConfig(t, "")
+	cfg.Environment = Prod
+	cfg.HTTPBaseURL = "http://localhost:9999"
+
+	limiter := NewReadWriteTokenBucket(TokenBucketConfig{
+		ReadRate: 100, WriteRate: 100,
+		WindowSize: 1.0, SafetyPadding: 0,
+	})
+	c, err := NewClient(cfg, WithRateLimiter(limiter))
+	require.NoError(t, err)
+
+	assert.Equal(t, "http://localhost:9999", c.baseURL)
+}
+
+// ---------------------------------------------------------------------------
 // HTTP client core tests
 // ---------------------------------------------------------------------------
 

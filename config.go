@@ -26,11 +26,23 @@ func (e Environment) String() string {
 }
 
 const (
-	demoHTTPBase = "https://demo-api.kalshi.co"
-	demoWSBase   = "wss://demo-api.kalshi.co"
-	prodHTTPBase = "https://api.elections.kalshi.com"
-	prodWSBase   = "wss://api.elections.kalshi.com"
+	demoHTTPBase = "https://external-api.demo.kalshi.co"
+	demoWSBase   = "wss://external-api.demo.kalshi.co"
+	prodHTTPBase = "https://external-api.kalshi.com"
+	prodWSBase   = "wss://external-api.kalshi.com"
 )
+
+// httpBaseForEnv returns the default HTTP base URL for the given environment.
+func httpBaseForEnv(env Environment) string {
+	switch env {
+	case Prod:
+		return prodHTTPBase
+	case Demo:
+		return demoHTTPBase
+	default:
+		return ""
+	}
+}
 
 // ClientConfig holds the configuration for connecting to the Kalshi API.
 type ClientConfig struct {
