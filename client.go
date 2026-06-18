@@ -73,9 +73,14 @@ func WithRateLimiter(l *ReadWriteTokenBucket) ClientOption {
 // configure the rate limiter automatically. To skip auto-configuration,
 // pass WithRateLimiter with a custom limiter.
 func NewClient(cfg *ClientConfig, opts ...ClientOption) (*Client, error) {
+	baseURL := cfg.HTTPBaseURL
+	if baseURL == "" {
+		baseURL = httpBaseForEnv(cfg.Environment)
+	}
+
 	c := &Client{
 		httpClient:  &http.Client{Timeout: 30 * time.Second},
-		baseURL:     cfg.HTTPBaseURL,
+		baseURL:     baseURL,
 		credentials: cfg.Credentials,
 		limiter:     NewReadWriteTokenBucket(DefaultTokenBucketConfig()),
 		maxRetries:  4,
