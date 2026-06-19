@@ -281,7 +281,7 @@ func (c *WSClient) handleSubscribed(msg WSMessage) {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		// Must release lock before sending on WS.
 		c.mu.Unlock()
-		err := c.sendUpdateSub(ctx, sid, tickers, WSUpdateAddMarkets)
+		err := c.sendUpdateSub(ctx, sid, tickers, WSUpdateAddMarkets, false)
 		cancel()
 		c.mu.Lock()
 		if err != nil {
@@ -357,13 +357,14 @@ func (c *WSClient) handleDataMessage(msg WSMessage, raw []byte) []byte {
 // Pass a non-nil slice to subscribe to specific tickers only.
 // Returns ErrInvalidArgument if a channel already has any subscription;
 // call Unsubscribe first to replace an existing subscription.
-func (c *WSClient) Subscribe(ctx context.Context, channels []string, tickers []string) error {
+func (c *WSClient) Subscribe(ctx context.Context, channels []string, tickers []string, opts ...SubscribeOption) error {
 	if len(channels) == 0 {
 		return fmt.Errorf("channels must not be empty: %w", ErrInvalidArgument)
 	}
 	if tickers != nil && len(tickers) == 0 {
 		return fmt.Errorf("tickers must be nil (global) or non-empty: %w", ErrInvalidArgument)
 	}
+	o := applyOpts(opts)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -381,7 +382,7 @@ func (c *WSClient) Subscribe(ctx context.Context, channels []string, tickers []s
 		}
 
 		c.mu.Unlock()
-		err := c.sendSubscribe(ctx, ch, tickers)
+		err := c.sendSubscribe(ctx, ch, tickers, o.sendInitialSnapshot)
 		c.mu.Lock()
 		if err != nil {
 			delete(c.channels, ch)
@@ -430,14 +431,15 @@ func (c *WSClient) Unsubscribe(ctx context.Context, channels []string) error {
 // tickers and channels must not be nil or empty.
 // If a channel has a global subscription, AddMarkets converts it to
 // ticker-scoped (the server narrows the feed). A warning is logged.
-func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []string) error {
-	// Validate before acquiring mu — no state access needed.
+func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []string, opts ...SubscribeOption) error {
+	// Validate before acquiring mu -- no state access needed.
 	if len(tickers) == 0 {
 		return fmt.Errorf("tickers must not be empty: %w", ErrInvalidArgument)
 	}
 	if len(channels) == 0 {
 		return fmt.Errorf("channels must not be empty: %w", ErrInvalidArgument)
 	}
+	o := applyOpts(opts)
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -470,7 +472,7 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 			// Channel has a SID — send update_subscription.
 			sid := *state.SID
 			c.mu.Unlock()
-			err := c.sendUpdateSub(ctx, sid, newTickers, WSUpdateAddMarkets)
+			err := c.sendUpdateSub(ctx, sid, newTickers, WSUpdateAddMarkets, o.sendInitialSnapshot)
 			c.mu.Lock()
 			if err != nil {
 				return err
@@ -479,14 +481,14 @@ func (c *WSClient) AddMarkets(ctx context.Context, tickers []string, channels []
 				state.Markets[t] = struct{}{}
 			}
 		} else if _, pending := c.pendingInitForChannel(ch); pending {
-			// Subscribe in progress — queue tickers.
+			// Subscribe in progress -- queue tickers.
 			for _, t := range newTickers {
 				state.PendingMarkets[t] = struct{}{}
 			}
 		} else {
-			// No SID, no pending — send initial subscribe.
+			// No SID, no pending -- send initial subscribe.
 			c.mu.Unlock()
-			err := c.sendSubscribe(ctx, ch, newTickers)
+			err := c.sendSubscribe(ctx, ch, newTickers, o.sendInitialSnapshot)
 			c.mu.Lock()
 			if err != nil {
 				if !ok {
@@ -534,7 +536,7 @@ func (c *WSClient) RemoveMarkets(ctx context.Context, tickers []string, channels
 
 		sid := *state.SID
 		c.mu.Unlock()
-		err := c.sendUpdateSub(ctx, sid, tickers, WSUpdateDeleteMarkets)
+		err := c.sendUpdateSub(ctx, sid, tickers, WSUpdateDeleteMarkets, false)
 		c.mu.Lock()
 		if err != nil {
 			return err
@@ -600,7 +602,7 @@ func (c *WSClient) recoverSubscriptions(ctx context.Context) error {
 			continue // empty ticker-scoped channel, nothing to recover
 		}
 		c.mu.Unlock()
-		err := c.sendSubscribe(ctx, state.Name, tickers)
+		err := c.sendSubscribe(ctx, state.Name, tickers, false)
 		c.mu.Lock()
 		if err != nil {
 			return err
@@ -609,7 +611,7 @@ func (c *WSClient) recoverSubscriptions(ctx context.Context) error {
 	return nil
 }
 
-func (c *WSClient) sendSubscribe(ctx context.Context, channelName string, tickers []string) error {
+func (c *WSClient) sendSubscribe(ctx context.Context, channelName string, tickers []string, sendSnapshot bool) error {
 	c.mu.Lock()
 	c.msgID++
 	id := c.msgID
@@ -620,8 +622,9 @@ func (c *WSClient) sendSubscribe(ctx context.Context, channelName string, ticker
 		ID:  id,
 		Cmd: WSCmdSubscribe,
 		Params: SubscribeParams{
-			Channels:      []string{channelName},
-			MarketTickers: tickers,
+			Channels:            []string{channelName},
+			MarketTickers:       tickers,
+			SendInitialSnapshot: sendSnapshot,
 		},
 	}
 	return c.writeJSON(ctx, cmd)
@@ -643,7 +646,7 @@ func (c *WSClient) sendUnsubscribe(ctx context.Context, sid int) error {
 	return c.writeJSON(ctx, cmd)
 }
 
-func (c *WSClient) sendUpdateSub(ctx context.Context, sid int, tickers []string, action WSUpdateAction) error {
+func (c *WSClient) sendUpdateSub(ctx context.Context, sid int, tickers []string, action WSUpdateAction, sendSnapshot bool) error {
 	c.mu.Lock()
 	c.msgID++
 	id := c.msgID
@@ -653,9 +656,10 @@ func (c *WSClient) sendUpdateSub(ctx context.Context, sid int, tickers []string,
 		ID:  id,
 		Cmd: WSCmdUpdateSubscription,
 		Params: UpdateSubParams{
-			SIDs:          []int{sid},
-			MarketTickers: tickers,
-			Action:        action,
+			SIDs:                []int{sid},
+			MarketTickers:       tickers,
+			Action:              action,
+			SendInitialSnapshot: sendSnapshot,
 		},
 	}
 	return c.writeJSON(ctx, cmd)
