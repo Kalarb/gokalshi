@@ -386,6 +386,72 @@ func TestWSClient_RemoveMarkets(t *testing.T) {
 	}
 }
 
+func TestWSClient_GetSnapshot(t *testing.T) {
+	done := make(chan []byte, 5)
+	srv := mockWSServer(t, func(conn *websocket.Conn) {
+		for {
+			_, data, err := conn.Read(context.Background())
+			if err != nil {
+				return
+			}
+			done <- data
+		}
+	})
+	defer srv.Close()
+
+	cfg := testWSConfig(t, srv.URL)
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	err := ws.Connect(ctx)
+	require.NoError(t, err)
+	defer ws.Close()
+
+	state := NewChannelState("ticker")
+	sid := 30
+	state.SID = &sid
+	state.Markets["TICK-1"] = struct{}{}
+	ws.channels["ticker"] = state
+	ws.sidMap[30] = state
+
+	err = ws.GetSnapshot(ctx, []string{"TICK-1"}, []string{"ticker"})
+	require.NoError(t, err)
+
+	select {
+	case raw := <-done:
+		var cmd map[string]any
+		require.NoError(t, json.Unmarshal(raw, &cmd))
+		assert.Equal(t, "update_subscription", cmd["cmd"])
+		params := cmd["params"].(map[string]any)
+		assert.Equal(t, "get_snapshot", params["action"])
+		assert.Equal(t, []any{"TICK-1"}, params["market_tickers"])
+		assert.Equal(t, []any{float64(30)}, params["sids"])
+	case <-time.After(2 * time.Second):
+		t.Fatal("no get_snapshot command sent")
+	}
+}
+
+func TestWSClient_GetSnapshot_NoSIDSkips(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	// Channel exists but has no SID (not yet subscribed) -> skipped, no error.
+	ws.channels["ticker"] = NewChannelState("ticker")
+
+	err := ws.GetSnapshot(ctx, []string{"TICK-1"}, []string{"ticker"})
+	require.NoError(t, err)
+}
+
+func TestWSClient_GetSnapshot_Validation(t *testing.T) {
+	cfg := testWSConfig(t, "http://localhost")
+	ws := NewWSClient(cfg)
+	ctx := context.Background()
+
+	require.ErrorIs(t, ws.GetSnapshot(ctx, nil, []string{"ticker"}), ErrInvalidArgument)
+	require.ErrorIs(t, ws.GetSnapshot(ctx, []string{"TICK-1"}, nil), ErrInvalidArgument)
+}
+
 func TestWSClient_HandleConnectionLoss(t *testing.T) {
 	cfg := testWSConfig(t, "http://localhost")
 	ws := NewWSClient(cfg)

@@ -160,6 +160,7 @@ const (
 	MLSettled                  MarketLifecycleEventType = "settled"
 	MLFractionalTradingUpdated MarketLifecycleEventType = "fractional_trading_updated"
 	MLPriceLevelStructUpdated  MarketLifecycleEventType = "price_level_structure_updated"
+	MLMetadataUpdated          MarketLifecycleEventType = "metadata_updated"
 )
 
 // OrderGroupEventType represents an event in an order group's lifecycle.

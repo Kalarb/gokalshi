@@ -548,6 +548,44 @@ func (c *WSClient) RemoveMarkets(ctx context.Context, tickers []string, channels
 	return nil
 }
 
+// GetSnapshot requests a fresh snapshot for the given tickers on the specified
+// channels by sending update_subscription with action=get_snapshot.
+//
+// This is useful when a market is already subscribed: AddMarkets' send_initial_snapshot
+// only yields a snapshot for newly added markets, so a consumer that subscribes to an
+// already-watched market (or one already present on an active channel) would otherwise
+// receive no current state until the next live update. GetSnapshot forces the server to
+// re-send the current snapshot for the requested tickers.
+//
+// tickers and channels must not be nil or empty. Channels that are not yet subscribed
+// (no SID) are skipped, mirroring RemoveMarkets.
+func (c *WSClient) GetSnapshot(ctx context.Context, tickers []string, channels []string) error {
+	// Validate before acquiring mu — no state access needed.
+	if len(tickers) == 0 {
+		return fmt.Errorf("tickers must not be empty: %w", ErrInvalidArgument)
+	}
+	if len(channels) == 0 {
+		return fmt.Errorf("channels must not be empty: %w", ErrInvalidArgument)
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	for _, ch := range channels {
+		state, ok := c.channels[ch]
+		if !ok || state.SID == nil {
+			continue
+		}
+		sid := *state.SID
+		c.mu.Unlock()
+		err := c.sendUpdateSub(ctx, sid, tickers, WSUpdateGetSnapshot, false)
+		c.mu.Lock()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *WSClient) pendingInitForChannel(ch string) (int, bool) {
 	for id, name := range c.pendingInit {
 		if name == ch {

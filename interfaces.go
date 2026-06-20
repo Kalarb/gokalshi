@@ -157,6 +157,7 @@ type WebSocketClient interface {
 	Unsubscribe(ctx context.Context, channels []string) error
 	AddMarkets(ctx context.Context, tickers []string, channels []string, opts ...SubscribeOption) error
 	RemoveMarkets(ctx context.Context, tickers []string, channels []string) error
+	GetSnapshot(ctx context.Context, tickers []string, channels []string) error
 }
 
 // Compile-time interface satisfaction checks.
