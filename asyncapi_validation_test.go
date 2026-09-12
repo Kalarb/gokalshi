@@ -85,12 +85,41 @@ func TestAsyncAPIWSChannelCoverage(t *testing.T) {
 		}
 	}
 
+	// Verify we do not still route message types or channels the spec dropped.
+	// Kalshi retires WS channels (ticker_v2, multivariate) without notice, and a
+	// coverage-only check never notices a subscription that can no longer match.
+	var extraTypes []string
+	for msgType := range ourTypes {
+		if !specMsgTypes[msgType] {
+			extraTypes = append(extraTypes, msgType)
+		}
+	}
+	var extraChannels []string
+	for ch := range ourChannels {
+		if !specChannels[ch] {
+			extraChannels = append(extraChannels, ch)
+		}
+	}
+
+	sort.Strings(missingTypes)
+	sort.Strings(missingChannels)
+	sort.Strings(extraTypes)
+	sort.Strings(extraChannels)
+
 	t.Logf("AsyncAPI channels: %d", len(specChannels))
 	t.Logf("AsyncAPI message types: %d", len(specMsgTypes))
 	t.Logf("MsgTypeToChannel entries: %d", len(MsgTypeToChannel))
+	for _, x := range extraTypes {
+		t.Logf("  extra message type (not in spec): %s", x)
+	}
+	for _, x := range extraChannels {
+		t.Logf("  extra channel (not in spec): %s", x)
+	}
 
 	assert.Empty(t, missingTypes, "message types in spec but missing from MsgTypeToChannel")
 	assert.Empty(t, missingChannels, "channels in spec but not referenced in MsgTypeToChannel")
+	assert.Empty(t, extraTypes, "message types routed by MsgTypeToChannel but absent from the spec")
+	assert.Empty(t, extraChannels, "channels referenced by MsgTypeToChannel but absent from the spec")
 }
 
 // msgTypeToGoStruct maps WS message "name" → Go struct instance for reflection.
