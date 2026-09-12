@@ -1,0 +1,34 @@
+name: Spec Freshness
+
+# Advisory: reports when Kalshi's published spec has moved ahead of the
+# snapshot vendored in specs/. It does not gate anything — the blocking check
+# is the spec-drift job in ci.yml, which compares the SDK against the vendored
+# copy. Acting on a report here means running ./tools/vendor_spec.sh,
+# regenerating, and opening a PR.
+
+on:
+  schedule:
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  spec-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Compare live spec against the vendored snapshot
+        id: check
+        continue-on-error: true
+        run: ./tools/vendor_spec.sh --check
+
+      - name: Update badge
+        uses: Schneegans/dynamic-badges-action@v1.8.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 65579a629076066fcbf09520ca76301a
+          filename: go-openapi-status.json
+          label: Kalshi spec
+          message: ${{ steps.check.outcome == 'success' && 'Up-to-date' || 'Behind' }}
+          color: ${{ steps.check.outcome == 'success' && 'green' || 'yellow' }}
