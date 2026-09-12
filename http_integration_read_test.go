@@ -157,12 +157,6 @@ func TestHTTPIntegration_MVECollections(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, collectionTicker, resp.MultivariateContract.CollectionTicker)
 	})
-
-	t.Run("GetMultivariateEventCollectionLookupHistory", func(t *testing.T) {
-		_, err := c.GetMultivariateEventCollectionLookupHistory(ctx, collectionTicker, GetMVECollectionLookupParams{Limit: 5})
-		skipOnAPIError(t, err, 400, 404)
-		require.NoError(t, err)
-	})
 }
 
 func TestHTTPIntegration_StructuredTargets(t *testing.T) {

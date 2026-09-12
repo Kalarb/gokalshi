@@ -55,16 +55,3 @@ func (p GetMultivariateEventCollectionsParams) toMap() map[string]string {
 		Int("limit", p.Limit).
 		Build()
 }
-
-// GetMVECollectionLookupParams are query parameters for GetMultivariateEventCollectionLookupHistory.
-type GetMVECollectionLookupParams struct {
-	Cursor string
-	Limit  int
-}
-
-func (p GetMVECollectionLookupParams) toMap() map[string]string {
-	return NewQuery().
-		String("cursor", p.Cursor).
-		Int("limit", p.Limit).
-		Build()
-}

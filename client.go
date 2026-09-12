@@ -354,7 +354,3 @@ func deleteJSON[T any](c *Client, ctx context.Context, path string, body any, wr
 func (c *Client) put(ctx context.Context, path string, body any, writeCost float64) (json.RawMessage, error) {
 	return c.do(ctx, http.MethodPut, path, 0, writeCost, body, nil)
 }
-
-func putJSON[T any](c *Client, ctx context.Context, path string, body any, writeCost float64) (T, error) {
-	return doJSON[T](c, ctx, http.MethodPut, path, 0, writeCost, body, nil)
-}

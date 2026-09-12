@@ -110,3 +110,17 @@ func integrationWSClient(t *testing.T) *WSClient {
 	t.Cleanup(func() { ws.Close() })
 	return ws
 }
+
+// newIntegrationOrder builds a minimal resting V2 order: priced far from the
+// market so it rests rather than filling, which keeps order-lifecycle tests
+// from accidentally trading.
+func newIntegrationOrder(ticker, price, count string) CreateOrderV2Request {
+	return CreateOrderV2Request{
+		Ticker:                  ticker,
+		Side:                    BookSideBid,
+		Count:                   count,
+		Price:                   price,
+		TimeInForce:             TimeInForceGTC,
+		SelfTradePreventionType: STPTakerAtCross,
+	}
+}
