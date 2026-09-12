@@ -45,11 +45,6 @@ func TestHTTPIntegration_Exchange(t *testing.T) {
 		assert.NotNil(t, resp.Schedule.StandardHours)
 	})
 
-	t.Run("GetExchangeAnnouncements", func(t *testing.T) {
-		_, err := c.GetExchangeAnnouncements(ctx)
-		require.NoError(t, err)
-	})
-
 	t.Run("GetUserDataTimestamp", func(t *testing.T) {
 		resp, err := c.GetUserDataTimestamp(ctx)
 		require.NoError(t, err)
@@ -312,23 +307,16 @@ func TestHTTPIntegration_Orders(t *testing.T) {
 	})
 
 	t.Run("CreateGetCancel", func(t *testing.T) {
-		createResp, err := c.CreateOrder(ctx, CreateOrderRequest{
-			Ticker:          ticker,
-			Side:            SideYes,
-			Action:          ActionBuy,
-			CountFP:         ptr("1.00"),
-			YesPriceDollars: "0.0100",
-			TimeInForce:     TimeInForceGTC,
-		})
+		createResp, err := c.CreateOrderV2(ctx, newIntegrationOrder(ticker, "0.0100", "1.00"))
 		require.NoError(t, err)
-		orderID := createResp.Order.OrderID
+		orderID := createResp.OrderID
 		assert.NotEmpty(t, orderID)
 		t.Logf("created order %s on %s", orderID, ticker)
-		t.Cleanup(func() { c.CancelOrder(context.Background(), orderID) })
+		t.Cleanup(func() { _, _ = c.CancelOrderV2(context.Background(), orderID, CancelOrderV2Params{}) })
 
 		t.Run("GetOrder", func(t *testing.T) {
 			// Retry — DEMO has up to 20s propagation delay on writes.
-			var resp CreateOrderResponse
+			var resp GetOrderResponse
 			var getErr error
 			for i := 0; i < 20; i++ {
 				time.Sleep(1 * time.Second)
@@ -348,91 +336,86 @@ func TestHTTPIntegration_Orders(t *testing.T) {
 		})
 
 		t.Run("CancelOrder", func(t *testing.T) {
-			resp, err := c.CancelOrder(ctx, orderID)
+			resp, err := c.CancelOrderV2(ctx, orderID, CancelOrderV2Params{})
 			require.NoError(t, err)
-			assert.Equal(t, orderID, resp.Order.OrderID)
-			t.Logf("canceled order %s, status=%s", orderID, resp.Order.Status)
+			assert.Equal(t, orderID, resp.OrderID)
+			t.Logf("canceled order %s, reduced_by=%s", orderID, resp.ReducedBy)
 		})
 	})
 
 	t.Run("AmendOrder", func(t *testing.T) {
-		created, err := c.CreateOrder(ctx, CreateOrderRequest{
-			Ticker:          ticker,
-			Side:            SideYes,
-			Action:          ActionBuy,
-			CountFP:         ptr("1.00"),
-			YesPriceDollars: "0.0100",
-			TimeInForce:     TimeInForceGTC,
-		})
+		created, err := c.CreateOrderV2(ctx, newIntegrationOrder(ticker, "0.0100", "1.00"))
 		require.NoError(t, err)
-		orderID := created.Order.OrderID
-		t.Cleanup(func() { c.CancelOrder(context.Background(), orderID) })
+		orderID := created.OrderID
+		t.Cleanup(func() { _, _ = c.CancelOrderV2(context.Background(), orderID, CancelOrderV2Params{}) })
 
 		time.Sleep(2 * time.Second)
 
-		amended, err := c.AmendOrder(ctx, orderID, AmendOrderRequest{
-			Ticker:          ticker,
-			Side:            SideYes,
-			Action:          ActionBuy,
-			YesPriceDollars: "0.0200",
+		amended, err := c.AmendOrderV2(ctx, orderID, AmendOrderV2Request{
+			Ticker: ticker,
+			Side:   BookSideBid,
+			Count:  "1.00",
+			Price:  "0.0200",
 		})
 		skipOnAPIError(t, err, 400, 403)
 		require.NoError(t, err)
-		assert.NotEmpty(t, amended.Order.OrderID)
-		t.Logf("amended order %s", amended.Order.OrderID)
+		assert.NotEmpty(t, amended.OrderID)
+		t.Logf("amended order %s", amended.OrderID)
 	})
 
 	t.Run("DecreaseOrder", func(t *testing.T) {
-		created, err := c.CreateOrder(ctx, CreateOrderRequest{
-			Ticker:          ticker,
-			Side:            SideYes,
-			Action:          ActionBuy,
-			CountFP:         ptr("2.00"),
-			YesPriceDollars: "0.0100",
-			TimeInForce:     TimeInForceGTC,
-		})
+		created, err := c.CreateOrderV2(ctx, newIntegrationOrder(ticker, "0.0100", "2.00"))
 		require.NoError(t, err)
-		orderID := created.Order.OrderID
-		t.Cleanup(func() { c.CancelOrder(context.Background(), orderID) })
+		orderID := created.OrderID
+		t.Cleanup(func() { _, _ = c.CancelOrderV2(context.Background(), orderID, CancelOrderV2Params{}) })
 
 		time.Sleep(2 * time.Second)
 
-		decreased, err := c.DecreaseOrder(ctx, orderID, DecreaseOrderRequest{ReduceTo: 1})
+		decreased, err := c.DecreaseOrderV2(ctx, orderID, DecreaseOrderV2Request{
+			MarketTicker: ticker,
+			ReduceTo:     ptr("1.00"),
+		})
 		skipOnAPIError(t, err, 400, 403)
 		require.NoError(t, err)
-		assert.NotEmpty(t, decreased.Order.OrderID)
-		t.Logf("decreased order %s", decreased.Order.OrderID)
+		assert.NotEmpty(t, decreased.OrderID)
+		t.Logf("decreased order %s, remaining=%s", decreased.OrderID, decreased.RemainingCount)
 	})
 
 	t.Run("BatchCreateAndCancel", func(t *testing.T) {
-		orders := []CreateOrderRequest{
-			{Ticker: ticker, Side: SideYes, Action: ActionBuy, CountFP: ptr("1.00"), YesPriceDollars: "0.0100", TimeInForce: TimeInForceGTC},
-			{Ticker: ticker, Side: SideYes, Action: ActionBuy, CountFP: ptr("1.00"), YesPriceDollars: "0.0100", TimeInForce: TimeInForceGTC},
-			{Ticker: ticker, Side: SideYes, Action: ActionBuy, CountFP: ptr("1.00"), YesPriceDollars: "0.0100", TimeInForce: TimeInForceGTC},
+		orders := []CreateOrderV2Request{
+			newIntegrationOrder(ticker, "0.0100", "1.00"),
+			newIntegrationOrder(ticker, "0.0100", "1.00"),
+			newIntegrationOrder(ticker, "0.0100", "1.00"),
 		}
-		created, err := c.BatchCreateOrders(ctx, orders)
+		created, err := c.BatchCreateOrdersV2(ctx, BatchCreateOrdersV2Request{Orders: orders})
 		require.NoError(t, err)
 
-		var cancelOrders []BatchCancelOrdersRequestOrder
+		// Batch V2 response entries are untyped in the spec, so the order id
+		// has to be read out of the map.
+		var orderIDs []string
 		for _, entry := range created.Orders {
-			if entry.Order != nil && entry.Order.OrderID != "" {
-				cancelOrders = append(cancelOrders, BatchCancelOrdersRequestOrder{OrderID: entry.Order.OrderID})
+			if oid, ok := entry["order_id"].(string); ok && oid != "" {
+				orderIDs = append(orderIDs, oid)
 			}
 		}
-		assert.GreaterOrEqual(t, len(cancelOrders), 1)
-		t.Logf("batch created %d orders", len(cancelOrders))
+		assert.GreaterOrEqual(t, len(orderIDs), 1)
+		t.Logf("batch created %d orders", len(orderIDs))
 
 		t.Cleanup(func() {
-			for _, o := range cancelOrders {
-				c.CancelOrder(context.Background(), o.OrderID)
+			for _, oid := range orderIDs {
+				_, _ = c.CancelOrderV2(context.Background(), oid, CancelOrderV2Params{})
 			}
 		})
 
 		time.Sleep(2 * time.Second)
 
-		_, err = c.BatchCancelOrders(ctx, cancelOrders)
+		cancels := make([]map[string]any, 0, len(orderIDs))
+		for _, oid := range orderIDs {
+			cancels = append(cancels, map[string]any{"order_id": oid})
+		}
+		_, err = c.BatchCancelOrdersV2(ctx, BatchCancelOrdersV2Request{Orders: cancels})
 		require.NoError(t, err)
-		t.Logf("batch canceled %d orders", len(cancelOrders))
+		t.Logf("batch canceled %d orders", len(orderIDs))
 	})
 
 	t.Run("GetQueuePositions", func(t *testing.T) {
@@ -443,17 +426,10 @@ func TestHTTPIntegration_Orders(t *testing.T) {
 	})
 
 	t.Run("GetQueuePosition", func(t *testing.T) {
-		created, err := c.CreateOrder(ctx, CreateOrderRequest{
-			Ticker:          ticker,
-			Side:            SideYes,
-			Action:          ActionBuy,
-			CountFP:         ptr("1.00"),
-			YesPriceDollars: "0.0100",
-			TimeInForce:     TimeInForceGTC,
-		})
+		created, err := c.CreateOrderV2(ctx, newIntegrationOrder(ticker, "0.0100", "1.00"))
 		require.NoError(t, err)
-		orderID := created.Order.OrderID
-		t.Cleanup(func() { c.CancelOrder(context.Background(), orderID) })
+		orderID := created.OrderID
+		t.Cleanup(func() { _, _ = c.CancelOrderV2(context.Background(), orderID, CancelOrderV2Params{}) })
 
 		time.Sleep(2 * time.Second)
 

@@ -13,7 +13,7 @@ import (
 // API keys allow programmatic access to the platform without requiring
 // username/password authentication. Each key has a unique identifier and name.
 //
-// See https://trading-api.readme.io/reference/getapikeys
+// See https://docs.kalshi.com/api-reference/api-keys/get-api-keys
 func (c *Client) GetAPIKeys(ctx context.Context) (GetApiKeysResponse, error) {
 	return getJSON[GetApiKeysResponse](c, ctx, pathAPIKeys, nil)
 }
@@ -27,7 +27,7 @@ func (c *Client) GetAPIKeys(ctx context.Context) (GetApiKeysResponse, error) {
 // create API keys by providing their own RSA public key. The platform will use
 // this public key to verify signatures on API requests.
 //
-// See https://trading-api.readme.io/reference/createapikey
+// See https://docs.kalshi.com/api-reference/api-keys/create-api-key
 func (c *Client) CreateAPIKey(ctx context.Context, req CreateApiKeyRequest) (CreateApiKeyResponse, error) {
 	return postJSON[CreateApiKeyResponse](c, ctx, pathAPIKeys, req, 10.0)
 }
@@ -42,7 +42,7 @@ func (c *Client) CreateAPIKey(ctx context.Context, req CreateApiKeyRequest) (Cre
 // the user and must be stored securely. The private key cannot be retrieved
 // again.
 //
-// See https://trading-api.readme.io/reference/generateapikey
+// See https://docs.kalshi.com/api-reference/api-keys/generate-api-key
 func (c *Client) GenerateAPIKey(ctx context.Context, req GenerateApiKeyRequest) (GenerateApiKeyResponse, error) {
 	return postJSON[GenerateApiKeyResponse](c, ctx, pathAPIKeys+"/generate", req, 10.0)
 }
@@ -55,7 +55,7 @@ func (c *Client) GenerateAPIKey(ctx context.Context, req GenerateApiKeyRequest) 
 // an API key. Once deleted, the key can no longer be used for authentication.
 // This action cannot be undone.
 //
-// See https://trading-api.readme.io/reference/deleteapikey
+// See https://docs.kalshi.com/api-reference/api-keys/delete-api-key
 func (c *Client) DeleteAPIKey(ctx context.Context, apiKey string) error {
 	path := fmt.Sprintf("%s/%s", pathAPIKeys, apiKey)
 	_, err := c.delete(ctx, path, nil, 10.0)

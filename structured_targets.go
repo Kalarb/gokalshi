@@ -11,7 +11,7 @@ import (
 //
 // Page size (min: 1, max: 2000)
 //
-// See https://trading-api.readme.io/reference/getstructuredtargets
+// See https://docs.kalshi.com/api-reference/structured-targets/get-structured-targets
 func (c *Client) GetStructuredTargets(ctx context.Context, params GetStructuredTargetsParams) (GetStructuredTargetsResponse, error) {
 	return getJSON[GetStructuredTargetsResponse](c, ctx, pathStructuredTargets, params.toMap())
 }
@@ -22,7 +22,7 @@ func (c *Client) GetStructuredTargets(ctx context.Context, params GetStructuredT
 //
 // Endpoint for getting data about a specific structured target by its ID.
 //
-// See https://trading-api.readme.io/reference/getstructuredtarget
+// See https://docs.kalshi.com/api-reference/structured-targets/get-structured-target
 func (c *Client) GetStructuredTarget(ctx context.Context, structuredTargetID string) (GetStructuredTargetResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathStructuredTargets, structuredTargetID)
 	return getJSON[GetStructuredTargetResponse](c, ctx, path, nil)

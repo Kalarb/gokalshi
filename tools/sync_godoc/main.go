@@ -13,19 +13,17 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
+	"unicode"
 
 	"gopkg.in/yaml.v3"
-)
 
-const specURL = "https://docs.kalshi.com/openapi.yaml"
+	"github.com/Kalarb/gokalshi/tools/internal/specsrc"
+)
 
 // Spec is a minimal representation of the OpenAPI spec.
 type Spec struct {
@@ -34,9 +32,11 @@ type Spec struct {
 
 // Operation represents an API endpoint.
 type Operation struct {
-	OperationID string `yaml:"operationId"`
-	Summary     string `yaml:"summary"`
-	Description string `yaml:"description"`
+	OperationID string   `yaml:"operationId"`
+	Summary     string   `yaml:"summary"`
+	Description string   `yaml:"description"`
+	Tags        []string `yaml:"tags"`
+	Deprecated  bool     `yaml:"deprecated"`
 }
 
 // EndpointInfo holds extracted info about an API endpoint.
@@ -46,29 +46,25 @@ type EndpointInfo struct {
 	Description string
 	Method      string // GET, POST, DELETE, etc.
 	Path        string // /trade-api/v2/...
+	Tag         string // spec tag, used to build the docs URL
+	Deprecated  bool
 }
 
 // methodToOperationID maps Go Client method names to spec operationIds.
 var methodToOperationID = map[string]string{
 	// Orders
-	"CreateOrder":       "CreateOrder",
-	"CancelOrder":       "CancelOrder",
 	"GetOrder":          "GetOrder",
 	"GetOrders":         "GetOrders",
-	"BatchCreateOrders": "BatchCreateOrders",
-	"BatchCancelOrders": "BatchCancelOrders",
-	"AmendOrder":        "AmendOrder",
-	"DecreaseOrder":     "DecreaseOrder",
 	"GetQueuePositions": "GetOrderQueuePositions",
 	"GetQueuePosition":  "GetOrderQueuePosition",
 
 	// Markets
-	"GetMarketOrderbook":        "GetMarketOrderbook",
-	"GetMarketOrderbooks":       "GetMarketOrderbooks",
-	"GetTrades":                 "GetTrades",
-	"GetMarket":                 "GetMarket",
-	"GetMarkets":                "GetMarkets",
-	"GetMarketCandlesticks":     "GetMarketCandlesticks",
+	"GetMarketOrderbook":         "GetMarketOrderbook",
+	"GetMarketOrderbooks":        "GetMarketOrderbooks",
+	"GetTrades":                  "GetTrades",
+	"GetMarket":                  "GetMarket",
+	"GetMarkets":                 "GetMarkets",
+	"GetMarketCandlesticks":      "GetMarketCandlesticks",
 	"GetBatchMarketCandlesticks": "BatchGetMarketCandlesticks",
 
 	// Events
@@ -80,11 +76,10 @@ var methodToOperationID = map[string]string{
 	"GetEventForecastPercentileHistory": "GetEventForecastPercentilesHistory",
 
 	// Exchange
-	"GetExchangeStatus":        "GetExchangeStatus",
-	"GetExchangeAnnouncements": "GetExchangeAnnouncements",
-	"GetExchangeSchedule":      "GetExchangeSchedule",
-	"GetUserDataTimestamp":      "GetUserDataTimestamp",
-	"GetSeriesFeeChanges":      "GetSeriesFeeChanges",
+	"GetExchangeStatus":    "GetExchangeStatus",
+	"GetExchangeSchedule":  "GetExchangeSchedule",
+	"GetUserDataTimestamp": "GetUserDataTimestamp",
+	"GetSeriesFeeChanges":  "GetSeriesFeeChanges",
 
 	// Portfolio
 	"GetBalance":     "GetBalance",
@@ -107,15 +102,15 @@ var methodToOperationID = map[string]string{
 	"GetAccountEndpointCosts": "GetAccountEndpointCosts",
 
 	// Portfolio
-	"GetDeposits":                       "GetDeposits",
-	"GetWithdrawals":                    "GetWithdrawals",
+	"GetDeposits":                        "GetDeposits",
+	"GetWithdrawals":                     "GetWithdrawals",
 	"GetPortfolioRestingOrderTotalValue": "GetPortfolioRestingOrderTotalValue",
 
 	// API Keys
-	"GetAPIKeys":    "GetApiKeys",
-	"CreateAPIKey":  "CreateApiKey",
+	"GetAPIKeys":     "GetApiKeys",
+	"CreateAPIKey":   "CreateApiKey",
 	"GenerateAPIKey": "GenerateApiKey",
-	"DeleteAPIKey":  "DeleteApiKey",
+	"DeleteAPIKey":   "DeleteApiKey",
 
 	// Event Orders (V2)
 	"CreateOrderV2":       "CreateOrderV2",
@@ -129,13 +124,13 @@ var methodToOperationID = map[string]string{
 	"GetEventFeeChanges": "GetEventFeeChanges",
 
 	// Historical
-	"GetHistoricalCutoff":              "GetHistoricalCutoff",
-	"GetHistoricalFills":               "GetHistoricalFills",
-	"GetHistoricalOrders":              "GetHistoricalOrders",
-	"GetHistoricalTrades":              "GetHistoricalTrades",
-	"GetHistoricalMarkets":             "GetHistoricalMarkets",
-	"GetHistoricalMarket":              "GetHistoricalMarket",
-	"GetHistoricalMarketCandlesticks":  "GetHistoricalMarketCandlesticks",
+	"GetHistoricalCutoff":             "GetHistoricalCutoff",
+	"GetHistoricalFills":              "GetHistoricalFills",
+	"GetHistoricalOrders":             "GetHistoricalOrders",
+	"GetHistoricalTrades":             "GetHistoricalTrades",
+	"GetHistoricalMarkets":            "GetHistoricalMarkets",
+	"GetHistoricalMarket":             "GetHistoricalMarket",
+	"GetHistoricalMarketCandlesticks": "GetHistoricalMarketCandlesticks",
 
 	// Incentive Programs
 	"GetIncentivePrograms": "GetIncentivePrograms",
@@ -151,11 +146,9 @@ var methodToOperationID = map[string]string{
 	"GetMilestone":  "GetMilestone",
 
 	// Multivariate Event Collections
-	"GetMultivariateEventCollections":                      "GetMultivariateEventCollections",
-	"GetMultivariateEventCollection":                       "GetMultivariateEventCollection",
-	"GetMultivariateEventCollectionLookupHistory":           "GetMultivariateEventCollectionLookupHistory",
-	"CreateMarketInMultivariateEventCollection":             "CreateMarketInMultivariateEventCollection",
-	"LookupTickersForMarketInMultivariateEventCollection":   "LookupTickersForMarketInMultivariateEventCollection",
+	"GetMultivariateEventCollections":           "GetMultivariateEventCollections",
+	"GetMultivariateEventCollection":            "GetMultivariateEventCollection",
+	"CreateMarketInMultivariateEventCollection": "CreateMarketInMultivariateEventCollection",
 
 	// Structured Targets
 	"GetStructuredTargets": "GetStructuredTargets",
@@ -190,10 +183,32 @@ var methodToOperationID = map[string]string{
 	"ResetOrderGroup":       "ResetOrderGroup",
 	"TriggerOrderGroup":     "TriggerOrderGroup",
 	"UpdateOrderGroupLimit": "UpdateOrderGroupLimit",
+	// Added for 3.30.0 parity
+	"CancelAllOrders":                       "CancelAllOrders",
+	"GetAccountAPIUsageLevelVolumeProgress": "GetAccountApiUsageLevelVolumeProgress",
+	"UpgradeAPIUsageLevel":                  "UpgradeAccountApiUsageLevel",
+	"GetHistoricalPositions":                "GetHistoricalPositions",
+	"GetEventLiveData":                      "GetEventLiveData",
+	"GetWeatherIndex":                       "GetWeatherIndex",
+	"GetWeatherIndexCalibrations":           "GetWeatherIndexCalibrations",
+	"GetTargetBalanceAllocation":            "GetTargetBalanceAllocation",
+	"SetTargetBalanceAllocation":            "SetTargetBalanceAllocation",
+	"IntraExchangeInstanceTransfer":         "IntraExchangeInstanceTransfer",
+	"GetIntraExchangeInstanceTransfers":     "GetIntraExchangeInstanceTransfers",
+	"GetIntraExchangeInstanceTransfer":      "GetIntraExchangeInstanceTransfer",
+	"GetBlockTradeProposals":                "GetBlockTradeProposals",
+	"ProposeBlockTrade":                     "ProposeBlockTrade",
+	"AcceptBlockTradeProposal":              "AcceptBlockTradeProposal",
+	"GetRFQQuote":                           "GetRFQQuote",
+	"DeleteRFQQuote":                        "DeleteRFQQuote",
+	"AcceptRFQQuote":                        "AcceptRFQQuote",
+	"ConfirmRFQQuote":                       "ConfirmRFQQuote",
+	"GetFCMOrders":                          "GetFCMOrders",
+	"GetFCMPositions":                       "GetFCMPositions",
 }
 
 func main() {
-	spec, err := fetchSpec()
+	spec, err := loadSpec()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "fetch spec: %v\n", err)
 		os.Exit(1)
@@ -233,29 +248,81 @@ func main() {
 	}
 
 	fmt.Printf("Done! Updated %d method comments.\n", total)
+
+	// methodToOperationID is hand-maintained, and a method missing from it is
+	// skipped in silence — which is how several methods came to keep a dead
+	// documentation link across many runs. Make the gap visible instead.
+	if unmapped := unmappedMethods(dir); len(unmapped) > 0 {
+		fmt.Fprintf(os.Stderr, "\nWARNING: %d Client methods carry an endpoint annotation but are absent\n", len(unmapped))
+		fmt.Fprintf(os.Stderr, "from methodToOperationID, so their godoc was not synced:\n")
+		for _, m := range unmapped {
+			fmt.Fprintf(os.Stderr, "  %s\n", m)
+		}
+	}
 }
 
-func fetchSpec() (*Spec, error) {
-	fmt.Printf("Fetching %s...\n", specURL)
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(specURL)
+// endpointDocRe matches the "// GET /trade-api/v2/..." line that marks a method
+// as an API endpoint wrapper.
+var endpointDocRe = regexp.MustCompile(`(?m)^//\s+(?:GET|POST|PUT|DELETE|PATCH)\s+/trade-api/v2\S*`)
+
+// unmappedMethods lists Client methods that look like endpoint wrappers but
+// have no entry in methodToOperationID.
+func unmappedMethods(dir string) []string {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil
+	}
+	var out []string
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, ".go") || strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, name, src, parser.ParseComments)
+		if err != nil {
+			continue
+		}
+		for _, decl := range file.Decls {
+			fn, ok := decl.(*ast.FuncDecl)
+			if !ok || fn.Recv == nil || fn.Doc == nil {
+				continue
+			}
+			if !endpointDocRe.MatchString(fn.Doc.Text()) && !endpointDocRe.MatchString(commentText(fn.Doc)) {
+				continue
+			}
+			if _, mapped := methodToOperationID[fn.Name.Name]; !mapped {
+				out = append(out, fn.Name.Name)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
+}
+
+func commentText(g *ast.CommentGroup) string {
+	var b strings.Builder
+	for _, c := range g.List {
+		b.WriteString(c.Text)
+		b.WriteString("\n")
+	}
+	return b.String()
+}
+
+func loadSpec() (*Spec, error) {
+	body, snap, err := specsrc.Load(specsrc.OpenAPI)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, specURL)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+	fmt.Printf("Using vendored OpenAPI %s (fetched %s)\n", snap.OpenAPI.Version, snap.FetchedAt)
 
 	var spec Spec
 	if err := yaml.Unmarshal(body, &spec); err != nil {
-		return nil, fmt.Errorf("parse YAML: %w", err)
+		return nil, fmt.Errorf("parse vendored OpenAPI YAML: %w", err)
 	}
 	return &spec, nil
 }
@@ -280,6 +347,8 @@ func buildEndpointMap(spec *Spec) map[string]*EndpointInfo {
 				Description: strings.TrimSpace(op.Description),
 				Method:      httpMethod,
 				Path:        fullPath,
+				Tag:         firstTag(op.Tags),
+				Deprecated:  op.Deprecated,
 			}
 		}
 	}
@@ -329,7 +398,7 @@ func processFile(path string, endpoints map[string]*EndpointInfo) (int, error) {
 		}
 
 		// Build new comment
-		newDoc := buildComment(methodName, info)
+		newDoc := buildComment(methodName, info, existingDeprecation(fn.Doc))
 
 		// Calculate replacement range.
 		// Include any whitespace between the doc comment end and the func
@@ -401,7 +470,39 @@ func isClientReceiver(recv *ast.FieldList) bool {
 
 var descriptionCleanRe = regexp.MustCompile(`\s+`)
 
-func buildComment(methodName string, info *EndpointInfo) string {
+// existingDeprecation returns the hand-written "// Deprecated: ..." paragraph
+// from a doc comment, if any. The spec says an endpoint is deprecated but not
+// what to use instead, so a hand-written notice naming the replacement is more
+// useful than anything this tool can synthesise — preserve it.
+func existingDeprecation(doc *ast.CommentGroup) []string {
+	if doc == nil {
+		return nil
+	}
+	var out []string
+	for _, c := range doc.List {
+		text := strings.TrimSpace(strings.TrimPrefix(c.Text, "//"))
+		if len(out) > 0 {
+			if text == "" {
+				break
+			}
+			out = append(out, c.Text)
+			continue
+		}
+		if strings.HasPrefix(text, "Deprecated:") {
+			out = append(out, c.Text)
+		}
+	}
+	return out
+}
+
+func firstTag(tags []string) string {
+	if len(tags) == 0 {
+		return ""
+	}
+	return tags[0]
+}
+
+func buildComment(methodName string, info *EndpointInfo, deprecation []string) string {
 	var lines []string
 
 	// Line 1: summary
@@ -436,12 +537,43 @@ func buildComment(methodName string, info *EndpointInfo) string {
 		}
 	}
 
-	// Last line: doc link
-	docSlug := strings.ToLower(info.OperationID)
+	// Deprecation notice, if the spec flags the endpoint. Prefer the
+	// hand-written one, which can name the replacement.
+	if len(deprecation) > 0 {
+		lines = append(lines, "//")
+		lines = append(lines, deprecation...)
+	} else if info.Deprecated {
+		lines = append(lines, "//")
+		lines = append(lines, "// Deprecated: this endpoint is marked deprecated in the Kalshi API spec.")
+	}
+
+	// Last line: doc link.
 	lines = append(lines, "//")
-	lines = append(lines, fmt.Sprintf("// See https://trading-api.readme.io/reference/%s", docSlug))
+	lines = append(lines, "// See "+docURL(info))
 
 	return strings.Join(lines, "\n") + "\n"
+}
+
+// docURL builds the current documentation link. The old trading-api.readme.io
+// host now redirects to docs.kalshi.com, so linking it sends readers through a
+// 302 to a generic landing page rather than the endpoint.
+func docURL(info *EndpointInfo) string {
+	if info.Tag == "" {
+		return "https://docs.kalshi.com/api-reference"
+	}
+	return fmt.Sprintf("https://docs.kalshi.com/api-reference/%s/%s", info.Tag, kebabCase(info.OperationID))
+}
+
+// kebabCase converts "GetMarketOrderbook" to "get-market-orderbook".
+func kebabCase(s string) string {
+	var b strings.Builder
+	for i, r := range s {
+		if i > 0 && r >= 'A' && r <= 'Z' {
+			b.WriteByte('-')
+		}
+		b.WriteRune(unicode.ToLower(r))
+	}
+	return b.String()
 }
 
 func cleanDescription(s string) string {

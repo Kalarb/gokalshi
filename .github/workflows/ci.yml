@@ -43,6 +43,24 @@ jobs:
       - name: Run with race detector
         run: go test -race ./... -count=1
 
+  spec-drift:
+    # Blocking, and it runs on pull requests. The drift tests read the pinned
+    # snapshot in specs/, so they are deterministic and need no network: they
+    # answer "does the SDK still match the spec it was generated from?". The
+    # separate question — "has Kalshi published something new?" — is the
+    # scheduled job in spec-freshness.yml, which is advisory.
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Check REST and WebSocket coverage against the vendored spec
+        run: go test -tags spec_validation ./... -v -count=1
+
   exchange-gate:
     if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest

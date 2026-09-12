@@ -8,10 +8,12 @@ import (
 //
 // GET /trade-api/v2/portfolio/balance
 //
-// Endpoint for getting the balance and portfolio value of a member. Both
-// values are returned in cents.
+// Returns the balance and portfolio value for a member. Both values include
+// all exchange indexes unless `exchange_index` is provided. Pass `subaccount`
+// to use a subaccount instead of the primary account. This endpoint also
+// accepts API keys with the 'read::portfolio_balance' scope.
 //
-// See https://trading-api.readme.io/reference/getbalance
+// See https://docs.kalshi.com/api-reference/portfolio/get-balance
 func (c *Client) GetBalance(ctx context.Context) (GetBalanceResponse, error) {
 	return getJSON[GetBalanceResponse](c, ctx, pathPortfolio+"/balance", nil)
 }
@@ -24,7 +26,7 @@ func (c *Client) GetBalance(ctx context.Context) (GetBalanceResponse, error) {
 // values, as a comma separated list. The following values are accepted:
 // position, total_traded
 //
-// See https://trading-api.readme.io/reference/getpositions
+// See https://docs.kalshi.com/api-reference/portfolio/get-positions
 func (c *Client) GetPositions(ctx context.Context, params GetPositionsParams) (GetPositionsResponse, error) {
 	return getJSON[GetPositionsResponse](c, ctx, pathPortfolio+"/positions", params.toMap())
 }
@@ -38,7 +40,7 @@ func (c *Client) GetPositions(ctx context.Context, params GetPositionsParams) (G
 // available via `GET /historical/fills`. See [Historical
 // Data](https://docs.kalshi.com/getting_started/historical_data) for details.
 //
-// See https://trading-api.readme.io/reference/getfills
+// See https://docs.kalshi.com/api-reference/portfolio/get-fills
 func (c *Client) GetFills(ctx context.Context, params GetFillsParams) (GetFillsResponse, error) {
 	return getJSON[GetFillsResponse](c, ctx, pathPortfolio+"/fills", params.toMap())
 }
@@ -49,7 +51,7 @@ func (c *Client) GetFills(ctx context.Context, params GetFillsParams) (GetFillsR
 //
 // Endpoint for getting the member's settlements historical track.
 //
-// See https://trading-api.readme.io/reference/getsettlements
+// See https://docs.kalshi.com/api-reference/portfolio/get-settlements
 func (c *Client) GetSettlements(ctx context.Context, params GetSettlementsParams) (GetSettlementsResponse, error) {
 	return getJSON[GetSettlementsResponse](c, ctx, pathPortfolio+"/settlements", params.toMap())
 }
@@ -60,7 +62,7 @@ func (c *Client) GetSettlements(ctx context.Context, params GetSettlementsParams
 //
 // Endpoint for getting the member's deposit history.
 //
-// See https://trading-api.readme.io/reference/getdeposits
+// See https://docs.kalshi.com/api-reference/portfolio/get-deposits
 func (c *Client) GetDeposits(ctx context.Context, params GetDepositsParams) (GetDepositsResponse, error) {
 	return getJSON[GetDepositsResponse](c, ctx, pathPortfolio+"/deposits", params.toMap())
 }
@@ -71,7 +73,7 @@ func (c *Client) GetDeposits(ctx context.Context, params GetDepositsParams) (Get
 //
 // Endpoint for getting the member's withdrawal history.
 //
-// See https://trading-api.readme.io/reference/getwithdrawals
+// See https://docs.kalshi.com/api-reference/portfolio/get-withdrawals
 func (c *Client) GetWithdrawals(ctx context.Context, params GetWithdrawalsParams) (GetWithdrawalsResponse, error) {
 	return getJSON[GetWithdrawalsResponse](c, ctx, pathPortfolio+"/withdrawals", params.toMap())
 }

@@ -1,0 +1,15 @@
+{
+  "_comment": "Pinned Kalshi API spec snapshot. Generators and drift tests read these vendored files so builds are reproducible and every release is traceable to an exact spec. A scheduled job compares these against live and opens a PR when they diverge. Do not hand-edit the YAML; re-vendor with tools/vendor_spec.sh.",
+  "fetched_at": "2026-09-12",
+  "openapi": {
+    "url": "https://docs.kalshi.com/openapi.yaml",
+    "version": "3.30.0",
+    "sha256": "cac311c870e469ddfbceedfd363fe9e9b54e1996e4d00eeeb327fdbff84af915"
+  },
+  "asyncapi": {
+    "url": "https://docs.kalshi.com/asyncapi.yaml",
+    "info_version": "2.0.0",
+    "asyncapi_version": "3.0.0",
+    "sha256": "dd2089ce4f8f9521d27d137a44adbb1a3aed5290bfe3f9a1f11cd31539672c8c"
+  }
+}

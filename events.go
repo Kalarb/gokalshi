@@ -16,7 +16,7 @@ import (
 // accessible through this endpoint, even if their associated markets are older
 // than the historical cutoff.
 //
-// See https://trading-api.readme.io/reference/getevent
+// See https://docs.kalshi.com/api-reference/events/get-event
 func (c *Client) GetEvent(ctx context.Context, eventTicker string, params GetEventParams) (GetEventResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathEvents, eventTicker)
 	return getJSON[GetEventResponse](c, ctx, path, params.toMap())
@@ -31,7 +31,7 @@ func (c *Client) GetEvent(ctx context.Context, eventTicker string, params GetEve
 // are accessible through this endpoint, even if their associated markets are
 // older than the historical cutoff.
 //
-// See https://trading-api.readme.io/reference/getevents
+// See https://docs.kalshi.com/api-reference/events/get-events
 func (c *Client) GetEvents(ctx context.Context, params GetEventsParams) (GetEventsResponse, error) {
 	return getJSON[GetEventsResponse](c, ctx, pathEvents, params.toMap())
 }
@@ -43,7 +43,7 @@ func (c *Client) GetEvents(ctx context.Context, params GetEventsParams) (GetEven
 // Endpoint for getting metadata about an event by its ticker. Returns only the
 // metadata information for an event.
 //
-// See https://trading-api.readme.io/reference/geteventmetadata
+// See https://docs.kalshi.com/api-reference/events/get-event-metadata
 func (c *Client) GetEventMetadata(ctx context.Context, eventTicker string) (GetEventMetadataResponse, error) {
 	path := fmt.Sprintf("%s/%s/metadata", pathEvents, eventTicker)
 	return getJSON[GetEventMetadataResponse](c, ctx, path, nil)
@@ -57,7 +57,7 @@ func (c *Client) GetEventMetadata(ctx context.Context, eventTicker string) (GetE
 // from multivariate event collections. Supports filtering by series and
 // collection ticker.
 //
-// See https://trading-api.readme.io/reference/getmultivariateevents
+// See https://docs.kalshi.com/api-reference/events/get-multivariate-events
 func (c *Client) GetMultivariateEvents(ctx context.Context, params GetMultivariateEventsParams) (GetMultivariateEventsResponse, error) {
 	return getJSON[GetMultivariateEventsResponse](c, ctx, pathEvents+"/multivariate", params.toMap())
 }
@@ -69,7 +69,7 @@ func (c *Client) GetMultivariateEvents(ctx context.Context, params GetMultivaria
 // End-point for returning aggregated data across all markets corresponding to
 // an event.
 //
-// See https://trading-api.readme.io/reference/getmarketcandlesticksbyevent
+// See https://docs.kalshi.com/api-reference/events/get-market-candlesticks-by-event
 func (c *Client) GetEventCandlesticks(ctx context.Context, seriesTicker, eventTicker string, params GetEventCandlesticksParams) (GetEventCandlesticksResponse, error) {
 	path := fmt.Sprintf("/trade-api/v2/series/%s/events/%s/candlesticks", seriesTicker, eventTicker)
 	return getJSON[GetEventCandlesticksResponse](c, ctx, path, params.toMap())
@@ -82,7 +82,7 @@ func (c *Client) GetEventCandlesticks(ctx context.Context, seriesTicker, eventTi
 // Endpoint for getting the historical raw and formatted forecast numbers for
 // an event at specific percentiles.
 //
-// See https://trading-api.readme.io/reference/geteventforecastpercentileshistory
+// See https://docs.kalshi.com/api-reference/events/get-event-forecast-percentiles-history
 func (c *Client) GetEventForecastPercentileHistory(ctx context.Context, seriesTicker, eventTicker string, params GetEventForecastPercentileHistoryParams) (GetEventForecastPercentilesHistoryResponse, error) {
 	path := fmt.Sprintf("/trade-api/v2/series/%s/events/%s/forecast_percentile_history", seriesTicker, eventTicker)
 	return getJSON[GetEventForecastPercentilesHistoryResponse](c, ctx, path, params.toMap())
@@ -96,7 +96,7 @@ func (c *Client) GetEventForecastPercentileHistory(ctx context.Context, seriesTi
 // structure. If `fee_type_override` and `fee_multiplier_override` are null,
 // that indicates the override is cleared.
 //
-// See https://trading-api.readme.io/reference/geteventfeechanges
+// See https://docs.kalshi.com/api-reference/events/get-event-fee-changes
 func (c *Client) GetEventFeeChanges(ctx context.Context, params GetEventFeeChangesParams) (GetEventFeeChangesResponse, error) {
 	return getJSON[GetEventFeeChangesResponse](c, ctx, pathEvents+"/fee_changes", params.toMap())
 }

@@ -6,26 +6,29 @@
 
 | Category | Endpoints | Unit Tests | Integration Tests |
 |----------|:---------:|:----------:|:-----------------:|
-| Account | 3 | 3/3 | 2/3 |
-| Exchange | 5 | 5/5 | 5/5 |
-| Orders | 10 | 10/10 | 10/10 |
-| Event Orders (V2) | 6 | 6/6 | 6/6 |
-| Portfolio | 7 | 7/7 | 7/7 |
+| Account | 4 | 4/4 | 2/4 |
+| Exchange | 4 | 4/4 | 4/4 |
+| Orders | 4 | 4/4 | 4/4 |
+| Event Orders (V2) | 7 | 7/7 | 6/7 |
+| Portfolio | 9 | 9/9 | 7/9 |
 | Subaccounts | 6 | 6/6 | 6/6 |
 | Order Groups | 7 | 7/7 | 7/7 |
 | Markets | 7 | 7/7 | 7/7 |
 | Events | 7 | 7/7 | 7/7 |
 | Series | 2 | 2/2 | 2/2 |
 | Search | 2 | 2/2 | 2/2 |
-| Communications | 11 | 11/11 | 11/11 |
+| Communications | 15 | 15/15 | 11/15 |
 | API Keys | 4 | 4/4 | 4/4 |
-| Historical | 7 | 7/7 | 7/7 |
+| Historical | 8 | 8/8 | 7/8 |
 | Incentive Programs | 1 | 1/1 | 1/1 |
-| Live Data | 4 | 4/4 | 4/4 |
+| Live Data | 7 | 7/7 | 4/7 |
 | Milestones | 2 | 2/2 | 2/2 |
-| Multivariate Event Collections | 5 | 5/5 | 5/5 |
+| Multivariate Event Collections | 3 | 3/3 | 3/3 |
 | Structured Targets | 2 | 2/2 | 2/2 |
-| **Total** | **98** | **98/98** | **97/98** |
+| Intra Exchange Transfers | 3 | 3/3 | 0/3 |
+| Block Trades | 3 | 3/3 | 0/3 |
+| FCM | 2 | 2/2 | 0/2 |
+| **Total** | **109** | **109/109** | **88/109** |
 
 ## HTTP Endpoints
 
@@ -36,13 +39,13 @@
 | `GetAccountAPILimits` | `GET /account/limits` | Y | Y | |
 | `GetAccountEndpointCosts` | `GET /account/endpoint_costs` | Y | Y | |
 | `UpgradeAPIUsageLevel` | `POST /account/api_usage_level/upgrade` | Y | — | |
+| `GetAccountAPIUsageLevelVolumeProgress` | `GET /account/api_usage_level/volume_progress` | Y | — | |
 
 ### Exchange
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
 | `GetExchangeStatus` | `GET /exchange/status` | Y | Y | |
-| `GetExchangeAnnouncements` | `GET /exchange/announcements` | Y | Y | |
 | `GetExchangeSchedule` | `GET /exchange/schedule` | Y | Y | |
 | `GetUserDataTimestamp` | `GET /exchange/user_data_timestamp` | Y | Y | |
 | `GetSeriesFeeChanges` | `GET /series/fee_changes` | Y | Y | |
@@ -51,14 +54,8 @@
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
-| `CreateOrder` | `POST /portfolio/orders` | Y | Y | |
-| `CancelOrder` | `DELETE /portfolio/orders/{order_id}` | Y | Y | |
 | `GetOrder` | `GET /portfolio/orders/{order_id}` | Y | Y | |
 | `GetOrders` | `GET /portfolio/orders` | Y | Y | |
-| `BatchCreateOrders` | `POST /portfolio/orders/batched` | Y | Y | |
-| `BatchCancelOrders` | `DELETE /portfolio/orders/batched` | Y | Y | |
-| `AmendOrder` | `POST /portfolio/orders/{order_id}/amend` | Y | Y | |
-| `DecreaseOrder` | `POST /portfolio/orders/{order_id}/decrease` | Y | Y | |
 | `GetQueuePositions` | `GET /portfolio/orders/queue_positions` | Y | Y | |
 | `GetQueuePosition` | `GET /portfolio/orders/{order_id}/queue_position` | Y | Y | |
 
@@ -72,6 +69,7 @@
 | `CancelOrderV2` | `DELETE /portfolio/events/orders/{order_id}` | Y | Y | |
 | `AmendOrderV2` | `POST /portfolio/events/orders/{order_id}/amend` | Y | Y | |
 | `DecreaseOrderV2` | `POST /portfolio/events/orders/{order_id}/decrease` | Y | Y | |
+| `CancelAllOrders` | `DELETE /portfolio/events/orders` | Y | — | |
 
 ### Portfolio
 
@@ -84,6 +82,8 @@
 | `GetDeposits` | `GET /portfolio/deposits` | Y | Y | |
 | `GetWithdrawals` | `GET /portfolio/withdrawals` | Y | Y | |
 | `GetPortfolioRestingOrderTotalValue` | `GET /portfolio/summary/total_resting_order_value` | Y | Y | |
+| `GetTargetBalanceAllocation` | `GET /portfolio/target_balance_allocation` | Y | — | |
+| `SetTargetBalanceAllocation` | `POST /portfolio/target_balance_allocation` | Y | — | |
 
 ### Subaccounts
 
@@ -161,6 +161,10 @@
 | `DeleteQuote` | `DELETE /communications/quotes/{quote_id}` | Y | Y | |
 | `AcceptQuote` | `PUT /communications/quotes/{quote_id}/accept` | Y | Y | |
 | `ConfirmQuote` | `PUT /communications/quotes/{quote_id}/confirm` | Y | Y | |
+| `GetRFQQuote` | `GET /communications/rfqs/{rfq_id}/quotes/{quote_id}` | Y | — | |
+| `DeleteRFQQuote` | `DELETE /communications/rfqs/{rfq_id}/quotes/{quote_id}` | Y | — | |
+| `AcceptRFQQuote` | `PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/accept` | Y | — | |
+| `ConfirmRFQQuote` | `PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/confirm` | Y | — | |
 
 ### API Keys
 
@@ -182,6 +186,7 @@
 | `GetHistoricalMarkets` | `GET /historical/markets` | Y | Y | |
 | `GetHistoricalMarket` | `GET /historical/markets/{ticker}` | Y | Y | |
 | `GetHistoricalMarketCandlesticks` | `GET /historical/markets/{ticker}/candlesticks` | Y | Y | |
+| `GetHistoricalPositions` | `GET /historical/positions` | Y | — | |
 
 ### Incentive Programs
 
@@ -197,6 +202,9 @@
 | `GetLiveDataByMilestone` | `GET /live_data/milestone/{milestone_id}` | Y | Y | |
 | `GetMilestoneGameStats` | `GET /live_data/milestone/{milestone_id}/game_stats` | Y | Y | |
 | `GetLiveData` | `GET /live_data/{type}/milestone/{milestone_id}` | Y | Y | |
+| `GetEventLiveData` | `GET /live_data/events/{event_ticker}` | Y | — | |
+| `GetWeatherIndex` | `GET /live_data/weather/{city}` | Y | — | |
+| `GetWeatherIndexCalibrations` | `GET /live_data/weather/{city}/calibrations` | Y | — | |
 
 ### Milestones
 
@@ -211,9 +219,7 @@
 |--------|----------|:----:|:-----------:|-------|
 | `GetMultivariateEventCollections` | `GET /multivariate_event_collections` | Y | Y | |
 | `GetMultivariateEventCollection` | `GET /multivariate_event_collections/{collection_ticker}` | Y | Y | |
-| `GetMultivariateEventCollectionLookupHistory` | `GET /multivariate_event_collections/{collection_ticker}/lookup` | Y | Y | |
 | `CreateMarketInMultivariateEventCollection` | `POST /multivariate_event_collections/{collection_ticker}` | Y | Y | |
-| `LookupTickersForMarketInMultivariateEventCollection` | `PUT /multivariate_event_collections/{collection_ticker}/lookup` | Y | Y | |
 
 ### Structured Targets
 
@@ -222,18 +228,42 @@
 | `GetStructuredTargets` | `GET /structured_targets` | Y | Y | |
 | `GetStructuredTarget` | `GET /structured_targets/{structured_target_id}` | Y | Y | |
 
+### Intra Exchange Transfers
+
+| Method | Endpoint | Unit | Integration | Notes |
+|--------|----------|:----:|:-----------:|-------|
+| `IntraExchangeInstanceTransfer` | `POST /portfolio/intra_exchange_instance_transfer` | Y | — | |
+| `GetIntraExchangeInstanceTransfers` | `GET /portfolio/intra_exchange_instance_transfers` | Y | — | |
+| `GetIntraExchangeInstanceTransfer` | `GET /portfolio/intra_exchange_instance_transfers/{transfer_id}` | Y | — | |
+
+### Block Trades
+
+| Method | Endpoint | Unit | Integration | Notes |
+|--------|----------|:----:|:-----------:|-------|
+| `GetBlockTradeProposals` | `GET /communications/block-trade-proposals` | Y | — | |
+| `ProposeBlockTrade` | `POST /communications/block-trade-proposals` | Y | — | |
+| `AcceptBlockTradeProposal` | `POST /communications/block-trade-proposals/{block_trade_proposal_id}/accept` | Y | — | |
+
+### FCM
+
+| Method | Endpoint | Unit | Integration | Notes |
+|--------|----------|:----:|:-----------:|-------|
+| `GetFCMOrders` | `GET /fcm/orders` | Y | — | |
+| `GetFCMPositions` | `GET /fcm/positions` | Y | — | |
+
 ## WebSocket Channels
 
 | Channel | Unit | Integration | Notes |
 |---------|:----:|:-----------:|-------|
 | `cfbenchmarks_value` | Y | — | |
+| `cfbenchmarks_value_5hz` | Y | — | |
 | `market_lifecycle_v2` | Y | Y | |
 | `multivariate_market_lifecycle` | Y | Y | |
 | `fill` | Y | Y | |
 | `market_positions` | Y | Y | |
-| `multivariate` | Y | Y | |
 | `order_group_updates` | Y | Y | |
 | `orderbook_delta` | Y | Y | |
+| `pyth_value` | Y | — | |
 | `communications` | Y | Y | |
 | `ticker` | Y | Y | |
 | `trade` | Y | Y | |

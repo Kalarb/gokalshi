@@ -35,10 +35,10 @@ type Client struct {
 	baseDelay      time.Duration
 	skipAutoConfig bool
 
-	mu           sync.RWMutex           // guards limiter, costPatterns, defaultCost
+	mu           sync.RWMutex // guards limiter, costPatterns, defaultCost
 	limiter      *ReadWriteTokenBucket
-	costPatterns []endpointCostPattern  // nil = use caller defaults
-	defaultCost  float64                // fallback cost when no pattern matches; 0 = use caller defaults
+	costPatterns []endpointCostPattern // nil = use caller defaults
+	defaultCost  float64               // fallback cost when no pattern matches; 0 = use caller defaults
 }
 
 // ClientOption configures a Client.
@@ -353,8 +353,4 @@ func deleteJSON[T any](c *Client, ctx context.Context, path string, body any, wr
 
 func (c *Client) put(ctx context.Context, path string, body any, writeCost float64) (json.RawMessage, error) {
 	return c.do(ctx, http.MethodPut, path, 0, writeCost, body, nil)
-}
-
-func putJSON[T any](c *Client, ctx context.Context, path string, body any, writeCost float64) (T, error) {
-	return doJSON[T](c, ctx, http.MethodPut, path, 0, writeCost, body, nil)
 }

@@ -311,18 +311,6 @@ func TestWSIntegration_SubscribeMultivariateMarketLifecycle(t *testing.T) {
 	t.Logf("multivariate_market_lifecycle channel subscribed for %s", ticker)
 }
 
-func TestWSIntegration_SubscribeMultivariate(t *testing.T) {
-	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
-	defer cancel()
-
-	ticker := getActiveBTC15MTicker(t, httpClient)
-	err := wsClient.AddMarkets(ctx, []string{ticker}, []string{"multivariate"})
-	require.NoError(t, err)
-
-	waitForSID(t, wsClient, "multivariate", 10*time.Second)
-	t.Logf("multivariate channel subscribed for %s", ticker)
-}
-
 func TestWSIntegration_SubscribeCommunications(t *testing.T) {
 	httpClient, wsClient, _, ctx, cancel := wsTestSetup(t)
 	defer cancel()

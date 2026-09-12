@@ -27,9 +27,9 @@ func (e Environment) String() string {
 
 const (
 	demoHTTPBase = "https://external-api.demo.kalshi.co"
-	demoWSBase   = "wss://external-api.demo.kalshi.co"
+	demoWSBase   = "wss://external-api-ws.demo.kalshi.co"
 	prodHTTPBase = "https://external-api.kalshi.com"
-	prodWSBase   = "wss://external-api.kalshi.com"
+	prodWSBase   = "wss://external-api-ws.kalshi.com"
 )
 
 // httpBaseForEnv returns the default HTTP base URL for the given environment.

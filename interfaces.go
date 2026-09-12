@@ -12,20 +12,13 @@ type HTTPClient interface {
 
 	// Exchange
 	GetExchangeStatus(ctx context.Context) (ExchangeStatus, error)
-	GetExchangeAnnouncements(ctx context.Context) (GetExchangeAnnouncementsResponse, error)
 	GetExchangeSchedule(ctx context.Context) (GetExchangeScheduleResponse, error)
 	GetUserDataTimestamp(ctx context.Context) (GetUserDataTimestampResponse, error)
 	GetSeriesFeeChanges(ctx context.Context, params GetSeriesFeeChangesParams) (GetSeriesFeeChangesResponse, error)
 
 	// Orders
-	CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error)
-	CancelOrder(ctx context.Context, orderID string) (CancelOrderResponse, error)
-	GetOrder(ctx context.Context, orderID string) (CreateOrderResponse, error)
+	GetOrder(ctx context.Context, orderID string) (GetOrderResponse, error)
 	GetOrders(ctx context.Context, params GetOrdersParams) (GetOrdersResponse, error)
-	BatchCreateOrders(ctx context.Context, orders []CreateOrderRequest) (BatchCreateOrdersResponse, error)
-	BatchCancelOrders(ctx context.Context, orders []BatchCancelOrdersRequestOrder) (BatchCancelOrdersResponse, error)
-	AmendOrder(ctx context.Context, orderID string, req AmendOrderRequest) (AmendOrderResponse, error)
-	DecreaseOrder(ctx context.Context, orderID string, req DecreaseOrderRequest) (CreateOrderResponse, error)
 	GetQueuePositions(ctx context.Context, params GetQueuePositionsParams) (GetOrderQueuePositionsResponse, error)
 	GetQueuePosition(ctx context.Context, orderID string) (GetOrderQueuePositionResponse, error)
 
@@ -120,9 +113,7 @@ type HTTPClient interface {
 	// Multivariate Event Collections
 	GetMultivariateEventCollections(ctx context.Context, params GetMultivariateEventCollectionsParams) (GetMultivariateEventCollectionsResponse, error)
 	GetMultivariateEventCollection(ctx context.Context, collectionTicker string) (GetMultivariateEventCollectionResponse, error)
-	GetMultivariateEventCollectionLookupHistory(ctx context.Context, collectionTicker string, params GetMVECollectionLookupParams) (GetMultivariateEventCollectionLookupHistoryResponse, error)
 	CreateMarketInMultivariateEventCollection(ctx context.Context, collectionTicker string, req CreateMarketInMultivariateEventCollectionRequest) (CreateMarketInMultivariateEventCollectionResponse, error)
-	LookupTickersForMarketInMultivariateEventCollection(ctx context.Context, collectionTicker string, req LookupTickersForMarketInMultivariateEventCollectionRequest) (LookupTickersForMarketInMultivariateEventCollectionResponse, error)
 
 	// Structured Targets
 	GetStructuredTargets(ctx context.Context, params GetStructuredTargetsParams) (GetStructuredTargetsResponse, error)

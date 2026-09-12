@@ -36,7 +36,7 @@ func TestHTTPIntegration_EventOrdersV2(t *testing.T) {
 			Count:                   "1",
 			ClientOrderID:           clientID,
 			SelfTradePreventionType: STPTakerAtCross,
-			TimeInForce:             string(TimeInForceGTC),
+			TimeInForce:             TimeInForceGTC,
 		})
 		require.NoError(t, err)
 		orderID := created.OrderID
@@ -61,7 +61,7 @@ func TestHTTPIntegration_EventOrdersV2(t *testing.T) {
 			Count:                   "1",
 			ClientOrderID:           clientID,
 			SelfTradePreventionType: STPTakerAtCross,
-			TimeInForce:             string(TimeInForceGTC),
+			TimeInForce:             TimeInForceGTC,
 		})
 		require.NoError(t, err)
 		orderID := created.OrderID
@@ -90,7 +90,7 @@ func TestHTTPIntegration_EventOrdersV2(t *testing.T) {
 			Count:                   "2",
 			ClientOrderID:           clientID,
 			SelfTradePreventionType: STPTakerAtCross,
-			TimeInForce:             string(TimeInForceGTC),
+			TimeInForce:             TimeInForceGTC,
 		})
 		require.NoError(t, err)
 		orderID := created.OrderID
@@ -117,7 +117,7 @@ func TestHTTPIntegration_EventOrdersV2(t *testing.T) {
 				Count:                   "1",
 				ClientOrderID:           fmt.Sprintf("integ-%d-%d", time.Now().UnixNano(), i),
 				SelfTradePreventionType: STPTakerAtCross,
-				TimeInForce:             string(TimeInForceGTC),
+				TimeInForce:             TimeInForceGTC,
 			})
 		}
 		created, err := c.BatchCreateOrdersV2(ctx, BatchCreateOrdersV2Request{Orders: orders})
@@ -454,14 +454,6 @@ func TestHTTPIntegration_Communications(t *testing.T) {
 		skipOnAPIError(t, err, 400, 403, 404)
 		if err == nil {
 			t.Logf("created market in MVE collection %s", collectionTicker)
-		}
-
-		_, err = c.LookupTickersForMarketInMultivariateEventCollection(ctx, collectionTicker, LookupTickersForMarketInMultivariateEventCollectionRequest{
-			SelectedMarkets: selectedMarkets,
-		})
-		skipOnAPIError(t, err, 400, 403, 404)
-		if err == nil {
-			t.Logf("looked up tickers in MVE collection %s", collectionTicker)
 		}
 	})
 }

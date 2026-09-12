@@ -12,7 +12,7 @@ import (
 // Returns the cutoff timestamps that define the boundary between **live** and
 // **historical** data.
 //
-// See https://trading-api.readme.io/reference/gethistoricalcutoff
+// See https://docs.kalshi.com/api-reference/historical/get-historical-cutoff
 func (c *Client) GetHistoricalCutoff(ctx context.Context) (GetHistoricalCutoffResponse, error) {
 	return getJSON[GetHistoricalCutoffResponse](c, ctx, pathHistorical+"/cutoff", nil)
 }
@@ -31,7 +31,7 @@ func (c *Client) GetHistoricalFills(ctx context.Context, params GetHistoricalFil
 // Endpoint for getting orders that have been archived to the historical
 // database.
 //
-// See https://trading-api.readme.io/reference/gethistoricalorders
+// See https://docs.kalshi.com/api-reference/historical/get-historical-orders
 func (c *Client) GetHistoricalOrders(ctx context.Context, params GetHistoricalOrdersParams) (GetOrdersResponse, error) {
 	return getJSON[GetOrdersResponse](c, ctx, pathHistorical+"/orders", params.toMap())
 }
@@ -50,7 +50,7 @@ func (c *Client) GetHistoricalTrades(ctx context.Context, params GetHistoricalTr
 // Endpoint for getting markets that have been archived to the historical
 // database. Filters are mutually exclusive.
 //
-// See https://trading-api.readme.io/reference/gethistoricalmarkets
+// See https://docs.kalshi.com/api-reference/historical/get-historical-markets
 func (c *Client) GetHistoricalMarkets(ctx context.Context, params GetHistoricalMarketsParams) (GetMarketsResponse, error) {
 	return getJSON[GetMarketsResponse](c, ctx, pathHistorical+"/markets", params.toMap())
 }
@@ -62,7 +62,7 @@ func (c *Client) GetHistoricalMarkets(ctx context.Context, params GetHistoricalM
 // Endpoint for getting data about a specific market by its ticker from the
 // historical database.
 //
-// See https://trading-api.readme.io/reference/gethistoricalmarket
+// See https://docs.kalshi.com/api-reference/historical/get-historical-market
 func (c *Client) GetHistoricalMarket(ctx context.Context, ticker string) (GetMarketResponse, error) {
 	path := fmt.Sprintf("%s/markets/%s", pathHistorical, ticker)
 	return getJSON[GetMarketResponse](c, ctx, path, nil)
@@ -146,5 +146,41 @@ func (p GetHistoricalMarketCandlesticksParams) toMap() map[string]string {
 		Int64("start_ts", p.StartTS).
 		Int64("end_ts", p.EndTS).
 		Int("period_interval", p.PeriodInterval).
+		Build()
+}
+
+// GetHistoricalPositions — Get Historical Positions
+//
+// GET /trade-api/v2/historical/positions
+//
+// Endpoint for getting settled market positions that have been archived to the
+// historical database. Positions whose markets were archived before
+// `market_positions_last_updated_ts` on `GET /historical/cutoff` are available
+// via this endpoint. Positions are archived per whole event: a settled event's
+// positions move here together and are never split between this endpoint and
+// `GET /portfolio/positions`. Unsettled positions are always available via
+// `GET /portfolio/positions`.
+//
+// See https://docs.kalshi.com/api-reference/historical/get-historical-positions
+func (c *Client) GetHistoricalPositions(ctx context.Context, params GetHistoricalPositionsParams) (GetPositionsResponse, error) {
+	return getJSON[GetPositionsResponse](c, ctx, pathHistorical+"/positions", params.toMap())
+}
+
+// GetHistoricalPositionsParams are the query parameters for GetHistoricalPositions.
+type GetHistoricalPositionsParams struct {
+	Ticker      string
+	EventTicker string
+	Subaccount  int
+	Limit       int
+	Cursor      string
+}
+
+func (p GetHistoricalPositionsParams) toMap() map[string]string {
+	return NewQuery().
+		String("ticker", p.Ticker).
+		String("event_ticker", p.EventTicker).
+		Int("subaccount", p.Subaccount).
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
 		Build()
 }

@@ -33,3 +33,5 @@ Thumbs.db
 .claude/
 /generate_types
 /generate_coverage
+/ws_explore
+/ratelimit_test

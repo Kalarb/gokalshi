@@ -109,9 +109,10 @@ const (
 type FeeType string
 
 const (
-	FeeTypeQuadratic          FeeType = "quadratic"
-	FeeTypeQuadraticWithMaker FeeType = "quadratic_with_maker_fees"
-	FeeTypeFlat               FeeType = "flat"
+	FeeTypeQuadratic               FeeType = "quadratic"
+	FeeTypeQuadraticWithMaker      FeeType = "quadratic_with_maker_fees"
+	FeeTypeQuadraticWithComboMaker FeeType = "quadratic_with_combo_maker_fees"
+	FeeTypeFlat                    FeeType = "flat"
 )
 
 // CollateralReturnType represents how collateral is returned for an event.
@@ -126,23 +127,6 @@ const (
 // ---------------------------------------------------------------------------
 // Exchange / announcement enums
 // ---------------------------------------------------------------------------
-
-// AnnouncementType represents the severity of an exchange announcement.
-type AnnouncementType string
-
-const (
-	AnnouncementTypeInfo    AnnouncementType = "info"
-	AnnouncementTypeWarning AnnouncementType = "warning"
-	AnnouncementTypeError   AnnouncementType = "error"
-)
-
-// AnnouncementStatus represents whether an announcement is active.
-type AnnouncementStatus string
-
-const (
-	AnnouncementStatusActive   AnnouncementStatus = "active"
-	AnnouncementStatusInactive AnnouncementStatus = "inactive"
-)
 
 // ---------------------------------------------------------------------------
 // WebSocket enums
@@ -194,32 +178,41 @@ const (
 	WSUpdateSubscribeIndices   WSUpdateAction = "subscribe_indices"
 	WSUpdateUnsubscribeIndices WSUpdateAction = "unsubscribe_indices"
 	WSUpdateIndexlist          WSUpdateAction = "indexlist"
+
+	// Pyth subscriptions are keyed by underlying ticker, not index id, and use
+	// their own action names rather than the cfbenchmarks index actions.
+	WSUpdateSubscribeUnderlyings   WSUpdateAction = "subscribe_underlyings"
+	WSUpdateUnsubscribeUnderlyings WSUpdateAction = "unsubscribe_underlyings"
+	WSUpdateUnderlyingList         WSUpdateAction = "underlying_list"
 )
 
 // WSMessageType represents the type field of an incoming WebSocket message.
 type WSMessageType string
 
 const (
-	WSMsgOrderbookSnapshot           WSMessageType = "orderbook_snapshot"
-	WSMsgOrderbookDelta              WSMessageType = "orderbook_delta"
-	WSMsgTicker                      WSMessageType = "ticker"
-	WSMsgTrade                       WSMessageType = "trade"
-	WSMsgFill                        WSMessageType = "fill"
-	WSMsgMarketPosition              WSMessageType = "market_position"
-	WSMsgMarketLifecycleV2           WSMessageType = "market_lifecycle_v2"
-	WSMsgEventLifecycle              WSMessageType = "event_lifecycle"
-	WSMsgMultivariateMarketLifecycle WSMessageType = "multivariate_market_lifecycle"
-	WSMsgMultivariateLookup          WSMessageType = "multivariate_lookup"
-	WSMsgUserOrder                   WSMessageType = "user_order"
-	WSMsgOrderGroupUpdates           WSMessageType = "order_group_updates"
-	WSMsgRFQCreated                  WSMessageType = "rfq_created"
-	WSMsgRFQDeleted                  WSMessageType = "rfq_deleted"
-	WSMsgQuoteCreated                WSMessageType = "quote_created"
-	WSMsgQuoteAccepted               WSMessageType = "quote_accepted"
-	WSMsgQuoteExecuted               WSMessageType = "quote_executed"
-	WSMsgEventFeeUpdate              WSMessageType = "event_fee_update"
-	WSMsgCfbenchmarksValue           WSMessageType = "cfbenchmarks_value"
-	WSMsgCfbenchmarksValueIndexlist  WSMessageType = "cfbenchmarks_value_indexlist"
+	WSMsgOrderbookSnapshot             WSMessageType = "orderbook_snapshot"
+	WSMsgOrderbookDelta                WSMessageType = "orderbook_delta"
+	WSMsgTicker                        WSMessageType = "ticker"
+	WSMsgTrade                         WSMessageType = "trade"
+	WSMsgFill                          WSMessageType = "fill"
+	WSMsgMarketPosition                WSMessageType = "market_position"
+	WSMsgMarketLifecycleV2             WSMessageType = "market_lifecycle_v2"
+	WSMsgEventLifecycle                WSMessageType = "event_lifecycle"
+	WSMsgMultivariateMarketLifecycle   WSMessageType = "multivariate_market_lifecycle"
+	WSMsgUserOrder                     WSMessageType = "user_order"
+	WSMsgOrderGroupUpdates             WSMessageType = "order_group_updates"
+	WSMsgRFQCreated                    WSMessageType = "rfq_created"
+	WSMsgRFQDeleted                    WSMessageType = "rfq_deleted"
+	WSMsgQuoteCreated                  WSMessageType = "quote_created"
+	WSMsgQuoteAccepted                 WSMessageType = "quote_accepted"
+	WSMsgQuoteExecuted                 WSMessageType = "quote_executed"
+	WSMsgEventFeeUpdate                WSMessageType = "event_fee_update"
+	WSMsgCfbenchmarksValue             WSMessageType = "cfbenchmarks_value"
+	WSMsgCfbenchmarksValueIndexlist    WSMessageType = "cfbenchmarks_value_indexlist"
+	WSMsgCfbenchmarksValue5Hz          WSMessageType = "cfbenchmarks_value_5hz"
+	WSMsgCfbenchmarksValue5HzIndexlist WSMessageType = "cfbenchmarks_value_5hz_indexlist"
+	WSMsgPythValue                     WSMessageType = "pyth_value"
+	WSMsgPythValueUnderlyingList       WSMessageType = "pyth_value_underlying_list"
 )
 
 // WSResponseType represents the type field of a WebSocket command response.
@@ -230,4 +223,58 @@ const (
 	WSRespOk           WSResponseType = "ok"
 	WSRespUnsubscribed WSResponseType = "unsubscribed"
 	WSRespError        WSResponseType = "error"
+)
+
+// ApiKeyScope is a permission granted to an API key.
+//
+// Parent scopes grant broad access — read covers every read endpoint, write
+// every write endpoint. Child scopes narrow that: write::trade grants order and
+// RFQ access without also granting write::transfer, so a trading key cannot
+// move funds.
+type ApiKeyScope string
+
+const (
+	ApiKeyScopeRead                  ApiKeyScope = "read"
+	ApiKeyScopeWrite                 ApiKeyScope = "write"
+	ApiKeyScopeReadBlockTradeAccept  ApiKeyScope = "read::block_trade_accept"
+	ApiKeyScopeReadPortfolioBalance  ApiKeyScope = "read::portfolio_balance"
+	ApiKeyScopeWriteTrade            ApiKeyScope = "write::trade"
+	ApiKeyScopeWriteTransfer         ApiKeyScope = "write::transfer"
+	ApiKeyScopeWriteBlockTradeAccept ApiKeyScope = "write::block_trade_accept"
+)
+
+// ExchangeInstance identifies which exchange instance a record belongs to.
+type ExchangeInstance string
+
+const (
+	ExchangeInstanceEventContract ExchangeInstance = "event_contract"
+	ExchangeInstanceMargined      ExchangeInstance = "margined"
+)
+
+// RestingMarginReservation is the collateral an automatic rebalance leaves
+// behind for resting orders.
+type RestingMarginReservation string
+
+const (
+	// RestingMarginReservationMax reserves the largest single market-side commitment.
+	RestingMarginReservationMax RestingMarginReservation = "max"
+	// RestingMarginReservationSum reserves the summed margin of every resting order.
+	RestingMarginReservationSum RestingMarginReservation = "sum"
+)
+
+// IntraExchangeInstanceTransferStatus is the state of a transfer between
+// exchange instances.
+type IntraExchangeInstanceTransferStatus string
+
+const (
+	IntraExchangeInstanceTransferStatusPending  IntraExchangeInstanceTransferStatus = "pending"
+	IntraExchangeInstanceTransferStatusComplete IntraExchangeInstanceTransferStatus = "complete"
+)
+
+// UserFilter narrows a listing to the authenticated user. Leave empty to
+// return all results.
+type UserFilter string
+
+const (
+	UserFilterSelf UserFilter = "self"
 )

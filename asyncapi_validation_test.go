@@ -3,8 +3,6 @@
 package gokalshi
 
 import (
-	"io"
-	"net/http"
 	"reflect"
 	"sort"
 	"strings"
@@ -16,13 +14,7 @@ import (
 )
 
 func TestAsyncAPIWSChannelCoverage(t *testing.T) {
-	resp, err := http.Get("https://docs.kalshi.com/asyncapi.yaml")
-	require.NoError(t, err, "fetch AsyncAPI spec")
-	defer resp.Body.Close()
-	require.Equal(t, 200, resp.StatusCode, "AsyncAPI spec HTTP status")
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	body := loadVendoredSpec(t, "asyncapi")
 
 	var spec struct {
 		Channels map[string]struct {
@@ -93,35 +85,67 @@ func TestAsyncAPIWSChannelCoverage(t *testing.T) {
 		}
 	}
 
+	// Verify we do not still route message types or channels the spec dropped.
+	// Kalshi retires WS channels (ticker_v2, multivariate) without notice, and a
+	// coverage-only check never notices a subscription that can no longer match.
+	var extraTypes []string
+	for msgType := range ourTypes {
+		if !specMsgTypes[msgType] {
+			extraTypes = append(extraTypes, msgType)
+		}
+	}
+	var extraChannels []string
+	for ch := range ourChannels {
+		if !specChannels[ch] {
+			extraChannels = append(extraChannels, ch)
+		}
+	}
+
+	sort.Strings(missingTypes)
+	sort.Strings(missingChannels)
+	sort.Strings(extraTypes)
+	sort.Strings(extraChannels)
+
 	t.Logf("AsyncAPI channels: %d", len(specChannels))
 	t.Logf("AsyncAPI message types: %d", len(specMsgTypes))
 	t.Logf("MsgTypeToChannel entries: %d", len(MsgTypeToChannel))
+	for _, x := range extraTypes {
+		t.Logf("  extra message type (not in spec): %s", x)
+	}
+	for _, x := range extraChannels {
+		t.Logf("  extra channel (not in spec): %s", x)
+	}
 
 	assert.Empty(t, missingTypes, "message types in spec but missing from MsgTypeToChannel")
 	assert.Empty(t, missingChannels, "channels in spec but not referenced in MsgTypeToChannel")
+	assert.Empty(t, extraTypes, "message types routed by MsgTypeToChannel but absent from the spec")
+	assert.Empty(t, extraChannels, "channels referenced by MsgTypeToChannel but absent from the spec")
 }
 
 // msgTypeToGoStruct maps WS message "name" → Go struct instance for reflection.
 var msgTypeToGoStruct = map[string]any{
-	"orderbook_snapshot":            OrderbookSnapshotData{},
-	"orderbook_delta":               OrderbookDeltaData{},
-	"ticker":                        TickerData{},
-	"trade":                         TradeData{},
-	"fill":                          FillData{},
-	"market_position":               MarketPositionData{},
-	"market_lifecycle_v2":           MarketLifecycleV2Data{},
-	"event_lifecycle":               EventLifecycleData{},
-	"multivariate_lookup":           MultivariateLookupData{},
-	"user_order":                    UserOrderData{},
-	"order_group_updates":           OrderGroupUpdateData{},
-	"rfq_created":                   RFQCreatedData{},
-	"rfq_deleted":                   RFQDeletedData{},
-	"quote_created":                 QuoteCreatedData{},
-	"quote_accepted":                QuoteAcceptedData{},
-	"quote_executed":                QuoteExecutedData{},
-	"event_fee_update":              EventFeeUpdateData{},
-	"cfbenchmarks_value":            CfbenchmarksValueData{},
-	"cfbenchmarks_value_indexlist":  CfbenchmarksValueIndexlistData{},
+	"orderbook_snapshot":               OrderbookSnapshotData{},
+	"orderbook_delta":                  OrderbookDeltaData{},
+	"ticker":                           TickerData{},
+	"trade":                            TradeData{},
+	"fill":                             FillData{},
+	"market_position":                  MarketPositionData{},
+	"market_lifecycle_v2":              MarketLifecycleV2Data{},
+	"event_lifecycle":                  EventLifecycleData{},
+	"user_order":                       UserOrderData{},
+	"order_group_updates":              OrderGroupUpdateData{},
+	"rfq_created":                      RFQCreatedData{},
+	"rfq_deleted":                      RFQDeletedData{},
+	"quote_created":                    QuoteCreatedData{},
+	"quote_accepted":                   QuoteAcceptedData{},
+	"quote_executed":                   QuoteExecutedData{},
+	"event_fee_update":                 EventFeeUpdateData{},
+	"cfbenchmarks_value":               CfbenchmarksValueData{},
+	"cfbenchmarks_value_5hz":           CfbenchmarksValue5HzData{},
+	"cfbenchmarks_value_5hz_indexlist": CfbenchmarksValue5HzIndexlistData{},
+	"pyth_value":                       PythValueData{},
+	"pyth_value_underlying_list":       PythValueUnderlyingListData{},
+	"cfbenchmarks_value_indexlist":     CfbenchmarksValueIndexlistData{},
 }
 
 // structJSONFields returns the set of JSON field names for a Go struct type.
@@ -140,13 +164,7 @@ func structJSONFields(v any) map[string]bool {
 }
 
 func TestAsyncAPIWSPayloadFieldCoverage(t *testing.T) {
-	resp, err := http.Get("https://docs.kalshi.com/asyncapi.yaml")
-	require.NoError(t, err, "fetch AsyncAPI spec")
-	defer resp.Body.Close()
-	require.Equal(t, 200, resp.StatusCode, "AsyncAPI spec HTTP status")
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	body := loadVendoredSpec(t, "asyncapi")
 
 	// Parse spec with enough depth to extract msg.properties field names.
 	var spec struct {

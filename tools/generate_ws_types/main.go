@@ -10,20 +10,17 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 	"unicode"
 
 	"gopkg.in/yaml.v3"
-)
 
-const asyncAPISpecURL = "https://docs.kalshi.com/asyncapi.yaml"
+	"github.com/Kalarb/gokalshi/tools/internal/specsrc"
+)
 
 // ---------------------------------------------------------------------------
 // Backward-compatible naming maps
@@ -31,62 +28,68 @@ const asyncAPISpecURL = "https://docs.kalshi.com/asyncapi.yaml"
 
 // msgTypeToStructName maps WS message "name" → Go struct name for data messages.
 var msgTypeToStructName = map[string]string{
-	"orderbook_snapshot":             "OrderbookSnapshotData",
-	"orderbook_delta":                "OrderbookDeltaData",
-	"ticker":                         "TickerData",
-	"trade":                          "TradeData",
-	"fill":                           "FillData",
-	"market_position":                "MarketPositionData",
-	"market_lifecycle_v2":            "MarketLifecycleV2Data",
-	"event_lifecycle":                "EventLifecycleData",
-	"multivariate_market_lifecycle":  "MultivariateMarketLifecycleData",
-	"multivariate_lookup":            "MultivariateLookupData",
-	"user_order":                     "UserOrderData",
-	"order_group_updates":            "OrderGroupUpdateData",
-	"rfq_created":                    "RFQCreatedData",
-	"rfq_deleted":                    "RFQDeletedData",
-	"quote_created":                  "QuoteCreatedData",
-	"quote_accepted":                 "QuoteAcceptedData",
-	"quote_executed":                 "QuoteExecutedData",
-	"event_fee_update":               "EventFeeUpdateData",
-	"cfbenchmarks_value":             "CfbenchmarksValueData",
-	"cfbenchmarks_value_indexlist":   "CfbenchmarksValueIndexlistData",
+	"orderbook_snapshot":               "OrderbookSnapshotData",
+	"orderbook_delta":                  "OrderbookDeltaData",
+	"ticker":                           "TickerData",
+	"trade":                            "TradeData",
+	"fill":                             "FillData",
+	"market_position":                  "MarketPositionData",
+	"market_lifecycle_v2":              "MarketLifecycleV2Data",
+	"event_lifecycle":                  "EventLifecycleData",
+	"multivariate_market_lifecycle":    "MultivariateMarketLifecycleData",
+	"user_order":                       "UserOrderData",
+	"order_group_updates":              "OrderGroupUpdateData",
+	"rfq_created":                      "RFQCreatedData",
+	"rfq_deleted":                      "RFQDeletedData",
+	"quote_created":                    "QuoteCreatedData",
+	"quote_accepted":                   "QuoteAcceptedData",
+	"quote_executed":                   "QuoteExecutedData",
+	"event_fee_update":                 "EventFeeUpdateData",
+	"cfbenchmarks_value":               "CfbenchmarksValueData",
+	"cfbenchmarks_value_indexlist":     "CfbenchmarksValueIndexlistData",
+	"cfbenchmarks_value_5hz":           "CfbenchmarksValue5HzData",
+	"cfbenchmarks_value_5hz_indexlist": "CfbenchmarksValue5HzIndexlistData",
+	"pyth_value":                       "PythValueData",
+	"pyth_value_underlying_list":       "PythValueUnderlyingListData",
 }
 
 // msgTypeToConstName maps WS message "name" → Go constant name.
 var msgTypeToConstName = map[string]string{
-	"orderbook_snapshot":             "WSMsgOrderbookSnapshot",
-	"orderbook_delta":                "WSMsgOrderbookDelta",
-	"ticker":                         "WSMsgTicker",
-	"trade":                          "WSMsgTrade",
-	"fill":                           "WSMsgFill",
-	"market_position":                "WSMsgMarketPosition",
-	"market_lifecycle_v2":            "WSMsgMarketLifecycleV2",
-	"event_lifecycle":                "WSMsgEventLifecycle",
-	"multivariate_market_lifecycle":  "WSMsgMultivariateMarketLifecycle",
-	"multivariate_lookup":            "WSMsgMultivariateLookup",
-	"user_order":                     "WSMsgUserOrder",
-	"order_group_updates":            "WSMsgOrderGroupUpdates",
-	"rfq_created":                    "WSMsgRFQCreated",
-	"rfq_deleted":                    "WSMsgRFQDeleted",
-	"quote_created":                  "WSMsgQuoteCreated",
-	"quote_accepted":                 "WSMsgQuoteAccepted",
-	"quote_executed":                 "WSMsgQuoteExecuted",
-	"event_fee_update":               "WSMsgEventFeeUpdate",
-	"cfbenchmarks_value":             "WSMsgCfbenchmarksValue",
-	"cfbenchmarks_value_indexlist":   "WSMsgCfbenchmarksValueIndexlist",
+	"orderbook_snapshot":               "WSMsgOrderbookSnapshot",
+	"orderbook_delta":                  "WSMsgOrderbookDelta",
+	"ticker":                           "WSMsgTicker",
+	"trade":                            "WSMsgTrade",
+	"fill":                             "WSMsgFill",
+	"market_position":                  "WSMsgMarketPosition",
+	"market_lifecycle_v2":              "WSMsgMarketLifecycleV2",
+	"event_lifecycle":                  "WSMsgEventLifecycle",
+	"multivariate_market_lifecycle":    "WSMsgMultivariateMarketLifecycle",
+	"user_order":                       "WSMsgUserOrder",
+	"order_group_updates":              "WSMsgOrderGroupUpdates",
+	"rfq_created":                      "WSMsgRFQCreated",
+	"rfq_deleted":                      "WSMsgRFQDeleted",
+	"quote_created":                    "WSMsgQuoteCreated",
+	"quote_accepted":                   "WSMsgQuoteAccepted",
+	"quote_executed":                   "WSMsgQuoteExecuted",
+	"event_fee_update":                 "WSMsgEventFeeUpdate",
+	"cfbenchmarks_value":               "WSMsgCfbenchmarksValue",
+	"cfbenchmarks_value_indexlist":     "WSMsgCfbenchmarksValueIndexlist",
+	"cfbenchmarks_value_5hz":           "WSMsgCfbenchmarksValue5Hz",
+	"cfbenchmarks_value_5hz_indexlist": "WSMsgCfbenchmarksValue5HzIndexlist",
+	"pyth_value":                       "WSMsgPythValue",
+	"pyth_value_underlying_list":       "WSMsgPythValueUnderlyingList",
 }
 
 // refTypeOverrides maps schema $ref names to Go types for primitive/enum refs.
 var refTypeOverrides = map[string]string{
-	"marketSide":      "Side",
-	"bookSide":        "BookSide",
-	"orderAction":     "Action",
-	"marketTicker":    "string",
-	"marketId":        "string",
-	"commandId":       "int",
-	"subscriptionId":  "int",
-	"sequenceNumber":  "int",
+	"marketSide":     "Side",
+	"bookSide":       "BookSide",
+	"orderAction":    "Action",
+	"marketTicker":   "string",
+	"marketId":       "string",
+	"commandId":      "int",
+	"subscriptionId": "int",
+	"sequenceNumber": "int",
 }
 
 // wsFieldTypeOverrides maps (struct, field) → Go type for enum overrides.
@@ -164,8 +167,8 @@ type AsyncAPISpec struct {
 
 // Channel represents an AsyncAPI channel.
 type Channel struct {
-	Address  string              `yaml:"address"`
-	Messages map[string]*MsgRef  `yaml:"messages"`
+	Address  string             `yaml:"address"`
+	Messages map[string]*MsgRef `yaml:"messages"`
 }
 
 // MsgRef holds a $ref to a message.
@@ -223,9 +226,9 @@ type inlineSub struct {
 }
 
 func main() {
-	spec, err := fetchSpec()
+	spec, snap, err := loadSpec()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "fetch spec: %v\n", err)
+		fmt.Fprintf(os.Stderr, "load spec: %v\n", err)
 		os.Exit(1)
 	}
 	schemas := spec.Components.Schemas
@@ -255,7 +258,7 @@ func main() {
 
 	// Generate code.
 	var buf bytes.Buffer
-	buf.WriteString(fileHeader())
+	buf.WriteString(fileHeader(snap))
 	buf.WriteString("package gokalshi\n\n")
 
 	// Section: Outgoing commands
@@ -376,29 +379,18 @@ func main() {
 // Spec fetching
 // ---------------------------------------------------------------------------
 
-func fetchSpec() (*AsyncAPISpec, error) {
-	fmt.Printf("Fetching %s...\n", asyncAPISpecURL)
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(asyncAPISpecURL)
+func loadSpec() (*AsyncAPISpec, specsrc.Snapshot, error) {
+	body, snap, err := specsrc.Load(specsrc.AsyncAPI)
 	if err != nil {
-		return nil, err
+		return nil, snap, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, asyncAPISpecURL)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+	fmt.Printf("Using vendored AsyncAPI %s (fetched %s)\n", snap.AsyncAPI.InfoVersion, snap.FetchedAt)
 
 	var spec AsyncAPISpec
 	if err := yaml.Unmarshal(body, &spec); err != nil {
-		return nil, fmt.Errorf("parse YAML: %w", err)
+		return nil, snap, fmt.Errorf("parse vendored AsyncAPI YAML: %w", err)
 	}
-	return &spec, nil
+	return &spec, snap, nil
 }
 
 // ---------------------------------------------------------------------------
@@ -823,6 +815,9 @@ var errorCodeNames = map[int]string{
 	23: "WSErrMatchIDsRequired",
 	24: "WSErrIndexIDsRequired",
 	25: "WSErrSubBufferOverflow",
+	26: "WSErrSubscriptionLimit",
+	27: "WSErrTooManyRequests",
+	28: "WSErrUnderlyingTickersRequired",
 }
 
 func writeErrorCodes(buf *bytes.Buffer, codes []ErrorCode) {
@@ -830,7 +825,7 @@ func writeErrorCodes(buf *bytes.Buffer, codes []ErrorCode) {
 	for _, ec := range codes {
 		constName, ok := errorCodeNames[ec.Code]
 		if !ok {
-			constName = "WSErr" + toGoFieldName(ec.Name)
+			constName = "WSErr" + toGoIdentifier(ec.Name)
 			fmt.Fprintf(os.Stderr, "WARNING: unknown error code %d %q, using %s\n", ec.Code, ec.Name, constName)
 		}
 		buf.WriteString(fmt.Sprintf("\t%s = %d\n", constName, ec.Code))
@@ -897,6 +892,28 @@ var goFieldNameOverrides = map[string]string{
 	"sids": "SIDs",
 }
 
+// toGoIdentifier converts free-form spec text ("Too many requests") into a
+// valid exported Go identifier. Error-code names are human-readable messages,
+// not snake_case, so toGoFieldName alone would emit spaces into source.
+func toGoIdentifier(s string) string {
+	var b strings.Builder
+	upperNext := true
+	for _, r := range s {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			if upperNext {
+				b.WriteRune(unicode.ToUpper(r))
+				upperNext = false
+			} else {
+				b.WriteRune(r)
+			}
+		default:
+			upperNext = true
+		}
+	}
+	return b.String()
+}
+
 func toGoFieldName(s string) string {
 	if override, ok := goFieldNameOverrides[s]; ok {
 		return override
@@ -940,8 +957,13 @@ func cleanDescription(s string) string {
 	return s
 }
 
-func fileHeader() string {
-	return fmt.Sprintf("// Code generated by tools/generate_ws_types from %s — DO NOT EDIT.\n// Source: ws_messages_generated.go\n\n", asyncAPISpecURL)
+func fileHeader(snap specsrc.Snapshot) string {
+	url, version, sha := snap.Provenance(specsrc.AsyncAPI)
+	return fmt.Sprintf(
+		"// Code generated by tools/generate_ws_types — DO NOT EDIT.\n"+
+			"// Spec: %s (version %s, fetched %s)\n"+
+			"// sha256: %s\n\n",
+		url, version, snap.FetchedAt, sha)
 }
 
 func findPackageRoot() string {

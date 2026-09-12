@@ -32,7 +32,7 @@ type subscribeParams struct {
 }
 
 type updateSubParams struct {
-	SIDs          []int  `json:"sids"`
+	SIDs          []int    `json:"sids"`
 	MarketTickers []string `json:"market_tickers"`
 	Action        string   `json:"action"`
 }
@@ -127,7 +127,9 @@ func main() {
 		printMsg(msgCount, data)
 		if msg.Type == "subscribed" && msg.ID == 1 {
 			// Parse SID from msg body.
-			var body struct{ SID int `json:"sid"` }
+			var body struct {
+				SID int `json:"sid"`
+			}
 			_ = json.Unmarshal(msg.Msg, &body)
 			tradeSID = body.SID
 			fmt.Fprintf(os.Stderr, ">>> Got SID=%d for trade channel\n\n", tradeSID)

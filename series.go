@@ -16,7 +16,7 @@ import (
 // metadata that will be applied to each recurring event instance within that
 // series.
 //
-// See https://trading-api.readme.io/reference/getseries
+// See https://docs.kalshi.com/api-reference/market/get-series
 func (c *Client) GetSeries(ctx context.Context, seriesTicker string, params GetSeriesParams) (GetSeriesResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathSeries, seriesTicker)
 	return getJSON[GetSeriesResponse](c, ctx, path, params.toMap())
@@ -32,7 +32,7 @@ func (c *Client) GetSeries(ctx context.Context, seriesTicker string, params GetS
 // Claims", "Daily Weather in NYC"). This endpoint allows you to browse and
 // discover available series templates by category.
 //
-// See https://trading-api.readme.io/reference/getserieslist
+// See https://docs.kalshi.com/api-reference/market/get-series-list
 func (c *Client) GetSeriesList(ctx context.Context, params GetSeriesListParams) (GetSeriesListResponse, error) {
 	return getJSON[GetSeriesListResponse](c, ctx, pathSeries, params.toMap())
 }
