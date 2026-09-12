@@ -28,50 +28,56 @@ import (
 
 // msgTypeToStructName maps WS message "name" → Go struct name for data messages.
 var msgTypeToStructName = map[string]string{
-	"orderbook_snapshot":            "OrderbookSnapshotData",
-	"orderbook_delta":               "OrderbookDeltaData",
-	"ticker":                        "TickerData",
-	"trade":                         "TradeData",
-	"fill":                          "FillData",
-	"market_position":               "MarketPositionData",
-	"market_lifecycle_v2":           "MarketLifecycleV2Data",
-	"event_lifecycle":               "EventLifecycleData",
-	"multivariate_market_lifecycle": "MultivariateMarketLifecycleData",
-	"multivariate_lookup":           "MultivariateLookupData",
-	"user_order":                    "UserOrderData",
-	"order_group_updates":           "OrderGroupUpdateData",
-	"rfq_created":                   "RFQCreatedData",
-	"rfq_deleted":                   "RFQDeletedData",
-	"quote_created":                 "QuoteCreatedData",
-	"quote_accepted":                "QuoteAcceptedData",
-	"quote_executed":                "QuoteExecutedData",
-	"event_fee_update":              "EventFeeUpdateData",
-	"cfbenchmarks_value":            "CfbenchmarksValueData",
-	"cfbenchmarks_value_indexlist":  "CfbenchmarksValueIndexlistData",
+	"orderbook_snapshot":               "OrderbookSnapshotData",
+	"orderbook_delta":                  "OrderbookDeltaData",
+	"ticker":                           "TickerData",
+	"trade":                            "TradeData",
+	"fill":                             "FillData",
+	"market_position":                  "MarketPositionData",
+	"market_lifecycle_v2":              "MarketLifecycleV2Data",
+	"event_lifecycle":                  "EventLifecycleData",
+	"multivariate_market_lifecycle":    "MultivariateMarketLifecycleData",
+	"user_order":                       "UserOrderData",
+	"order_group_updates":              "OrderGroupUpdateData",
+	"rfq_created":                      "RFQCreatedData",
+	"rfq_deleted":                      "RFQDeletedData",
+	"quote_created":                    "QuoteCreatedData",
+	"quote_accepted":                   "QuoteAcceptedData",
+	"quote_executed":                   "QuoteExecutedData",
+	"event_fee_update":                 "EventFeeUpdateData",
+	"cfbenchmarks_value":               "CfbenchmarksValueData",
+	"cfbenchmarks_value_indexlist":     "CfbenchmarksValueIndexlistData",
+	"cfbenchmarks_value_5hz":           "CfbenchmarksValue5HzData",
+	"cfbenchmarks_value_5hz_indexlist": "CfbenchmarksValue5HzIndexlistData",
+	"pyth_value":                       "PythValueData",
+	"pyth_value_underlying_list":       "PythValueUnderlyingListData",
 }
 
 // msgTypeToConstName maps WS message "name" → Go constant name.
 var msgTypeToConstName = map[string]string{
-	"orderbook_snapshot":            "WSMsgOrderbookSnapshot",
-	"orderbook_delta":               "WSMsgOrderbookDelta",
-	"ticker":                        "WSMsgTicker",
-	"trade":                         "WSMsgTrade",
-	"fill":                          "WSMsgFill",
-	"market_position":               "WSMsgMarketPosition",
-	"market_lifecycle_v2":           "WSMsgMarketLifecycleV2",
-	"event_lifecycle":               "WSMsgEventLifecycle",
-	"multivariate_market_lifecycle": "WSMsgMultivariateMarketLifecycle",
-	"multivariate_lookup":           "WSMsgMultivariateLookup",
-	"user_order":                    "WSMsgUserOrder",
-	"order_group_updates":           "WSMsgOrderGroupUpdates",
-	"rfq_created":                   "WSMsgRFQCreated",
-	"rfq_deleted":                   "WSMsgRFQDeleted",
-	"quote_created":                 "WSMsgQuoteCreated",
-	"quote_accepted":                "WSMsgQuoteAccepted",
-	"quote_executed":                "WSMsgQuoteExecuted",
-	"event_fee_update":              "WSMsgEventFeeUpdate",
-	"cfbenchmarks_value":            "WSMsgCfbenchmarksValue",
-	"cfbenchmarks_value_indexlist":  "WSMsgCfbenchmarksValueIndexlist",
+	"orderbook_snapshot":               "WSMsgOrderbookSnapshot",
+	"orderbook_delta":                  "WSMsgOrderbookDelta",
+	"ticker":                           "WSMsgTicker",
+	"trade":                            "WSMsgTrade",
+	"fill":                             "WSMsgFill",
+	"market_position":                  "WSMsgMarketPosition",
+	"market_lifecycle_v2":              "WSMsgMarketLifecycleV2",
+	"event_lifecycle":                  "WSMsgEventLifecycle",
+	"multivariate_market_lifecycle":    "WSMsgMultivariateMarketLifecycle",
+	"user_order":                       "WSMsgUserOrder",
+	"order_group_updates":              "WSMsgOrderGroupUpdates",
+	"rfq_created":                      "WSMsgRFQCreated",
+	"rfq_deleted":                      "WSMsgRFQDeleted",
+	"quote_created":                    "WSMsgQuoteCreated",
+	"quote_accepted":                   "WSMsgQuoteAccepted",
+	"quote_executed":                   "WSMsgQuoteExecuted",
+	"event_fee_update":                 "WSMsgEventFeeUpdate",
+	"cfbenchmarks_value":               "WSMsgCfbenchmarksValue",
+	"cfbenchmarks_value_indexlist":     "WSMsgCfbenchmarksValueIndexlist",
+	"cfbenchmarks_value_5hz":           "WSMsgCfbenchmarksValue5Hz",
+	"cfbenchmarks_value_5hz_indexlist": "WSMsgCfbenchmarksValue5HzIndexlist",
+	"pyth_value":                       "WSMsgPythValue",
+	"pyth_value_underlying_list":       "WSMsgPythValueUnderlyingList",
 }
 
 // refTypeOverrides maps schema $ref names to Go types for primitive/enum refs.
@@ -809,6 +815,9 @@ var errorCodeNames = map[int]string{
 	23: "WSErrMatchIDsRequired",
 	24: "WSErrIndexIDsRequired",
 	25: "WSErrSubBufferOverflow",
+	26: "WSErrSubscriptionLimit",
+	27: "WSErrTooManyRequests",
+	28: "WSErrUnderlyingTickersRequired",
 }
 
 func writeErrorCodes(buf *bytes.Buffer, codes []ErrorCode) {
@@ -816,7 +825,7 @@ func writeErrorCodes(buf *bytes.Buffer, codes []ErrorCode) {
 	for _, ec := range codes {
 		constName, ok := errorCodeNames[ec.Code]
 		if !ok {
-			constName = "WSErr" + toGoFieldName(ec.Name)
+			constName = "WSErr" + toGoIdentifier(ec.Name)
 			fmt.Fprintf(os.Stderr, "WARNING: unknown error code %d %q, using %s\n", ec.Code, ec.Name, constName)
 		}
 		buf.WriteString(fmt.Sprintf("\t%s = %d\n", constName, ec.Code))
@@ -881,6 +890,28 @@ func refToName(ref string) string {
 // goFieldNameOverrides maps specific JSON field names to Go field names.
 var goFieldNameOverrides = map[string]string{
 	"sids": "SIDs",
+}
+
+// toGoIdentifier converts free-form spec text ("Too many requests") into a
+// valid exported Go identifier. Error-code names are human-readable messages,
+// not snake_case, so toGoFieldName alone would emit spaces into source.
+func toGoIdentifier(s string) string {
+	var b strings.Builder
+	upperNext := true
+	for _, r := range s {
+		switch {
+		case unicode.IsLetter(r) || unicode.IsDigit(r):
+			if upperNext {
+				b.WriteRune(unicode.ToUpper(r))
+				upperNext = false
+			} else {
+				b.WriteRune(r)
+			}
+		default:
+			upperNext = true
+		}
+	}
+	return b.String()
 }
 
 func toGoFieldName(s string) string {

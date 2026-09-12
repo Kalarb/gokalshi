@@ -178,32 +178,41 @@ const (
 	WSUpdateSubscribeIndices   WSUpdateAction = "subscribe_indices"
 	WSUpdateUnsubscribeIndices WSUpdateAction = "unsubscribe_indices"
 	WSUpdateIndexlist          WSUpdateAction = "indexlist"
+
+	// Pyth subscriptions are keyed by underlying ticker, not index id, and use
+	// their own action names rather than the cfbenchmarks index actions.
+	WSUpdateSubscribeUnderlyings   WSUpdateAction = "subscribe_underlyings"
+	WSUpdateUnsubscribeUnderlyings WSUpdateAction = "unsubscribe_underlyings"
+	WSUpdateUnderlyingList         WSUpdateAction = "underlying_list"
 )
 
 // WSMessageType represents the type field of an incoming WebSocket message.
 type WSMessageType string
 
 const (
-	WSMsgOrderbookSnapshot           WSMessageType = "orderbook_snapshot"
-	WSMsgOrderbookDelta              WSMessageType = "orderbook_delta"
-	WSMsgTicker                      WSMessageType = "ticker"
-	WSMsgTrade                       WSMessageType = "trade"
-	WSMsgFill                        WSMessageType = "fill"
-	WSMsgMarketPosition              WSMessageType = "market_position"
-	WSMsgMarketLifecycleV2           WSMessageType = "market_lifecycle_v2"
-	WSMsgEventLifecycle              WSMessageType = "event_lifecycle"
-	WSMsgMultivariateMarketLifecycle WSMessageType = "multivariate_market_lifecycle"
-	WSMsgMultivariateLookup          WSMessageType = "multivariate_lookup"
-	WSMsgUserOrder                   WSMessageType = "user_order"
-	WSMsgOrderGroupUpdates           WSMessageType = "order_group_updates"
-	WSMsgRFQCreated                  WSMessageType = "rfq_created"
-	WSMsgRFQDeleted                  WSMessageType = "rfq_deleted"
-	WSMsgQuoteCreated                WSMessageType = "quote_created"
-	WSMsgQuoteAccepted               WSMessageType = "quote_accepted"
-	WSMsgQuoteExecuted               WSMessageType = "quote_executed"
-	WSMsgEventFeeUpdate              WSMessageType = "event_fee_update"
-	WSMsgCfbenchmarksValue           WSMessageType = "cfbenchmarks_value"
-	WSMsgCfbenchmarksValueIndexlist  WSMessageType = "cfbenchmarks_value_indexlist"
+	WSMsgOrderbookSnapshot             WSMessageType = "orderbook_snapshot"
+	WSMsgOrderbookDelta                WSMessageType = "orderbook_delta"
+	WSMsgTicker                        WSMessageType = "ticker"
+	WSMsgTrade                         WSMessageType = "trade"
+	WSMsgFill                          WSMessageType = "fill"
+	WSMsgMarketPosition                WSMessageType = "market_position"
+	WSMsgMarketLifecycleV2             WSMessageType = "market_lifecycle_v2"
+	WSMsgEventLifecycle                WSMessageType = "event_lifecycle"
+	WSMsgMultivariateMarketLifecycle   WSMessageType = "multivariate_market_lifecycle"
+	WSMsgUserOrder                     WSMessageType = "user_order"
+	WSMsgOrderGroupUpdates             WSMessageType = "order_group_updates"
+	WSMsgRFQCreated                    WSMessageType = "rfq_created"
+	WSMsgRFQDeleted                    WSMessageType = "rfq_deleted"
+	WSMsgQuoteCreated                  WSMessageType = "quote_created"
+	WSMsgQuoteAccepted                 WSMessageType = "quote_accepted"
+	WSMsgQuoteExecuted                 WSMessageType = "quote_executed"
+	WSMsgEventFeeUpdate                WSMessageType = "event_fee_update"
+	WSMsgCfbenchmarksValue             WSMessageType = "cfbenchmarks_value"
+	WSMsgCfbenchmarksValueIndexlist    WSMessageType = "cfbenchmarks_value_indexlist"
+	WSMsgCfbenchmarksValue5Hz          WSMessageType = "cfbenchmarks_value_5hz"
+	WSMsgCfbenchmarksValue5HzIndexlist WSMessageType = "cfbenchmarks_value_5hz_indexlist"
+	WSMsgPythValue                     WSMessageType = "pyth_value"
+	WSMsgPythValueUnderlyingList       WSMessageType = "pyth_value_underlying_list"
 )
 
 // WSResponseType represents the type field of a WebSocket command response.
