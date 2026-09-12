@@ -52,6 +52,10 @@ var fileToCategory = map[string]string{
 	"milestones.go":         "Milestones",
 	"mve_collections.go":    "Multivariate Event Collections",
 	"structured_targets.go": "Structured Targets",
+	"target_balance.go":     "Portfolio", // override: portfolio sub-resource
+	"intra_exchange.go":     "Intra Exchange Transfers",
+	"block_trades.go":       "Block Trades",
+	"fcm.go":                "FCM",
 }
 
 // categoryOrder defines the display order (matches interfaces.go groupings).
@@ -75,6 +79,9 @@ var categoryOrder = []string{
 	"Milestones",
 	"Multivariate Event Collections",
 	"Structured Targets",
+	"Intra Exchange Transfers",
+	"Block Trades",
+	"FCM",
 }
 
 // skipFiles are files that contain *Client methods but are not API endpoints.
@@ -249,9 +256,36 @@ func discoverUnitTests(dir string) map[string]bool {
 				result[methodName] = true
 			}
 		}
+
+		// Also count methods actually invoked on a Client. Naming alone misses
+		// table-driven tests, where many endpoints are exercised from a single
+		// test function — the call site is the honest signal of coverage.
+		collectCalledMethods(file, result)
 	}
 
 	return result
+}
+
+// collectCalledMethods records every c.Method(...) call in a test file.
+func collectCalledMethods(file *ast.File, result map[string]bool) {
+	ast.Inspect(file, func(n ast.Node) bool {
+		call, ok := n.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		sel, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok {
+			return true
+		}
+		if _, ok := sel.X.(*ast.Ident); !ok {
+			return true
+		}
+		name := sel.Sel.Name
+		if name != "" && name[0] >= 'A' && name[0] <= 'Z' {
+			result[name] = true
+		}
+		return true
+	})
 }
 
 // extractMethodFromTestName converts "TestGetExchangeStatus" -> "GetExchangeStatus",

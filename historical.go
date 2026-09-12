@@ -148,3 +148,33 @@ func (p GetHistoricalMarketCandlesticksParams) toMap() map[string]string {
 		Int("period_interval", p.PeriodInterval).
 		Build()
 }
+
+// GetHistoricalPositions — Get Historical Positions
+//
+// GET /trade-api/v2/historical/positions
+//
+// Positions that have been archived out of the live portfolio. Use
+// GetHistoricalCutoff to find the boundary between this endpoint and
+// GetPositions.
+func (c *Client) GetHistoricalPositions(ctx context.Context, params GetHistoricalPositionsParams) (GetPositionsResponse, error) {
+	return getJSON[GetPositionsResponse](c, ctx, pathHistorical+"/positions", params.toMap())
+}
+
+// GetHistoricalPositionsParams are the query parameters for GetHistoricalPositions.
+type GetHistoricalPositionsParams struct {
+	Ticker      string
+	EventTicker string
+	Subaccount  int
+	Limit       int
+	Cursor      string
+}
+
+func (p GetHistoricalPositionsParams) toMap() map[string]string {
+	return NewQuery().
+		String("ticker", p.Ticker).
+		String("event_ticker", p.EventTicker).
+		Int("subaccount", p.Subaccount).
+		Int("limit", p.Limit).
+		String("cursor", p.Cursor).
+		Build()
+}

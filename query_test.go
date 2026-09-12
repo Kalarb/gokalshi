@@ -72,3 +72,24 @@ func TestQueryBuilder_Chaining(t *testing.T) {
 	assert.Equal(t, "100", q["min_ts"])
 	assert.Equal(t, "true", q["nested"])
 }
+
+func TestQueryBuilder_IntPtr(t *testing.T) {
+	tests := []struct {
+		name string
+		val  *int
+		want map[string]string
+	}{
+		{"nil is omitted", nil, map[string]string{}},
+		{"zero is kept", intPtr(0), map[string]string{"exchange_index": "0"}},
+		{"negative is kept", intPtr(-1), map[string]string{"exchange_index": "-1"}},
+		{"positive is kept", intPtr(3), map[string]string{"exchange_index": "3"}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := NewQuery().IntPtr("exchange_index", tt.val).Build()
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func intPtr(v int) *int { return &v }

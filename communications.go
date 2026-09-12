@@ -122,6 +122,9 @@ func (c *Client) GetQuotes(ctx context.Context, params GetQuotesParams) (GetQuot
 // # Endpoint for getting a particular quote
 //
 // See https://trading-api.readme.io/reference/getquote
+//
+// Deprecated: Kalshi marks the quote-id-only form deprecated. Use GetRFQQuote,
+// which scopes the quote to its RFQ.
 func (c *Client) GetQuote(ctx context.Context, quoteID string) (GetQuoteResponse, error) {
 	path := fmt.Sprintf("%s/quotes/%s", pathCommunications, quoteID)
 	return getJSON[GetQuoteResponse](c, ctx, path, nil)
@@ -134,6 +137,9 @@ func (c *Client) GetQuote(ctx context.Context, quoteID string) (GetQuoteResponse
 // Endpoint for deleting a quote, which means it can no longer be accepted.
 //
 // See https://trading-api.readme.io/reference/deletequote
+//
+// Deprecated: Kalshi marks the quote-id-only form deprecated. Use DeleteRFQQuote,
+// which scopes the quote to its RFQ.
 func (c *Client) DeleteQuote(ctx context.Context, quoteID string) error {
 	path := fmt.Sprintf("%s/quotes/%s", pathCommunications, quoteID)
 	_, err := c.delete(ctx, path, nil, 10.0)
@@ -147,6 +153,9 @@ func (c *Client) DeleteQuote(ctx context.Context, quoteID string) error {
 // Endpoint for accepting a quote. This will require the quoter to confirm
 //
 // See https://trading-api.readme.io/reference/acceptquote
+//
+// Deprecated: Kalshi marks the quote-id-only form deprecated. Use AcceptRFQQuote,
+// which scopes the quote to its RFQ.
 func (c *Client) AcceptQuote(ctx context.Context, quoteID string, req AcceptQuoteRequest) error {
 	path := fmt.Sprintf("%s/quotes/%s/accept", pathCommunications, quoteID)
 	_, err := c.put(ctx, path, req, 10.0)
@@ -160,6 +169,9 @@ func (c *Client) AcceptQuote(ctx context.Context, quoteID string, req AcceptQuot
 // Endpoint for confirming a quote. This will start a timer for order execution
 //
 // See https://trading-api.readme.io/reference/confirmquote
+//
+// Deprecated: Kalshi marks the quote-id-only form deprecated. Use ConfirmRFQQuote,
+// which scopes the quote to its RFQ.
 func (c *Client) ConfirmQuote(ctx context.Context, quoteID string) error {
 	path := fmt.Sprintf("%s/quotes/%s/confirm", pathCommunications, quoteID)
 	_, err := c.put(ctx, path, nil, 10.0)
@@ -189,4 +201,48 @@ func (p GetQuotesParams) toMap() map[string]string {
 		String("rfq_user_filter", p.RFQUserFilter).
 		String("rfq_id", p.RFQID).
 		Build()
+}
+
+// GetRFQQuote — Get RFQ Quote
+//
+// GET /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}
+//
+// Reads a quote scoped to its RFQ. Supersedes GetQuote.
+func (c *Client) GetRFQQuote(ctx context.Context, rfqID, quoteID string) (GetQuoteResponse, error) {
+	return doJSON[GetQuoteResponse](c, ctx, "GET", rfqQuotePath(rfqID, quoteID), 2.0, 0, nil, nil)
+}
+
+// DeleteRFQQuote — Delete RFQ Quote
+//
+// DELETE /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}
+//
+// Withdraws a quote. Returns no body. Supersedes DeleteQuote.
+func (c *Client) DeleteRFQQuote(ctx context.Context, rfqID, quoteID string) error {
+	_, err := c.do(ctx, "DELETE", rfqQuotePath(rfqID, quoteID), 0, 2.0, nil, nil)
+	return err
+}
+
+// AcceptRFQQuote — Accept RFQ Quote
+//
+// PUT /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}/accept
+//
+// Accepts a quote. Returns no body. Supersedes AcceptQuote.
+func (c *Client) AcceptRFQQuote(ctx context.Context, rfqID, quoteID string, req AcceptQuoteRequest) error {
+	_, err := c.put(ctx, rfqQuotePath(rfqID, quoteID)+"/accept", req, 10.0)
+	return err
+}
+
+// ConfirmRFQQuote — Confirm RFQ Quote
+//
+// PUT /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}/confirm
+//
+// Confirms an accepted quote, completing the trade. Returns no body.
+// Supersedes ConfirmQuote.
+func (c *Client) ConfirmRFQQuote(ctx context.Context, rfqID, quoteID string) error {
+	_, err := c.put(ctx, rfqQuotePath(rfqID, quoteID)+"/confirm", struct{}{}, 10.0)
+	return err
+}
+
+func rfqQuotePath(rfqID, quoteID string) string {
+	return fmt.Sprintf("%s/rfqs/%s/quotes/%s", pathCommunications, rfqID, quoteID)
 }

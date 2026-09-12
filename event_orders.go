@@ -91,13 +91,39 @@ func (c *Client) DecreaseOrderV2(ctx context.Context, orderID string, req Decrea
 
 // CancelOrderV2Params are query parameters for CancelOrderV2.
 type CancelOrderV2Params struct {
-	Subaccount    int
-	ExchangeIndex int
+	Subaccount int
+	// ExchangeIndex selects the exchange instance. 0 is the event-contract
+	// instance and -1 asks Kalshi to auto-route by market ticker, so it is a
+	// pointer: both are meaningful values that a zero-valued int cannot express.
+	ExchangeIndex *int
 }
 
 func (p CancelOrderV2Params) toMap() map[string]string {
 	return NewQuery().
 		Int("subaccount", p.Subaccount).
-		Int("exchange_index", p.ExchangeIndex).
+		IntPtr("exchange_index", p.ExchangeIndex).
+		Build()
+}
+
+// CancelAllOrders — Cancel All Orders
+//
+// DELETE /trade-api/v2/portfolio/events/orders
+//
+// Cancels every resting order for the account, or for a single subaccount when
+// one is given. Returns no body. Kalshi bills this as a single cancel rather
+// than one per order, which makes it the cheapest way to flatten quickly.
+func (c *Client) CancelAllOrders(ctx context.Context, params CancelAllOrdersParams) error {
+	_, err := c.do(ctx, "DELETE", pathEventOrders, 0, 2.0, nil, params.toMap())
+	return err
+}
+
+// CancelAllOrdersParams are the query parameters for CancelAllOrders.
+type CancelAllOrdersParams struct {
+	Subaccount int
+}
+
+func (p CancelAllOrdersParams) toMap() map[string]string {
+	return NewQuery().
+		Int("subaccount", p.Subaccount).
 		Build()
 }

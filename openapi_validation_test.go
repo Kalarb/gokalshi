@@ -15,9 +15,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var skippedPathPrefixes = []string{
-	"/trade-api/v2/fcm",
-}
+// skippedPathPrefixes are spec paths excluded from the comparison. Empty: the
+// SDK targets full spec coverage. An entry here must carry the reason it is not
+// simply implemented.
+var skippedPathPrefixes = []string{}
 
 // knownExtraEndpoints are endpoints the SDK implements that the published spec
 // does not list, each with the reason it is kept. Anything absent from the spec

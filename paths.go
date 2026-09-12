@@ -7,6 +7,7 @@ const (
 	pathCommunications    = "/trade-api/v2/communications"
 	pathEvents            = "/trade-api/v2/events"
 	pathExchange          = "/trade-api/v2/exchange"
+	pathFCM               = "/trade-api/v2/fcm"
 	pathHistorical        = "/trade-api/v2/historical"
 	pathIncentivePrograms = "/trade-api/v2/incentive_programs"
 	pathLiveData          = "/trade-api/v2/live_data"
@@ -23,4 +24,11 @@ const (
 	pathEventOrders = pathPortfolio + "/events/orders"
 	pathOrderGroups = pathPortfolio + "/order_groups"
 	pathSubaccounts = pathPortfolio + "/subaccounts"
+
+	pathTargetBalanceAllocation = pathPortfolio + "/target_balance_allocation"
+	pathIntraExchangeTransfer   = pathPortfolio + "/intra_exchange_instance_transfer"
+	pathIntraExchangeTransfers  = pathPortfolio + "/intra_exchange_instance_transfers"
+
+	// Sub-path under pathCommunications.
+	pathBlockTradeProposals = pathCommunications + "/block-trade-proposals"
 )

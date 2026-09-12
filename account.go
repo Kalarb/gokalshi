@@ -41,3 +41,13 @@ func (c *Client) UpgradeAPIUsageLevel(ctx context.Context) error {
 	_, err := c.post(ctx, pathAccount+"/api_usage_level/upgrade", nil, 30.0)
 	return err
 }
+
+// GetAccountAPIUsageLevelVolumeProgress — Get Account API Usage Level Volume Progress
+//
+// GET /trade-api/v2/account/api_usage_level/volume_progress
+//
+// Reports progress toward the trading-volume goals that promote an account to
+// the next API usage level, which is what raises its rate-limit budget.
+func (c *Client) GetAccountAPIUsageLevelVolumeProgress(ctx context.Context) (GetAccountApiUsageLevelVolumeProgressResponse, error) {
+	return getJSON[GetAccountApiUsageLevelVolumeProgressResponse](c, ctx, pathAccount+"/api_usage_level/volume_progress", nil)
+}

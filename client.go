@@ -35,10 +35,10 @@ type Client struct {
 	baseDelay      time.Duration
 	skipAutoConfig bool
 
-	mu           sync.RWMutex           // guards limiter, costPatterns, defaultCost
+	mu           sync.RWMutex // guards limiter, costPatterns, defaultCost
 	limiter      *ReadWriteTokenBucket
-	costPatterns []endpointCostPattern  // nil = use caller defaults
-	defaultCost  float64                // fallback cost when no pattern matches; 0 = use caller defaults
+	costPatterns []endpointCostPattern // nil = use caller defaults
+	defaultCost  float64               // fallback cost when no pattern matches; 0 = use caller defaults
 }
 
 // ClientOption configures a Client.

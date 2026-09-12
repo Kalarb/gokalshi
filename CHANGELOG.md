@@ -1,5 +1,82 @@
 # Changelog
 
+## v1.0.0 — unreleased
+
+Realigns the SDK with the Kalshi API as of OpenAPI 3.30.0. All 109 HTTP
+endpoints and all 13 WebSocket channels are implemented, and the spec drift
+tests run with an empty skip list.
+
+### Breaking
+
+- **The legacy V1 order-write methods are removed.** Kalshi withdrew these
+  endpoints and now answers them with `410 Gone`, so they had already stopped
+  working:
+
+  | Removed | Replacement |
+  |---|---|
+  | `CreateOrder` | `CreateOrderV2` |
+  | `CancelOrder` | `CancelOrderV2` |
+  | `AmendOrder` | `AmendOrderV2` |
+  | `DecreaseOrder` | `DecreaseOrderV2` |
+  | `BatchCreateOrders` | `BatchCreateOrdersV2` |
+  | `BatchCancelOrders` | `BatchCancelOrdersV2` |
+
+  The V2 request shape uses the single-book model: `Side` is `BookSideBid` or
+  `BookSideAsk` on the YES leg rather than a `Side`/`Action` pair, and `Count`
+  and `Price` are fixed-point decimal strings (`"10.00"`, `"0.5600"`).
+
+  Order *reads* are unaffected: `GetOrder`, `GetOrders` and the queue-position
+  methods stay on the V1 paths, which Kalshi still serves.
+
+- `GetExchangeAnnouncements` removed — endpoint discontinued 2026-07-04.
+- `GetMultivariateEventCollectionLookupHistory` and
+  `LookupTickersForMarketInMultivariateEventCollection` removed — endpoints
+  removed 2026-08-06.
+- `WSMsgMultivariateLookup` and `MultivariateLookupData` removed — the
+  `multivariate` channel left the AsyncAPI spec on 2026-08-06.
+- `GetOrder` returns `GetOrderResponse` instead of `CreateOrderResponse`.
+- `ApiKey.Scopes` is `[]ApiKeyScope` instead of `[]string`.
+- `CreateOrderV2Request.TimeInForce` is `TimeInForce` instead of `string`.
+- `CancelOrderV2Params.ExchangeIndex` is `*int` instead of `int`. `0` selects
+  the event-contract instance and `-1` auto-routes by market ticker; as a plain
+  int both were indistinguishable from unset and were silently dropped.
+
+### Added
+
+- 20 endpoints: `CancelAllOrders`, weather index (2), block trade proposals
+  (3), target balance allocation (2), intra-exchange transfers (3), FCM (2),
+  RFQ-scoped quote operations (4), `GetHistoricalPositions`,
+  `GetEventLiveData`, `GetAccountAPIUsageLevelVolumeProgress`.
+- WebSocket channels `cfbenchmarks_value_5hz` and `pyth_value`, with their four
+  message types and pyth's own update actions.
+- Enum types `ApiKeyScope`, `ExchangeInstance`, `RestingMarginReservation`,
+  `IntraExchangeInstanceTransferStatus`, `UserFilter`, and the
+  `quadratic_with_combo_maker_fees` fee type.
+- `exchange_index` across the schemas Kalshi added it to, plus the weather,
+  block-trade, target-balance and API-usage-level types.
+- `QueryBuilder.IntPtr` for parameters whose meaningful values include 0 and -1.
+- `specs/` — a pinned spec snapshot with version and sha256. Generators and
+  drift tests read it instead of fetching docs.kalshi.com at build time, so
+  regeneration is reproducible and a release can be traced to an exact spec.
+  `tools/vendor_spec.sh` refreshes it; `--check` reports drift against live.
+
+### Fixed
+
+- The drift tests only ever checked for *missing* endpoints, so an endpoint
+  Kalshi had withdrawn could ship indefinitely. They now also fail on endpoints,
+  WS channels and message types that are absent from the spec.
+- Added `TestOpenAPISchemaCoverage`: Go had no REST schema drift check at all,
+  so new fields surfaced only as runtime deserialization failures.
+- `tools/generate_types` discarded enum schemas on the stale assumption that
+  `enums.go` held a superset, which is how two referenced enum types came to be
+  missing entirely.
+- `tools/generate_ws_types` built error-code constant names from the spec's
+  human-readable message text, emitting invalid Go for codes 27 and 28.
+- `tools/generate_coverage` counted only tests named after their method, so
+  table-driven tests read as zero coverage. It now also counts call sites.
+- Deprecated the quote-id-only RFQ operations in favour of the RFQ-scoped forms,
+  matching the spec.
+
 ## v0.2.0 — 2026-05-28
 
 Full Kalshi API parity. 97 of 99 OpenAPI endpoints implemented (2 FCM-only endpoints intentionally skipped).
