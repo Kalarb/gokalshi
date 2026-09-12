@@ -15,10 +15,16 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// skippedPathPrefixes are spec paths excluded from the comparison. Empty: the
-// SDK targets full spec coverage. An entry here must carry the reason it is not
-// simply implemented.
-var skippedPathPrefixes = []string{}
+// skippedPathPrefixes are spec paths excluded from the comparison, in both
+// directions. An entry here must carry the reason it is not simply compared.
+var skippedPathPrefixes = []string{
+	// FCM endpoints are available only to Futures Commission Merchant members
+	// and return 403 for everyone else, so we cannot integration-test them or
+	// verify their response shapes against a live account. They are implemented
+	// in fcm.go for parity, but held out of the drift comparison rather than
+	// asserted against a contract we cannot exercise.
+	"/trade-api/v2/fcm",
+}
 
 // knownExtraEndpoints are endpoints the SDK implements that the published spec
 // does not list, each with the reason it is kept. Anything absent from the spec

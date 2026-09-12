@@ -55,6 +55,9 @@ tests run with an empty skip list.
 - `exchange_index` across the schemas Kalshi added it to, plus the weather,
   block-trade, target-balance and API-usage-level types.
 - `QueryBuilder.IntPtr` for parameters whose meaningful values include 0 and -1.
+- FCM endpoints are implemented but held out of the drift comparison: they
+  return 403 without FCM membership, so their contract cannot be exercised.
+  The skip-list entry records that reason.
 - `specs/` — a pinned spec snapshot with version and sha256. Generators and
   drift tests read it instead of fetching docs.kalshi.com at build time, so
   regeneration is reproducible and a release can be traced to an exact spec.
