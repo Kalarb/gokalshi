@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -337,7 +338,19 @@ func TestHTTPIntegration_Subaccounts(t *testing.T) {
 		}
 
 		resp, err := c.CreateSubaccount(ctx)
-		skipOnAPIError(t, err, 400, 403, 507)
+
+		// 507 is a correct, expected answer once the account is full, not a
+		// defect: slots cannot be reclaimed, so a capped account can never
+		// succeed here again. Treat it as a terminal condition of the account
+		// rather than a failure of the client.
+		if isAPIErrorCode(err, http.StatusInsufficientStorage) {
+			t.Skipf("507 maximum_number_of_subaccounts_reached with %d subaccounts "+
+				"in use — this is the expected response for a full account and "+
+				"is not a failure (subaccountCap is %d, so the real cap is lower "+
+				"than assumed)", used, subaccountCap)
+		}
+
+		skipOnAPIError(t, err, 400, 403)
 		require.NoError(t, err)
 		assert.True(t, resp.SubaccountNumber >= 1)
 		t.Logf("created subaccount %d — this slot cannot be reclaimed", resp.SubaccountNumber)
