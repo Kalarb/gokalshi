@@ -97,13 +97,14 @@ func main() {
 
 	methods := discoverAPIMethods(dir)
 	unitTests := discoverUnitTests(dir)
+	assertedTests := discoverAssertedMethods(dir)
 	integrationTests := discoverIntegrationTests(dir)
 	wsChannels := discoverWSChannels(dir)
 	channelNames := wsChannelNames(wsChannels)
 	wsUnitTests := scanFileForChannels(filepath.Join(dir, "ws_client_test.go"), channelNames)
 	wsIntegrationTests := scanFileForChannels(filepath.Join(dir, "ws_integration_test.go"), channelNames)
 
-	report := generateMarkdown(methods, unitTests, integrationTests, wsChannels, wsUnitTests, wsIntegrationTests)
+	report := generateMarkdown(methods, unitTests, integrationTests, assertedTests, wsChannels, wsUnitTests, wsIntegrationTests)
 
 	outPath := filepath.Join(dir, "docs", "API_COVERAGE.md")
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
@@ -267,6 +268,176 @@ func discoverUnitTests(dir string) map[string]bool {
 }
 
 // collectCalledMethods records every c.Method(...) call in a test file.
+// collectAssertedMethods records methods called inside a test function that
+// also makes at least one assert.* call.
+//
+// The distinction matters: a method reaches discoverUnitTests merely by being
+// called, so a test that calls an endpoint and checks nothing counts the same
+// as one that verifies the request body and decodes the response. The repo's
+// own convention is that require is for preconditions the rest of the test
+// depends on and assert is for the actual claims, so the presence of an assert
+// is the usable signal for "something was verified".
+// discoverAssertedMethods returns methods verified by at least one assertion,
+// across unit and integration tests alike.
+func discoverAssertedMethods(dir string) map[string]bool {
+	result := make(map[string]bool)
+
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return result
+	}
+	for _, entry := range entries {
+		name := entry.Name()
+		if !strings.HasSuffix(name, "_test.go") {
+			continue
+		}
+		src, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		fset := token.NewFileSet()
+		file, err := parser.ParseFile(fset, name, src, 0)
+		if err != nil {
+			continue
+		}
+		collectAssertedMethods(file, result)
+	}
+	return result
+}
+
+func collectAssertedMethods(file *ast.File, result map[string]bool) {
+	// Analyse every function body and every closure as its own scope. Subtests
+	// are closures that routinely reuse the same variable name — resp, err —
+	// so a single scope per test function would let each t.Run overwrite the
+	// previous one's bindings and mis-attribute the assertions.
+	var scopes []*ast.BlockStmt
+	for _, decl := range file.Decls {
+		fn, ok := decl.(*ast.FuncDecl)
+		if !ok || fn.Body == nil {
+			continue
+		}
+		scopes = append(scopes, fn.Body)
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			if lit, ok := n.(*ast.FuncLit); ok && lit.Body != nil {
+				scopes = append(scopes, lit.Body)
+			}
+			return true
+		})
+	}
+
+	for _, body := range scopes {
+		fn := &ast.FuncDecl{Body: body}
+
+		// Bind each variable to the client method it was assigned from, so an
+		// assertion can be traced back to the call it verifies.
+		varToMethod := map[string]string{}
+		readsRequestBody := false
+		assertsErrorContract := false
+		methodsCalled := map[string]bool{}
+
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			if call, ok := n.(*ast.CallExpr); ok {
+				if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "decodeBody" {
+					readsRequestBody = true
+				}
+				// An error-contract test verifies the endpoint just as much as
+				// one that decodes a body: asserting that an unknown id yields
+				// a structured 404 rather than a parse failure is a claim about
+				// the endpoint. The assertion names the error, not the
+				// discarded response, so it needs recognising separately.
+				if ident, ok := call.Fun.(*ast.Ident); ok && ident.Name == "isAPIErrorCode" {
+					assertsErrorContract = true
+				}
+				if sel, ok := call.Fun.(*ast.SelectorExpr); ok && sel.Sel.Name == "ErrorAs" {
+					assertsErrorContract = true
+				}
+			}
+			// Record every client call, however it is written. Methods that
+			// return only an error are usually invoked inline —
+			// require.NoError(t, c.CancelAllOrders(...)) — or passed to a local
+			// assertion helper, so binding only assignments would miss them.
+			if name := clientMethodName(n); name != "" {
+				methodsCalled[name] = true
+			}
+			assign, ok := n.(*ast.AssignStmt)
+			if !ok || len(assign.Rhs) != 1 {
+				return true
+			}
+			name := clientMethodName(assign.Rhs[0])
+			if name == "" {
+				return true
+			}
+			for _, lhs := range assign.Lhs {
+				if ident, ok := lhs.(*ast.Ident); ok && ident.Name != "_" && ident.Name != "err" {
+					varToMethod[ident.Name] = name
+				}
+			}
+			return true
+		})
+
+		// A test that decodes the request body, or asserts the error contract,
+		// verifies every call it makes.
+		if readsRequestBody || assertsErrorContract {
+			for name := range methodsCalled {
+				result[name] = true
+			}
+		}
+
+		// Otherwise an assertion must reference the value the call returned.
+		// Asserting on the request URL says nothing about the endpoint's
+		// contract, which is why the method name alone is not enough.
+		ast.Inspect(fn.Body, func(n ast.Node) bool {
+			call, ok := n.(*ast.CallExpr)
+			if !ok {
+				return true
+			}
+			sel, ok := call.Fun.(*ast.SelectorExpr)
+			if !ok {
+				return true
+			}
+			pkg, ok := sel.X.(*ast.Ident)
+			if !ok || pkg.Name != "assert" {
+				return true
+			}
+			for _, arg := range call.Args {
+				ast.Inspect(arg, func(inner ast.Node) bool {
+					ident, ok := inner.(*ast.Ident)
+					if !ok {
+						return true
+					}
+					if method, ok := varToMethod[ident.Name]; ok {
+						result[method] = true
+					}
+					return true
+				})
+			}
+			return true
+		})
+	}
+}
+
+// clientMethodName returns the client method a call expression invokes, or ""
+// if the expression is not a c.Method(...) call.
+func clientMethodName(expr ast.Node) string {
+	call, ok := expr.(*ast.CallExpr)
+	if !ok {
+		return ""
+	}
+	sel, ok := call.Fun.(*ast.SelectorExpr)
+	if !ok {
+		return ""
+	}
+	recv, ok := sel.X.(*ast.Ident)
+	if !ok || recv.Name != "c" {
+		return ""
+	}
+	name := sel.Sel.Name
+	if name == "" || name[0] < 'A' || name[0] > 'Z' {
+		return ""
+	}
+	return name
+}
+
 func collectCalledMethods(file *ast.File, result map[string]bool) {
 	ast.Inspect(file, func(n ast.Node) bool {
 		call, ok := n.(*ast.CallExpr)
@@ -444,7 +615,7 @@ func isIntegrationFile(src string) bool {
 // generateMarkdown produces the full coverage report.
 func generateMarkdown(
 	methods []APIMethod,
-	unitTests, integrationTests map[string]bool,
+	unitTests, integrationTests, assertedTests map[string]bool,
 	wsChannels []WSChannel,
 	wsUnitTests, wsIntegrationTests map[string]bool,
 ) string {
@@ -461,18 +632,27 @@ func generateMarkdown(
 
 	// Summary table
 	b.WriteString("## Summary\n\n")
-	b.WriteString("| Category | Endpoints | Unit Tests | Integration Tests |\n")
-	b.WriteString("|----------|:---------:|:----------:|:-----------------:|\n")
+	b.WriteString("`Y` the endpoint is exercised **and** something about it is asserted. ")
+	b.WriteString("`~` it is called, but no assertion verifies the request or response. ")
+	b.WriteString("`—` no test.\n\n")
+	b.WriteString("The `Asserted` column is the one worth reading: a method counts as ")
+	b.WriteString("tested merely by being called, so a test that invokes an endpoint and ")
+	b.WriteString("checks nothing scores the same in `Unit` as one that verifies the ")
+	b.WriteString("request body and decodes the response.\n\n")
+	b.WriteString("| Category | Endpoints | Unit Tests | Integration Tests | Asserted |\n")
+	b.WriteString("|----------|:---------:|:----------:|:-----------------:|:--------:|\n")
 
 	totalEndpoints := 0
 	totalUnit := 0
 	totalIntegration := 0
+	totalAsserted := 0
 
 	for _, cat := range categoryOrder {
 		catMethods := byCategory[cat]
 		nEndpoints := len(catMethods)
 		nUnit := 0
 		nIntegration := 0
+		nAsserted := 0
 		for _, m := range catMethods {
 			if unitTests[m.Name] {
 				nUnit++
@@ -480,15 +660,20 @@ func generateMarkdown(
 			if integrationTests[m.Name] {
 				nIntegration++
 			}
+			if assertedTests[m.Name] {
+				nAsserted++
+			}
 		}
 		totalEndpoints += nEndpoints
 		totalUnit += nUnit
 		totalIntegration += nIntegration
-		b.WriteString(fmt.Sprintf("| %s | %d | %d/%d | %d/%d |\n",
-			cat, nEndpoints, nUnit, nEndpoints, nIntegration, nEndpoints))
+		totalAsserted += nAsserted
+		b.WriteString(fmt.Sprintf("| %s | %d | %d/%d | %d/%d | %d/%d |\n",
+			cat, nEndpoints, nUnit, nEndpoints, nIntegration, nEndpoints, nAsserted, nEndpoints))
 	}
-	b.WriteString(fmt.Sprintf("| **Total** | **%d** | **%d/%d** | **%d/%d** |\n\n",
-		totalEndpoints, totalUnit, totalEndpoints, totalIntegration, totalEndpoints))
+	b.WriteString(fmt.Sprintf("| **Total** | **%d** | **%d/%d** | **%d/%d** | **%d/%d** |\n\n",
+		totalEndpoints, totalUnit, totalEndpoints, totalIntegration, totalEndpoints,
+		totalAsserted, totalEndpoints))
 
 	// Per-category detail tables
 	b.WriteString("## HTTP Endpoints\n\n")
@@ -504,16 +689,18 @@ func generateMarkdown(
 		b.WriteString("|--------|----------|:----:|:-----------:|-------|\n")
 
 		for _, m := range catMethods {
-			unit := "—"
-			if unitTests[m.Name] {
-				unit = "Y"
-			}
-			integration := "—"
-			if integrationTests[m.Name] {
-				integration = "Y"
+			mark := func(tested bool) string {
+				switch {
+				case tested && assertedTests[m.Name]:
+					return "Y"
+				case tested:
+					return "~"
+				default:
+					return "—"
+				}
 			}
 			b.WriteString(fmt.Sprintf("| `%s` | `%s` | %s | %s | |\n",
-				m.Name, m.Endpoint, unit, integration))
+				m.Name, m.Endpoint, mark(unitTests[m.Name]), mark(integrationTests[m.Name])))
 		}
 		b.WriteString("\n")
 	}

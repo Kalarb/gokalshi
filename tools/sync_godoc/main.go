@@ -470,10 +470,17 @@ func isClientReceiver(recv *ast.FieldList) bool {
 
 var descriptionCleanRe = regexp.MustCompile(`\s+`)
 
-// existingDeprecation returns the hand-written "// Deprecated: ..." paragraph
-// from a doc comment, if any. The spec says an endpoint is deprecated but not
-// what to use instead, so a hand-written notice naming the replacement is more
-// useful than anything this tool can synthesise — preserve it.
+// preservedPrefixes mark doc paragraphs this tool must not overwrite.
+//
+// Everything else in an endpoint's doc block is regenerated from the spec, so
+// a hand-written paragraph would silently vanish on the next `go generate`.
+// These prefixes carry knowledge the spec does not: which method replaces a
+// deprecated one, or a usage trap the type signature cannot express.
+var preservedPrefixes = []string{"Deprecated:", "SDK note:"}
+
+// existingDeprecation returns the hand-written paragraphs from a doc comment
+// that must survive regeneration — those beginning with a preservedPrefixes
+// entry, up to the next blank comment line.
 func existingDeprecation(doc *ast.CommentGroup) []string {
 	if doc == nil {
 		return nil
@@ -488,8 +495,11 @@ func existingDeprecation(doc *ast.CommentGroup) []string {
 			out = append(out, c.Text)
 			continue
 		}
-		if strings.HasPrefix(text, "Deprecated:") {
-			out = append(out, c.Text)
+		for _, prefix := range preservedPrefixes {
+			if strings.HasPrefix(text, prefix) {
+				out = append(out, c.Text)
+				break
+			}
 		}
 	}
 	return out

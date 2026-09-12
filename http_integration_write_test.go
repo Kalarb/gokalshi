@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"fmt"
 	"net/http"
+	"os"
 	"testing"
 	"time"
 
@@ -573,4 +574,224 @@ func TestHTTPIntegration_Communications(t *testing.T) {
 			t.Logf("created market in MVE collection %s", collectionTicker)
 		}
 	})
+}
+
+// ---------------------------------------------------------------------------
+// Guarded: real money movement and account-wide cancels
+// ---------------------------------------------------------------------------
+
+// destructiveEnvVar opts a run in to tests that move balance or cancel orders
+// they did not place.
+const destructiveEnvVar = "KALSHI_ALLOW_DESTRUCTIVE"
+
+// requireDestructiveOptIn skips unless the run has explicitly opted in. These
+// tests change account state that no cleanup can fully guarantee reverting —
+// a transfer is asynchronous and its reversal is a second independent
+// transfer, not a rollback.
+func requireDestructiveOptIn(t *testing.T) {
+	t.Helper()
+	if os.Getenv(destructiveEnvVar) != "1" {
+		t.Skipf("set %s=1 to run tests that move balance or cancel resting orders", destructiveEnvVar)
+	}
+}
+
+// CancelAllOrders is scoped to a non-primary subaccount deliberately.
+//
+// Unscoped, it cancels resting orders across every shard and every subaccount,
+// and the spec warns that orders placed in the following minute may also be
+// cancelled — which would silently break any test that places an order after
+// it. Scoping to a subaccount keeps that blast radius away from the rest of the
+// suite, which trades on the primary, and lets the test assert the scoping
+// actually works rather than assuming it.
+func TestHTTPIntegration_CancelAllOrdersScoped(t *testing.T) {
+	requireDestructiveOptIn(t)
+
+	c := integrationHTTPClient(t)
+	ctx := context.Background()
+	ticker := fundableMarket(t, c, ctx)
+
+	const scopedSubaccount = 1
+
+	balances, err := c.GetSubaccountBalances(ctx)
+	skipOnAPIError(t, err, 400, 403)
+	require.NoError(t, err)
+	if len(balances.SubaccountBalances) < 2 {
+		t.Skip("needs at least one non-primary subaccount to scope the cancel")
+	}
+
+	// An order on the primary subaccount. This is the one that must survive.
+	primaryResp, err := c.CreateOrderV2(ctx, newIntegrationOrder(ticker, "0.0100", "1.00"))
+	skipOnAPIError(t, err, 400, 403)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_, _ = c.CancelOrderV2(context.Background(), primaryResp.OrderID, CancelOrderV2Params{})
+	})
+
+	// An order on the scoped subaccount too, when that subaccount can trade.
+	// It usually cannot — balance does not follow you into a subaccount any
+	// more than it follows you across shards — so this half is best-effort,
+	// while the survival assertion below always runs.
+	scopedOrderID := ""
+	scoped := newIntegrationOrder(ticker, "0.0100", "1.00")
+	scoped.Subaccount = scopedSubaccount
+	if scopedResp, scopedErr := c.CreateOrderV2(ctx, scoped); scopedErr == nil {
+		scopedOrderID = scopedResp.OrderID
+		t.Cleanup(func() {
+			_, _ = c.CancelOrderV2(context.Background(), scopedOrderID, CancelOrderV2Params{})
+		})
+	} else {
+		t.Logf("subaccount %d cannot place orders (%v) — asserting survival only",
+			scopedSubaccount, scopedErr)
+	}
+
+	time.Sleep(2 * time.Second)
+
+	require.NoError(t, c.CancelAllOrders(ctx, CancelAllOrdersParams{
+		Subaccount: ptr(scopedSubaccount),
+	}))
+	time.Sleep(2 * time.Second)
+
+	// The assertion that matters. Before Subaccount became a pointer, naming
+	// subaccount 0 was indistinguishable from omitting it, and an omitted
+	// subaccount cancels across every subaccount and every shard — so this
+	// order would have been taken with it.
+	primaryAfter, err := c.GetOrder(ctx, primaryResp.OrderID)
+	require.NoError(t, err, "the primary subaccount's order must still be readable")
+	assert.Equal(t, OrderStatusResting, primaryAfter.Order.Status,
+		"a cancel scoped to subaccount %d must not touch the primary subaccount",
+		scopedSubaccount)
+	t.Logf("scoped cancel left primary order %s resting", primaryResp.OrderID)
+
+	if scopedOrderID != "" {
+		if scopedAfter, err := c.GetOrder(ctx, scopedOrderID); err == nil {
+			assert.NotEqual(t, OrderStatusResting, scopedAfter.Order.Status,
+				"order in subaccount %d should have been cancelled", scopedSubaccount)
+		}
+	}
+}
+
+// Transfers are asynchronous and their reversal is a second independent
+// transfer, not a rollback. The same-instance, same-shard form is used
+// deliberately: the spec says Kalshi treats it as a subaccount transfer, which
+// avoids the cross-exchange-index path whose completed steps are explicitly not
+// undone when a later step fails.
+func TestHTTPIntegration_IntraExchangeTransferRoundTrip(t *testing.T) {
+	requireDestructiveOptIn(t)
+
+	c := integrationHTTPClient(t)
+	ctx := context.Background()
+
+	balances, err := c.GetSubaccountBalances(ctx)
+	skipOnAPIError(t, err, 400, 403)
+	require.NoError(t, err)
+	if len(balances.SubaccountBalances) < 2 {
+		t.Skip("needs a non-primary subaccount to transfer into")
+	}
+
+	const amountCentiCents = 100 // $0.01
+
+	transfer := func(t *testing.T, from, to int) string {
+		t.Helper()
+		resp, err := c.IntraExchangeInstanceTransfer(ctx, IntraExchangeInstanceTransferRequest{
+			Source:                ExchangeInstanceEventContract,
+			Destination:           ExchangeInstanceEventContract,
+			Amount:                amountCentiCents,
+			SourceSubaccount:      from,
+			DestinationSubaccount: to,
+		})
+		skipOnAPIError(t, err, 400, 403)
+		require.NoError(t, err)
+		require.NotEmpty(t, resp.TransferID)
+		return resp.TransferID
+	}
+
+	transferID := transfer(t, 0, 1)
+	t.Logf("transfer %s: subaccount 0 -> 1, %d centicents", transferID, amountCentiCents)
+
+	// Reverse it whatever happens below.
+	t.Cleanup(func() {
+		_, _ = c.IntraExchangeInstanceTransfer(context.Background(),
+			IntraExchangeInstanceTransferRequest{
+				Source:                ExchangeInstanceEventContract,
+				Destination:           ExchangeInstanceEventContract,
+				Amount:                amountCentiCents,
+				SourceSubaccount:      1,
+				DestinationSubaccount: 0,
+			})
+	})
+
+	// The spec is explicit that a same-shard request is treated as a subaccount
+	// transfer and that "the returned transfer ID appears in the subaccount
+	// transfer history" — not in the intra-exchange transfer history, which
+	// answers 404 for it. Asserting the documented destination is the point.
+	var found bool
+	deadline := time.Now().Add(20 * time.Second)
+	for time.Now().Before(deadline) && !found {
+		transfers, err := c.GetSubaccountTransfers(ctx, GetSubaccountTransfersParams{Limit: 50})
+		require.NoError(t, err)
+		for _, tr := range transfers.Transfers {
+			if tr.TransferID == transferID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			time.Sleep(1 * time.Second)
+		}
+	}
+	assert.True(t, found,
+		"a same-shard transfer must appear in the subaccount transfer history within 20s")
+
+	// And it is genuinely not an intra-exchange transfer record.
+	_, err = c.GetIntraExchangeInstanceTransfer(ctx, transferID)
+	assert.True(t, isAPIErrorCode(err, 404),
+		"a same-shard transfer is not an intra-exchange transfer record, got: %v", err)
+}
+
+// The allocation is read first and restored in cleanup, so the account ends
+// where it started. The value written is the value already in force, which
+// exercises serialization without changing standing rebalance behaviour.
+func TestHTTPIntegration_TargetBalanceAllocationRoundTrip(t *testing.T) {
+	requireDestructiveOptIn(t)
+
+	c := integrationHTTPClient(t)
+	ctx := context.Background()
+
+	before, err := c.GetTargetBalanceAllocation(ctx)
+	skipOnAPIError(t, err, 400, 403)
+	require.NoError(t, err)
+
+	toInput := func(in []TargetBalanceAllocation) []TargetBalanceAllocationInput {
+		out := make([]TargetBalanceAllocationInput, 0, len(in))
+		for _, a := range in {
+			out = append(out, TargetBalanceAllocationInput{
+				ExchangeIndex: a.ExchangeIndex,
+				Percent:       a.Percent,
+			})
+		}
+		return out
+	}
+
+	t.Cleanup(func() {
+		_, _ = c.SetTargetBalanceAllocation(context.Background(),
+			SetTargetBalanceAllocationRequest{
+				Allocations:              toInput(before.Allocations),
+				RestingMarginReservation: before.RestingMarginReservation,
+			})
+	})
+
+	_, err = c.SetTargetBalanceAllocation(ctx, SetTargetBalanceAllocationRequest{
+		Allocations:              toInput(before.Allocations),
+		RestingMarginReservation: before.RestingMarginReservation,
+	})
+	skipOnAPIError(t, err, 400, 403)
+	require.NoError(t, err)
+
+	after, err := c.GetTargetBalanceAllocation(ctx)
+	require.NoError(t, err)
+	assert.Equal(t, before.RestingMarginReservation, after.RestingMarginReservation)
+	assert.Equal(t, len(before.Allocations), len(after.Allocations),
+		"re-applying the existing allocation must be a no-op")
+	t.Logf("allocation round-tripped: %d entries, reservation=%s",
+		len(after.Allocations), after.RestingMarginReservation)
 }
