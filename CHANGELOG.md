@@ -65,6 +65,16 @@ tests run with an empty skip list.
 
 ### Fixed
 
+- **The WebSocket base URLs were wrong, and no WS connection could succeed.**
+  `prodWSBase` and `demoWSBase` pointed at `external-api`, but Kalshi serves
+  WebSockets from a separate `external-api-ws` host — the old host answers 404
+  on `/trade-api/ws/v2`, the correct one answers 401. All 16 WebSocket
+  integration tests failed to connect; all 16 pass now. Added
+  `TestAsyncAPIServerURLs` and `TestOpenAPIServerURLs`, which compare the SDK's
+  base URLs against the servers the specs declare — the base URLs were the one
+  hand-written thing left in an otherwise spec-driven client, so nothing was
+  watching them.
+
 - The drift tests only ever checked for *missing* endpoints, so an endpoint
   Kalshi had withdrawn could ship indefinitely. They now also fail on endpoints,
   WS channels and message types that are absent from the spec.
@@ -127,6 +137,16 @@ Open source release.
 - Clickable badge links in README
 
 ### Fixed
+
+- **The WebSocket base URLs were wrong, and no WS connection could succeed.**
+  `prodWSBase` and `demoWSBase` pointed at `external-api`, but Kalshi serves
+  WebSockets from a separate `external-api-ws` host — the old host answers 404
+  on `/trade-api/ws/v2`, the correct one answers 401. All 16 WebSocket
+  integration tests failed to connect; all 16 pass now. Added
+  `TestAsyncAPIServerURLs` and `TestOpenAPIServerURLs`, which compare the SDK's
+  base URLs against the servers the specs declare — the base URLs were the one
+  hand-written thing left in an otherwise spec-driven client, so nothing was
+  watching them.
 - LICENSE formatting for pkg.go.dev detection
 
 ## v0.1.0 — 2026-04-28
