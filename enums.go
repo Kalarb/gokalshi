@@ -128,23 +128,6 @@ const (
 // Exchange / announcement enums
 // ---------------------------------------------------------------------------
 
-// AnnouncementType represents the severity of an exchange announcement.
-type AnnouncementType string
-
-const (
-	AnnouncementTypeInfo    AnnouncementType = "info"
-	AnnouncementTypeWarning AnnouncementType = "warning"
-	AnnouncementTypeError   AnnouncementType = "error"
-)
-
-// AnnouncementStatus represents whether an announcement is active.
-type AnnouncementStatus string
-
-const (
-	AnnouncementStatusActive   AnnouncementStatus = "active"
-	AnnouncementStatusInactive AnnouncementStatus = "inactive"
-)
-
 // ---------------------------------------------------------------------------
 // WebSocket enums
 // ---------------------------------------------------------------------------

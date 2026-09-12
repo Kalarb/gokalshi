@@ -25,9 +25,10 @@ import (
 	"github.com/Kalarb/gokalshi/tools/internal/specsrc"
 )
 
-// skipPrefixes are schema name prefixes to exclude from generation.
-// IntraExchange schemas are internal and reference undefined enum types.
-var skipPrefixes = []string{"IntraExchange"}
+// skipPrefixes are schema name prefixes to exclude from generation. Empty: the
+// SDK targets full spec coverage, and TestOpenAPISchemaCoverage fails on any
+// schema without a Go type.
+var skipPrefixes = []string{}
 
 // typeAliases are schemas that map to simple Go types (not full structs).
 var typeAliases = map[string]string{
@@ -51,10 +52,8 @@ var fieldTypeOverrides = map[[2]string]string{
 	{"CreateOrderRequest", "side"}: "Side",
 	{"AmendOrderRequest", "side"}:  "Side",
 	{"Order", "side"}:              "Side",
-	{"Trade", "side"}:              "Side",
 	{"Trade", "taker_side"}:        "Side",
 	{"Fill", "side"}:               "Side",
-	{"MarketPosition", "side"}:     "Side",
 	{"MveSelectedLeg", "side"}:     "Side",
 
 	// Action: buy | sell
@@ -67,7 +66,7 @@ var fieldTypeOverrides = map[[2]string]string{
 	{"Order", "type"}: "OrderType",
 
 	// TimeInForce: fill_or_kill | good_till_canceled | immediate_or_cancel
-	{"CreateOrderRequest", "time_in_force"}: "TimeInForce",
+	{"CreateOrderV2Request", "time_in_force"}: "TimeInForce",
 
 	// MarketStatus
 	{"Market", "status"}: "MarketStatus",
@@ -77,10 +76,6 @@ var fieldTypeOverrides = map[[2]string]string{
 
 	// MarketType
 	{"Market", "market_type"}: "MarketType",
-
-	// AnnouncementType / AnnouncementStatus
-	{"Announcement", "type"}:   "AnnouncementType",
-	{"Announcement", "status"}: "AnnouncementStatus",
 
 	// FeeType
 	{"Series", "fee_type"}:          "FeeType",

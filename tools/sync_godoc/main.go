@@ -48,14 +48,8 @@ type EndpointInfo struct {
 // methodToOperationID maps Go Client method names to spec operationIds.
 var methodToOperationID = map[string]string{
 	// Orders
-	"CreateOrder":       "CreateOrder",
-	"CancelOrder":       "CancelOrder",
 	"GetOrder":          "GetOrder",
 	"GetOrders":         "GetOrders",
-	"BatchCreateOrders": "BatchCreateOrders",
-	"BatchCancelOrders": "BatchCancelOrders",
-	"AmendOrder":        "AmendOrder",
-	"DecreaseOrder":     "DecreaseOrder",
 	"GetQueuePositions": "GetOrderQueuePositions",
 	"GetQueuePosition":  "GetOrderQueuePosition",
 
@@ -77,11 +71,10 @@ var methodToOperationID = map[string]string{
 	"GetEventForecastPercentileHistory": "GetEventForecastPercentilesHistory",
 
 	// Exchange
-	"GetExchangeStatus":        "GetExchangeStatus",
-	"GetExchangeAnnouncements": "GetExchangeAnnouncements",
-	"GetExchangeSchedule":      "GetExchangeSchedule",
-	"GetUserDataTimestamp":     "GetUserDataTimestamp",
-	"GetSeriesFeeChanges":      "GetSeriesFeeChanges",
+	"GetExchangeStatus":    "GetExchangeStatus",
+	"GetExchangeSchedule":  "GetExchangeSchedule",
+	"GetUserDataTimestamp": "GetUserDataTimestamp",
+	"GetSeriesFeeChanges":  "GetSeriesFeeChanges",
 
 	// Portfolio
 	"GetBalance":     "GetBalance",
@@ -148,11 +141,9 @@ var methodToOperationID = map[string]string{
 	"GetMilestone":  "GetMilestone",
 
 	// Multivariate Event Collections
-	"GetMultivariateEventCollections":                     "GetMultivariateEventCollections",
-	"GetMultivariateEventCollection":                      "GetMultivariateEventCollection",
-	"GetMultivariateEventCollectionLookupHistory":         "GetMultivariateEventCollectionLookupHistory",
-	"CreateMarketInMultivariateEventCollection":           "CreateMarketInMultivariateEventCollection",
-	"LookupTickersForMarketInMultivariateEventCollection": "LookupTickersForMarketInMultivariateEventCollection",
+	"GetMultivariateEventCollections":           "GetMultivariateEventCollections",
+	"GetMultivariateEventCollection":            "GetMultivariateEventCollection",
+	"CreateMarketInMultivariateEventCollection": "CreateMarketInMultivariateEventCollection",
 
 	// Structured Targets
 	"GetStructuredTargets": "GetStructuredTargets",

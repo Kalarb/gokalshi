@@ -748,7 +748,7 @@ func newTestOrder() gokalshi.CreateOrderV2Request {
 		Side:                    gokalshi.BookSideBid,
 		Count:                   "1.00",
 		Price:                   orderPrice,
-		TimeInForce:             string(gokalshi.TimeInForceGTC),
+		TimeInForce:             gokalshi.TimeInForceGTC,
 		SelfTradePreventionType: gokalshi.STPTakerAtCross,
 	}
 }
