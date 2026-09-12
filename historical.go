@@ -170,16 +170,18 @@ func (c *Client) GetHistoricalPositions(ctx context.Context, params GetHistorica
 type GetHistoricalPositionsParams struct {
 	Ticker      string
 	EventTicker string
-	Subaccount  int
-	Limit       int
-	Cursor      string
+	// Subaccount is a pointer so that 0 (the primary subaccount) is
+	// distinguishable from unset.
+	Subaccount *int
+	Limit      int
+	Cursor     string
 }
 
 func (p GetHistoricalPositionsParams) toMap() map[string]string {
 	return NewQuery().
 		String("ticker", p.Ticker).
 		String("event_ticker", p.EventTicker).
-		Int("subaccount", p.Subaccount).
+		IntPtr("subaccount", p.Subaccount).
 		Int("limit", p.Limit).
 		String("cursor", p.Cursor).
 		Build()
