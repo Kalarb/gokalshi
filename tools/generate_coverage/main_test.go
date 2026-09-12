@@ -180,11 +180,13 @@ func TestGenerateMarkdown_Format(t *testing.T) {
 	}
 	unitTests := map[string]bool{"GetFoo": true}
 	integrationTests := map[string]bool{"GetFoo": true, "CreateBar": true}
+	// GetFoo is verified by an assertion; CreateBar is only called.
+	assertedTests := map[string]bool{"GetFoo": true}
 	wsChannels := []WSChannel{{Name: "ticker"}}
 	wsUnit := map[string]bool{"ticker": true}
 	wsIntegration := map[string]bool{"ticker": true}
 
-	result := generateMarkdown(methods, unitTests, integrationTests, wsChannels, wsUnit, wsIntegration)
+	result := generateMarkdown(methods, unitTests, integrationTests, assertedTests, wsChannels, wsUnit, wsIntegration)
 
 	// Check header
 	if !strings.Contains(result, "# API Coverage") {
@@ -195,16 +197,18 @@ func TestGenerateMarkdown_Format(t *testing.T) {
 	}
 
 	// Check summary table
-	if !strings.Contains(result, "| Exchange | 2 | 1/2 | 2/2 |") {
+	if !strings.Contains(result, "| Exchange | 2 | 1/2 | 2/2 | 1/2 |") {
 		t.Error("incorrect summary row")
+	}
+	// CreateBar is called by an integration test but nothing asserts on it,
+	// so it must read as called-but-unverified rather than covered.
+	if !strings.Contains(result, "| `CreateBar` | `POST /bar` | — | ~ | |") {
+		t.Error("a called-but-unasserted method should render as ~")
 	}
 
 	// Check detail table
 	if !strings.Contains(result, "| `GetFoo` | `GET /foo` | Y | Y | |") {
 		t.Error("missing GetFoo detail row")
-	}
-	if !strings.Contains(result, "| `CreateBar` | `POST /bar` | — | Y | |") {
-		t.Error("missing CreateBar detail row")
 	}
 
 	// Check WS section
