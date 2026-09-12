@@ -126,11 +126,17 @@ func (c *Client) CancelAllOrders(ctx context.Context, params CancelAllOrdersPara
 
 // CancelAllOrdersParams are the query parameters for CancelAllOrders.
 type CancelAllOrdersParams struct {
-	Subaccount int
+	// Subaccount scopes the cancel. 0 is the primary subaccount, 1-63 the
+	// others. It is a pointer because omitting it is not the same as naming
+	// subaccount 0: an omitted subaccount cancels resting orders from *every*
+	// subaccount, across every exchange shard. A plain int could not express
+	// "the primary subaccount only", and would silently widen the blast radius
+	// to the whole account.
+	Subaccount *int
 }
 
 func (p CancelAllOrdersParams) toMap() map[string]string {
 	return NewQuery().
-		Int("subaccount", p.Subaccount).
+		IntPtr("subaccount", p.Subaccount).
 		Build()
 }
