@@ -10,7 +10,12 @@ import "context"
 //
 // GET /trade-api/v2/fcm/orders
 //
-// Orders belonging to an FCM's subtraders.
+// Endpoint for FCM members to get orders for their subtraders. This endpoint
+// requires FCM member access level. At least one of `subtrader_id` or
+// `client_order_ids` is required; supplying both returns only the orders
+// matching both filters.
+//
+// See https://docs.kalshi.com/api-reference/fcm/get-f-c-m-orders
 func (c *Client) GetFCMOrders(ctx context.Context, params GetFCMOrdersParams) (GetOrdersResponse, error) {
 	return getJSON[GetOrdersResponse](c, ctx, pathFCM+"/orders", params.toMap())
 }
@@ -46,7 +51,11 @@ func (p GetFCMOrdersParams) toMap() map[string]string {
 //
 // GET /trade-api/v2/fcm/positions
 //
-// Positions for a single FCM subtrader. SubtraderID is required.
+// Endpoint for FCM members to get market positions filtered by subtrader ID.
+// This endpoint requires FCM member access level and allows filtering
+// positions by subtrader ID.
+//
+// See https://docs.kalshi.com/api-reference/fcm/get-f-c-m-positions
 func (c *Client) GetFCMPositions(ctx context.Context, params GetFCMPositionsParams) (GetPositionsResponse, error) {
 	return getJSON[GetPositionsResponse](c, ctx, pathFCM+"/positions", params.toMap())
 }

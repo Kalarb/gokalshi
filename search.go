@@ -10,7 +10,7 @@ import (
 //
 // Retrieve tags organized by series categories.
 //
-// See https://trading-api.readme.io/reference/gettagsforseriescategories
+// See https://docs.kalshi.com/api-reference/search/get-tags-for-series-categories
 func (c *Client) GetTagsByCategories(ctx context.Context) (GetTagsForSeriesCategoriesResponse, error) {
 	return getJSON[GetTagsForSeriesCategoriesResponse](c, ctx, pathSearch+"/tags_by_categories", nil)
 }
@@ -21,7 +21,7 @@ func (c *Client) GetTagsByCategories(ctx context.Context) (GetTagsForSeriesCateg
 //
 // Retrieve available filters organized by sport.
 //
-// See https://trading-api.readme.io/reference/getfiltersforsports
+// See https://docs.kalshi.com/api-reference/search/get-filters-for-sports
 func (c *Client) GetFiltersBySport(ctx context.Context) (GetFiltersBySportsResponse, error) {
 	return getJSON[GetFiltersBySportsResponse](c, ctx, pathSearch+"/filters_by_sport", nil)
 }

@@ -7,10 +7,11 @@ import "context"
 // POST /trade-api/v2/portfolio/subaccounts
 //
 // Creates a new subaccount for the authenticated user. This endpoint is
-// currently only available to institutions and market makers. Subaccounts are
-// numbered sequentially starting from 1. Maximum 32 subaccounts per user.
+// available to all users on the Advanced API tier and above. Subaccounts are
+// numbered sequentially starting from 1. Maximum 63 numbered subaccounts per
+// user (64 including the primary account).
 //
-// See https://trading-api.readme.io/reference/createsubaccount
+// See https://docs.kalshi.com/api-reference/portfolio/create-subaccount
 func (c *Client) CreateSubaccount(ctx context.Context) (CreateSubaccountResponse, error) {
 	return postJSON[CreateSubaccountResponse](c, ctx, pathSubaccounts, nil, 10.0)
 }
@@ -21,7 +22,7 @@ func (c *Client) CreateSubaccount(ctx context.Context) (CreateSubaccountResponse
 //
 // Gets balances for all subaccounts including the primary account.
 //
-// See https://trading-api.readme.io/reference/getsubaccountbalances
+// See https://docs.kalshi.com/api-reference/portfolio/get-subaccount-balances
 func (c *Client) GetSubaccountBalances(ctx context.Context) (GetSubaccountBalancesResponse, error) {
 	return getJSON[GetSubaccountBalancesResponse](c, ctx, pathSubaccounts+"/balances", nil)
 }
@@ -32,7 +33,7 @@ func (c *Client) GetSubaccountBalances(ctx context.Context) (GetSubaccountBalanc
 //
 // Gets the netting enabled settings for all subaccounts.
 //
-// See https://trading-api.readme.io/reference/getsubaccountnetting
+// See https://docs.kalshi.com/api-reference/portfolio/get-subaccount-netting
 func (c *Client) GetSubaccountNetting(ctx context.Context) (GetSubaccountNettingResponse, error) {
 	return getJSON[GetSubaccountNettingResponse](c, ctx, pathSubaccounts+"/netting", nil)
 }
@@ -42,9 +43,9 @@ func (c *Client) GetSubaccountNetting(ctx context.Context) (GetSubaccountNetting
 // PUT /trade-api/v2/portfolio/subaccounts/netting
 //
 // Updates the netting enabled setting for a specific subaccount. Use 0 for the
-// primary account, or 1-32 for numbered subaccounts.
+// primary account, or 1-63 for numbered subaccounts.
 //
-// See https://trading-api.readme.io/reference/updatesubaccountnetting
+// See https://docs.kalshi.com/api-reference/portfolio/update-subaccount-netting
 func (c *Client) UpdateSubaccountNetting(ctx context.Context, req UpdateSubaccountNettingRequest) error {
 	_, err := c.put(ctx, pathSubaccounts+"/netting", req, 10.0)
 	return err
@@ -55,9 +56,10 @@ func (c *Client) UpdateSubaccountNetting(ctx context.Context, req UpdateSubaccou
 // POST /trade-api/v2/portfolio/subaccounts/transfer
 //
 // Transfers funds between the authenticated user's subaccounts. Use 0 for the
-// primary account, or 1-32 for numbered subaccounts.
+// primary account, or 1-63 for numbered subaccounts. Set exchange_index to
+// apply the transfer on a specific exchange shard (defaults to 0).
 //
-// See https://trading-api.readme.io/reference/applysubaccounttransfer
+// See https://docs.kalshi.com/api-reference/portfolio/apply-subaccount-transfer
 func (c *Client) ApplySubaccountTransfer(ctx context.Context, req ApplySubaccountTransferRequest) (ApplySubaccountTransferResponse, error) {
 	return postJSON[ApplySubaccountTransferResponse](c, ctx, pathSubaccounts+"/transfer", req, 10.0)
 }
@@ -69,7 +71,7 @@ func (c *Client) ApplySubaccountTransfer(ctx context.Context, req ApplySubaccoun
 // Gets a paginated list of all transfers between subaccounts for the
 // authenticated user.
 //
-// See https://trading-api.readme.io/reference/getsubaccounttransfers
+// See https://docs.kalshi.com/api-reference/portfolio/get-subaccount-transfers
 func (c *Client) GetSubaccountTransfers(ctx context.Context, params GetSubaccountTransfersParams) (GetSubaccountTransfersResponse, error) {
 	return getJSON[GetSubaccountTransfersResponse](c, ctx, pathSubaccounts+"/transfers", params.toMap())
 }

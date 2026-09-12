@@ -18,7 +18,7 @@ import (
 // with their corresponding quantities and order counts, organized from best to
 // worst prices.
 //
-// See https://trading-api.readme.io/reference/getmarketorderbook
+// See https://docs.kalshi.com/api-reference/market/get-market-orderbook
 func (c *Client) GetMarketOrderbook(ctx context.Context, ticker string, params GetOrderbookParams) (GetMarketOrderbookResponse, error) {
 	path := fmt.Sprintf("%s/%s/orderbook", pathMarkets, ticker)
 	return getJSON[GetMarketOrderbookResponse](c, ctx, path, params.toMap())
@@ -38,7 +38,7 @@ func (c *Client) GetMarketOrderbook(ctx context.Context, ticker string, params G
 // counts, organized from best to worst prices. Returns one orderbook per
 // requested market ticker.
 //
-// See https://trading-api.readme.io/reference/getmarketorderbooks
+// See https://docs.kalshi.com/api-reference/market/get-market-orderbooks
 func (c *Client) GetMarketOrderbooks(ctx context.Context, params GetMarketOrderbooksParams) (GetMarketOrderbooksResponse, error) {
 	return getJSON[GetMarketOrderbooksResponse](c, ctx, pathMarkets+"/orderbooks", params.toMap())
 }
@@ -49,13 +49,16 @@ func (c *Client) GetMarketOrderbooks(ctx context.Context, params GetMarketOrderb
 //
 // Endpoint for getting all trades for all markets. A trade represents a
 // completed transaction between two users on a specific market. Each trade
-// includes the market ticker, price, quantity, and timestamp information. This
-// endpoint returns a paginated response. Use the 'limit' parameter to control
-// page size (1-1000, defaults to 100). The response includes a 'cursor' field
-// - pass this value in the 'cursor' parameter of your next request to get the
-// next page. An empty cursor indicates no more pages are available.
+// includes the market ticker, price, quantity, and timestamp information.
+// Block trades are included in the response by default and identified by the
+// `is_block_trade` field; use the `is_block_trade` query parameter to filter
+// by block / non-block. This endpoint returns a paginated response. Use the
+// 'limit' parameter to control page size (1-1000, defaults to 100). The
+// response includes a 'cursor' field - pass this value in the 'cursor'
+// parameter of your next request to get the next page. An empty cursor
+// indicates no more pages are available.
 //
-// See https://trading-api.readme.io/reference/gettrades
+// See https://docs.kalshi.com/api-reference/market/get-trades
 func (c *Client) GetTrades(ctx context.Context, params GetTradesParams) (GetTradesResponse, error) {
 	return getJSON[GetTradesResponse](c, ctx, pathMarkets+"/trades", params.toMap())
 }
@@ -69,7 +72,7 @@ func (c *Client) GetTrades(ctx context.Context, params GetTradesParams) (GetTrad
 // (e.g., "Will candidate X win?"). Markets have yes/no positions, current
 // prices, volume, and settlement rules.
 //
-// See https://trading-api.readme.io/reference/getmarket
+// See https://docs.kalshi.com/api-reference/market/get-market
 func (c *Client) GetMarket(ctx context.Context, ticker string) (GetMarketResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathMarkets, ticker)
 	return getJSON[GetMarketResponse](c, ctx, path, nil)
@@ -84,7 +87,7 @@ func (c *Client) GetMarket(ctx context.Context, ticker string) (GetMarketRespons
 // `status` filter may be supplied at a time. - Timestamp filters will be
 // mutually exclusive from other timestamp filters and certain status filters.
 //
-// See https://trading-api.readme.io/reference/getmarkets
+// See https://docs.kalshi.com/api-reference/market/get-markets
 func (c *Client) GetMarkets(ctx context.Context, params GetMarketsParams) (GetMarketsResponse, error) {
 	return getJSON[GetMarketsResponse](c, ctx, pathMarkets, params.toMap())
 }
@@ -99,7 +102,7 @@ func (c *Client) GetMarkets(ctx context.Context, params GetMarketsParams) (GetMa
 // /historical/markets/{ticker}/candlesticks`. See [Historical
 // Data](https://docs.kalshi.com/getting_started/historical_data) for details.
 //
-// See https://trading-api.readme.io/reference/getmarketcandlesticks
+// See https://docs.kalshi.com/api-reference/market/get-market-candlesticks
 func (c *Client) GetMarketCandlesticks(ctx context.Context, seriesTicker, ticker string, params GetMarketCandlesticksParams) (GetMarketCandlesticksResponse, error) {
 	path := fmt.Sprintf("/trade-api/v2/series/%s/markets/%s/candlesticks", seriesTicker, ticker)
 	return getJSON[GetMarketCandlesticksResponse](c, ctx, path, params.toMap())
@@ -111,7 +114,7 @@ func (c *Client) GetMarketCandlesticks(ctx context.Context, seriesTicker, ticker
 //
 // Endpoint for retrieving candlestick data for multiple markets.
 //
-// See https://trading-api.readme.io/reference/batchgetmarketcandlesticks
+// See https://docs.kalshi.com/api-reference/market/batch-get-market-candlesticks
 func (c *Client) GetBatchMarketCandlesticks(ctx context.Context, params GetBatchMarketCandlesticksParams) (BatchGetMarketCandlesticksResponse, error) {
 	return getJSON[BatchGetMarketCandlesticksResponse](c, ctx, pathMarkets+"/candlesticks", params.toMap())
 }

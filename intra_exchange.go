@@ -5,22 +5,24 @@ import (
 	"fmt"
 )
 
-// IntraExchangeInstanceTransfer — Intra Exchange Instance Transfer
+// IntraExchangeInstanceTransfer — Intra Account Transfer
 //
 // POST /trade-api/v2/portfolio/intra_exchange_instance_transfer
 //
-// Moves balance between exchange instances — event-contract and margined — for
-// the authenticated member, optionally scoped to a subaccount.
+// Transfers funds within the same account.
+//
+// See https://docs.kalshi.com/api-reference/portfolio/intra-exchange-instance-transfer
 func (c *Client) IntraExchangeInstanceTransfer(ctx context.Context, req IntraExchangeInstanceTransferRequest) (IntraExchangeInstanceTransferResponse, error) {
 	return postJSON[IntraExchangeInstanceTransferResponse](c, ctx, pathIntraExchangeTransfer, req, 10.0)
 }
 
-// GetIntraExchangeInstanceTransfers — Get Intra Exchange Instance Transfers
+// GetIntraExchangeInstanceTransfers — Get Intra Account Transfers
 //
 // GET /trade-api/v2/portfolio/intra_exchange_instance_transfers
 //
-// Transfers are asynchronous: a transfer can be returned as pending before it
-// completes.
+// Endpoint for fetching intra-exchange account transfer history.
+//
+// See https://docs.kalshi.com/api-reference/portfolio/get-intra-exchange-instance-transfers
 func (c *Client) GetIntraExchangeInstanceTransfers(ctx context.Context, params GetIntraExchangeInstanceTransfersParams) (GetIntraExchangeInstanceTransfersResponse, error) {
 	return getJSON[GetIntraExchangeInstanceTransfersResponse](c, ctx, pathIntraExchangeTransfers, params.toMap())
 }
@@ -39,12 +41,13 @@ func (p GetIntraExchangeInstanceTransfersParams) toMap() map[string]string {
 		Build()
 }
 
-// GetIntraExchangeInstanceTransfer — Get Intra Exchange Instance Transfer
+// GetIntraExchangeInstanceTransfer — Get Intra Account Transfer
 //
 // GET /trade-api/v2/portfolio/intra_exchange_instance_transfers/{transfer_id}
 //
-// Looks up a single transfer, which is how you observe a pending transfer
-// reaching complete.
+// Endpoint for getting a single intra-account transfer by id.
+//
+// See https://docs.kalshi.com/api-reference/portfolio/get-intra-exchange-instance-transfer
 func (c *Client) GetIntraExchangeInstanceTransfer(ctx context.Context, transferID string) (GetIntraExchangeInstanceTransferResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathIntraExchangeTransfers, transferID)
 	return getJSON[GetIntraExchangeInstanceTransferResponse](c, ctx, path, nil)

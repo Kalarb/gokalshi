@@ -11,7 +11,7 @@ import (
 //
 // Endpoint for getting data about multivariate event collections.
 //
-// See https://trading-api.readme.io/reference/getmultivariateeventcollections
+// See https://docs.kalshi.com/api-reference/multivariate/get-multivariate-event-collections
 func (c *Client) GetMultivariateEventCollections(ctx context.Context, params GetMultivariateEventCollectionsParams) (GetMultivariateEventCollectionsResponse, error) {
 	return getJSON[GetMultivariateEventCollectionsResponse](c, ctx, pathMVECollections, params.toMap())
 }
@@ -23,7 +23,7 @@ func (c *Client) GetMultivariateEventCollections(ctx context.Context, params Get
 // Endpoint for getting data about a multivariate event collection by its
 // ticker.
 //
-// See https://trading-api.readme.io/reference/getmultivariateeventcollection
+// See https://docs.kalshi.com/api-reference/multivariate/get-multivariate-event-collection
 func (c *Client) GetMultivariateEventCollection(ctx context.Context, collectionTicker string) (GetMultivariateEventCollectionResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathMVECollections, collectionTicker)
 	return getJSON[GetMultivariateEventCollectionResponse](c, ctx, path, nil)
@@ -37,7 +37,7 @@ func (c *Client) GetMultivariateEventCollection(ctx context.Context, collectionT
 // collection. This endpoint must be hit at least once before trading or
 // looking up a market. Users are limited to 5000 creations per week.
 //
-// See https://trading-api.readme.io/reference/createmarketinmultivariateeventcollection
+// See https://docs.kalshi.com/api-reference/multivariate/create-market-in-multivariate-event-collection
 func (c *Client) CreateMarketInMultivariateEventCollection(ctx context.Context, collectionTicker string, req CreateMarketInMultivariateEventCollectionRequest) (CreateMarketInMultivariateEventCollectionResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathMVECollections, collectionTicker)
 	return postJSON[CreateMarketInMultivariateEventCollectionResponse](c, ctx, path, req, 10.0)

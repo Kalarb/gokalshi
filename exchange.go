@@ -10,7 +10,7 @@ import (
 //
 // Endpoint for getting the exchange status.
 //
-// See https://trading-api.readme.io/reference/getexchangestatus
+// See https://docs.kalshi.com/api-reference/exchange/get-exchange-status
 func (c *Client) GetExchangeStatus(ctx context.Context) (ExchangeStatus, error) {
 	return getJSON[ExchangeStatus](c, ctx, pathExchange+"/status", nil)
 }
@@ -21,7 +21,7 @@ func (c *Client) GetExchangeStatus(ctx context.Context) (ExchangeStatus, error) 
 //
 // Endpoint for getting the exchange schedule.
 //
-// See https://trading-api.readme.io/reference/getexchangeschedule
+// See https://docs.kalshi.com/api-reference/exchange/get-exchange-schedule
 func (c *Client) GetExchangeSchedule(ctx context.Context) (GetExchangeScheduleResponse, error) {
 	return getJSON[GetExchangeScheduleResponse](c, ctx, pathExchange+"/schedule", nil)
 }
@@ -32,12 +32,12 @@ func (c *Client) GetExchangeSchedule(ctx context.Context) (GetExchangeScheduleRe
 //
 // There is typically a short delay before exchange events are reflected in the
 // API endpoints. Whenever possible, combine API responses to PUT/POST/DELETE
-// requests with websocket data to obtain the most accurate view of the
+// requests with WebSocket data to obtain the most accurate view of the
 // exchange state. This endpoint provides an approximate indication of when the
 // data from the following endpoints was last validated: GetBalance,
 // GetOrder(s), GetFills, GetPositions
 //
-// See https://trading-api.readme.io/reference/getuserdatatimestamp
+// See https://docs.kalshi.com/api-reference/exchange/get-user-data-timestamp
 func (c *Client) GetUserDataTimestamp(ctx context.Context) (GetUserDataTimestampResponse, error) {
 	return getJSON[GetUserDataTimestampResponse](c, ctx, pathExchange+"/user_data_timestamp", nil)
 }
@@ -46,7 +46,7 @@ func (c *Client) GetUserDataTimestamp(ctx context.Context) (GetUserDataTimestamp
 //
 // GET /trade-api/v2/series/fee_changes
 //
-// See https://trading-api.readme.io/reference/getseriesfeechanges
+// See https://docs.kalshi.com/api-reference/exchange/get-series-fee-changes
 func (c *Client) GetSeriesFeeChanges(ctx context.Context, params GetSeriesFeeChangesParams) (GetSeriesFeeChangesResponse, error) {
 	return getJSON[GetSeriesFeeChangesResponse](c, ctx, pathSeries+"/fee_changes", params.toMap())
 }

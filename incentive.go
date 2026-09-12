@@ -9,7 +9,7 @@ import "context"
 // List incentives with optional filters. Incentives are rewards programs for
 // trading activity on specific markets.
 //
-// See https://trading-api.readme.io/reference/getincentiveprograms
+// See https://docs.kalshi.com/api-reference/incentive-programs/get-incentive-programs
 func (c *Client) GetIncentivePrograms(ctx context.Context) (GetIncentiveProgramsResponse, error) {
 	return getJSON[GetIncentiveProgramsResponse](c, ctx, pathIncentivePrograms, nil)
 }

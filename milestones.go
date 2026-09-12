@@ -11,7 +11,7 @@ import (
 //
 // Minimum start date to filter milestones. Format: RFC3339 timestamp
 //
-// See https://trading-api.readme.io/reference/getmilestones
+// See https://docs.kalshi.com/api-reference/milestone/get-milestones
 func (c *Client) GetMilestones(ctx context.Context, params GetMilestonesParams) (GetMilestonesResponse, error) {
 	return getJSON[GetMilestonesResponse](c, ctx, pathMilestones, params.toMap())
 }
@@ -22,7 +22,7 @@ func (c *Client) GetMilestones(ctx context.Context, params GetMilestonesParams) 
 //
 // Endpoint for getting data about a specific milestone by its ID.
 //
-// See https://trading-api.readme.io/reference/getmilestone
+// See https://docs.kalshi.com/api-reference/milestone/get-milestone
 func (c *Client) GetMilestone(ctx context.Context, milestoneID string) (GetMilestoneResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathMilestones, milestoneID)
 	return getJSON[GetMilestoneResponse](c, ctx, path, nil)

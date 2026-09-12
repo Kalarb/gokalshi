@@ -13,7 +13,7 @@ import (
 //
 // Endpoint for getting the communications ID of the logged-in user.
 //
-// See https://trading-api.readme.io/reference/getcommunicationsid
+// See https://docs.kalshi.com/api-reference/communications/get-communications-i-d
 func (c *Client) GetCommunicationsID(ctx context.Context) (GetCommunicationsIDResponse, error) {
 	return getJSON[GetCommunicationsIDResponse](c, ctx, pathCommunications+"/id", nil)
 }
@@ -27,7 +27,7 @@ func (c *Client) GetCommunicationsID(ctx context.Context) (GetCommunicationsIDRe
 // Endpoint for creating a new RFQ. You can have a maximum of 100 open RFQs at
 // a time.
 //
-// See https://trading-api.readme.io/reference/createrfq
+// See https://docs.kalshi.com/api-reference/communications/create-r-f-q
 func (c *Client) CreateRFQ(ctx context.Context, req CreateRFQRequest) (CreateRFQResponse, error) {
 	return postJSON[CreateRFQResponse](c, ctx, pathCommunications+"/rfqs", req, 10.0)
 }
@@ -38,7 +38,7 @@ func (c *Client) CreateRFQ(ctx context.Context, req CreateRFQRequest) (CreateRFQ
 //
 // # Endpoint for getting RFQs
 //
-// See https://trading-api.readme.io/reference/getrfqs
+// See https://docs.kalshi.com/api-reference/communications/get-r-f-qs
 func (c *Client) GetRFQs(ctx context.Context, params GetRFQsParams) (GetRFQsResponse, error) {
 	return getJSON[GetRFQsResponse](c, ctx, pathCommunications+"/rfqs", params.toMap())
 }
@@ -49,7 +49,7 @@ func (c *Client) GetRFQs(ctx context.Context, params GetRFQsParams) (GetRFQsResp
 //
 // # Endpoint for getting a single RFQ by id
 //
-// See https://trading-api.readme.io/reference/getrfq
+// See https://docs.kalshi.com/api-reference/communications/get-r-f-q
 func (c *Client) GetRFQ(ctx context.Context, rfqID string) (GetRFQResponse, error) {
 	path := fmt.Sprintf("%s/rfqs/%s", pathCommunications, rfqID)
 	return getJSON[GetRFQResponse](c, ctx, path, nil)
@@ -61,7 +61,7 @@ func (c *Client) GetRFQ(ctx context.Context, rfqID string) (GetRFQResponse, erro
 //
 // # Endpoint for deleting an RFQ by ID
 //
-// See https://trading-api.readme.io/reference/deleterfq
+// See https://docs.kalshi.com/api-reference/communications/delete-r-f-q
 func (c *Client) DeleteRFQ(ctx context.Context, rfqID string) error {
 	path := fmt.Sprintf("%s/rfqs/%s", pathCommunications, rfqID)
 	_, err := c.delete(ctx, path, nil, 10.0)
@@ -99,7 +99,7 @@ func (p GetRFQsParams) toMap() map[string]string {
 //
 // # Endpoint for creating a quote in response to an RFQ
 //
-// See https://trading-api.readme.io/reference/createquote
+// See https://docs.kalshi.com/api-reference/communications/create-quote
 func (c *Client) CreateQuote(ctx context.Context, req CreateQuoteRequest) (CreateQuoteResponse, error) {
 	return postJSON[CreateQuoteResponse](c, ctx, pathCommunications+"/quotes", req, 10.0)
 }
@@ -110,7 +110,7 @@ func (c *Client) CreateQuote(ctx context.Context, req CreateQuoteRequest) (Creat
 //
 // # Endpoint for getting quotes
 //
-// See https://trading-api.readme.io/reference/getquotes
+// See https://docs.kalshi.com/api-reference/communications/get-quotes
 func (c *Client) GetQuotes(ctx context.Context, params GetQuotesParams) (GetQuotesResponse, error) {
 	return getJSON[GetQuotesResponse](c, ctx, pathCommunications+"/quotes", params.toMap())
 }
@@ -119,12 +119,13 @@ func (c *Client) GetQuotes(ctx context.Context, params GetQuotesParams) (GetQuot
 //
 // GET /trade-api/v2/communications/quotes/{quote_id}
 //
-// # Endpoint for getting a particular quote
-//
-// See https://trading-api.readme.io/reference/getquote
+// DEPRECATED: Use GET /communications/rfqs/{rfq_id}/quotes/{quote_id} instead.
+// Endpoint for getting a particular quote.
 //
 // Deprecated: Kalshi marks the quote-id-only form deprecated. Use GetRFQQuote,
 // which scopes the quote to its RFQ.
+//
+// See https://docs.kalshi.com/api-reference/communications/get-quote
 func (c *Client) GetQuote(ctx context.Context, quoteID string) (GetQuoteResponse, error) {
 	path := fmt.Sprintf("%s/quotes/%s", pathCommunications, quoteID)
 	return getJSON[GetQuoteResponse](c, ctx, path, nil)
@@ -134,12 +135,14 @@ func (c *Client) GetQuote(ctx context.Context, quoteID string) (GetQuoteResponse
 //
 // DELETE /trade-api/v2/communications/quotes/{quote_id}
 //
-// Endpoint for deleting a quote, which means it can no longer be accepted.
-//
-// See https://trading-api.readme.io/reference/deletequote
+// DEPRECATED: Use DELETE /communications/rfqs/{rfq_id}/quotes/{quote_id}
+// instead. Endpoint for deleting a quote, which means it can no longer be
+// accepted.
 //
 // Deprecated: Kalshi marks the quote-id-only form deprecated. Use DeleteRFQQuote,
 // which scopes the quote to its RFQ.
+//
+// See https://docs.kalshi.com/api-reference/communications/delete-quote
 func (c *Client) DeleteQuote(ctx context.Context, quoteID string) error {
 	path := fmt.Sprintf("%s/quotes/%s", pathCommunications, quoteID)
 	_, err := c.delete(ctx, path, nil, 10.0)
@@ -150,12 +153,14 @@ func (c *Client) DeleteQuote(ctx context.Context, quoteID string) error {
 //
 // PUT /trade-api/v2/communications/quotes/{quote_id}/accept
 //
-// Endpoint for accepting a quote. This will require the quoter to confirm
-//
-// See https://trading-api.readme.io/reference/acceptquote
+// DEPRECATED: Use PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/accept
+// instead. Endpoint for accepting a quote. This will require the quoter to
+// confirm.
 //
 // Deprecated: Kalshi marks the quote-id-only form deprecated. Use AcceptRFQQuote,
 // which scopes the quote to its RFQ.
+//
+// See https://docs.kalshi.com/api-reference/communications/accept-quote
 func (c *Client) AcceptQuote(ctx context.Context, quoteID string, req AcceptQuoteRequest) error {
 	path := fmt.Sprintf("%s/quotes/%s/accept", pathCommunications, quoteID)
 	_, err := c.put(ctx, path, req, 10.0)
@@ -166,12 +171,14 @@ func (c *Client) AcceptQuote(ctx context.Context, quoteID string, req AcceptQuot
 //
 // PUT /trade-api/v2/communications/quotes/{quote_id}/confirm
 //
-// Endpoint for confirming a quote. This will start a timer for order execution
-//
-// See https://trading-api.readme.io/reference/confirmquote
+// DEPRECATED: Use PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/confirm
+// instead. Endpoint for confirming a quote. This will start a timer for order
+// execution.
 //
 // Deprecated: Kalshi marks the quote-id-only form deprecated. Use ConfirmRFQQuote,
 // which scopes the quote to its RFQ.
+//
+// See https://docs.kalshi.com/api-reference/communications/confirm-quote
 func (c *Client) ConfirmQuote(ctx context.Context, quoteID string) error {
 	path := fmt.Sprintf("%s/quotes/%s/confirm", pathCommunications, quoteID)
 	_, err := c.put(ctx, path, nil, 10.0)
@@ -207,7 +214,9 @@ func (p GetQuotesParams) toMap() map[string]string {
 //
 // GET /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}
 //
-// Reads a quote scoped to its RFQ. Supersedes GetQuote.
+// Endpoint for getting a particular quote scoped to its RFQ.
+//
+// See https://docs.kalshi.com/api-reference/communications/get-r-f-q-quote
 func (c *Client) GetRFQQuote(ctx context.Context, rfqID, quoteID string) (GetQuoteResponse, error) {
 	return doJSON[GetQuoteResponse](c, ctx, "GET", rfqQuotePath(rfqID, quoteID), 2.0, 0, nil, nil)
 }
@@ -216,7 +225,10 @@ func (c *Client) GetRFQQuote(ctx context.Context, rfqID, quoteID string) (GetQuo
 //
 // DELETE /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}
 //
-// Withdraws a quote. Returns no body. Supersedes DeleteQuote.
+// Endpoint for deleting a quote scoped to its RFQ, which means it can no
+// longer be accepted.
+//
+// See https://docs.kalshi.com/api-reference/communications/delete-r-f-q-quote
 func (c *Client) DeleteRFQQuote(ctx context.Context, rfqID, quoteID string) error {
 	_, err := c.do(ctx, "DELETE", rfqQuotePath(rfqID, quoteID), 0, 2.0, nil, nil)
 	return err
@@ -226,7 +238,10 @@ func (c *Client) DeleteRFQQuote(ctx context.Context, rfqID, quoteID string) erro
 //
 // PUT /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}/accept
 //
-// Accepts a quote. Returns no body. Supersedes AcceptQuote.
+// Endpoint for accepting a quote scoped to its RFQ. This will require the
+// quoter to confirm.
+//
+// See https://docs.kalshi.com/api-reference/communications/accept-r-f-q-quote
 func (c *Client) AcceptRFQQuote(ctx context.Context, rfqID, quoteID string, req AcceptQuoteRequest) error {
 	_, err := c.put(ctx, rfqQuotePath(rfqID, quoteID)+"/accept", req, 10.0)
 	return err
@@ -236,8 +251,10 @@ func (c *Client) AcceptRFQQuote(ctx context.Context, rfqID, quoteID string, req 
 //
 // PUT /trade-api/v2/communications/rfqs/{rfq_id}/quotes/{quote_id}/confirm
 //
-// Confirms an accepted quote, completing the trade. Returns no body.
-// Supersedes ConfirmQuote.
+// Endpoint for confirming a quote scoped to its RFQ. This will start a timer
+// for order execution.
+//
+// See https://docs.kalshi.com/api-reference/communications/confirm-r-f-q-quote
 func (c *Client) ConfirmRFQQuote(ctx context.Context, rfqID, quoteID string) error {
 	_, err := c.put(ctx, rfqQuotePath(rfqID, quoteID)+"/confirm", struct{}{}, 10.0)
 	return err

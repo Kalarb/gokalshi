@@ -11,7 +11,7 @@ import (
 //
 // Endpoint for getting a single order.
 //
-// See https://trading-api.readme.io/reference/getorder
+// See https://docs.kalshi.com/api-reference/orders/get-order
 func (c *Client) GetOrder(ctx context.Context, orderID string) (GetOrderResponse, error) {
 	path := fmt.Sprintf("%s/%s", pathOrders, orderID)
 	return getJSON[GetOrderResponse](c, ctx, path, nil)
@@ -28,7 +28,7 @@ func (c *Client) GetOrder(ctx context.Context, orderID string) (GetOrderResponse
 // endpoint. See [Historical
 // Data](https://docs.kalshi.com/getting_started/historical_data) for details.
 //
-// See https://trading-api.readme.io/reference/getorders
+// See https://docs.kalshi.com/api-reference/orders/get-orders
 func (c *Client) GetOrders(ctx context.Context, params GetOrdersParams) (GetOrdersResponse, error) {
 	return getJSON[GetOrdersResponse](c, ctx, pathOrders, params.toMap())
 }
@@ -41,7 +41,7 @@ func (c *Client) GetOrders(ctx context.Context, params GetOrdersParams) (GetOrde
 // represents the number of contracts that need to be matched before an order
 // receives a partial or full match, determined using price-time priority.
 //
-// See https://trading-api.readme.io/reference/getorderqueuepositions
+// See https://docs.kalshi.com/api-reference/orders/get-order-queue-positions
 func (c *Client) GetQueuePositions(ctx context.Context, params GetQueuePositionsParams) (GetOrderQueuePositionsResponse, error) {
 	return getJSON[GetOrderQueuePositionsResponse](c, ctx, pathOrders+"/queue_positions", params.toMap())
 }
@@ -55,7 +55,7 @@ func (c *Client) GetQueuePositions(ctx context.Context, params GetQueuePositions
 // receives a partial or full match. Queue position is determined using a
 // price-time priority.
 //
-// See https://trading-api.readme.io/reference/getorderqueueposition
+// See https://docs.kalshi.com/api-reference/orders/get-order-queue-position
 func (c *Client) GetQueuePosition(ctx context.Context, orderID string) (GetOrderQueuePositionResponse, error) {
 	path := fmt.Sprintf("%s/%s/queue_position", pathOrders, orderID)
 	return getJSON[GetOrderQueuePositionResponse](c, ctx, path, nil)

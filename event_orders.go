@@ -14,7 +14,7 @@ import (
 // legacy `/portfolio/orders` endpoint will be deprecated no earlier than May
 // 6, 2026 — clients should migrate to this path.
 //
-// See https://trading-api.readme.io/reference/createorderv2
+// See https://docs.kalshi.com/api-reference/orders/create-order-v2
 func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (CreateOrderV2Response, error) {
 	return postJSON[CreateOrderV2Response](c, ctx, pathEventOrders, req, 10.0)
 }
@@ -27,7 +27,7 @@ func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (C
 // request/response shape. The maximum batch size scales with your tier's write
 // budget — see [Rate Limits and Tiers](/getting_started/rate_limits).
 //
-// See https://trading-api.readme.io/reference/batchcreateordersv2
+// See https://docs.kalshi.com/api-reference/orders/batch-create-orders-v2
 func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV2Request) (BatchCreateOrdersV2Response, error) {
 	return postJSON[BatchCreateOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
 }
@@ -37,10 +37,12 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 // DELETE /trade-api/v2/portfolio/events/orders/batched
 //
 // Endpoint for cancelling a batch of event-market orders using the V2 response
-// shape. The maximum batch size scales with your tier's write budget — see
-// [Rate Limits and Tiers](/getting_started/rate_limits).
+// shape. To auto-route a cancellation, provide its `market_ticker` and omit
+// `exchange_index` or set it to `-1`. The maximum batch size scales with your
+// tier's write budget — see [Rate Limits and
+// Tiers](/getting_started/rate_limits).
 //
-// See https://trading-api.readme.io/reference/batchcancelordersv2
+// See https://docs.kalshi.com/api-reference/orders/batch-cancel-orders-v2
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
 	return deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
 }
@@ -49,11 +51,12 @@ func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV
 //
 // DELETE /trade-api/v2/portfolio/events/orders/{order_id}
 //
-// Endpoint for cancelling event-market orders using the V2 response shape.
-// Returns `{order_id, client_order_id, reduced_by}` rather than a full order
-// object.
+// Endpoint for cancelling event-market orders using the V2 response shape. To
+// auto-route the cancellation, provide `market_ticker` and omit
+// `exchange_index` or set it to `-1`. Returns `{order_id, client_order_id,
+// reduced_by}` rather than a full order object.
 //
-// See https://trading-api.readme.io/reference/cancelorderv2
+// See https://docs.kalshi.com/api-reference/orders/cancel-order-v2
 func (c *Client) CancelOrderV2(ctx context.Context, orderID string, params CancelOrderV2Params) (CancelOrderV2Response, error) {
 	path := fmt.Sprintf("%s/%s", pathEventOrders, orderID)
 	return doJSON[CancelOrderV2Response](c, ctx, "DELETE", path, 0, 1.0, nil, params.toMap())
@@ -69,7 +72,7 @@ func (c *Client) CancelOrderV2(ctx context.Context, orderID string, params Cance
 // desired resting remaining count. This behavior matches the v1 amend
 // endpoints; only the request/response shape differs.
 //
-// See https://trading-api.readme.io/reference/amendorderv2
+// See https://docs.kalshi.com/api-reference/orders/amend-order-v2
 func (c *Client) AmendOrderV2(ctx context.Context, orderID string, req AmendOrderV2Request) (AmendOrderV2Response, error) {
 	path := fmt.Sprintf("%s/%s/amend", pathEventOrders, orderID)
 	return postJSON[AmendOrderV2Response](c, ctx, path, req, 10.0)
@@ -83,7 +86,7 @@ func (c *Client) AmendOrderV2(ctx context.Context, orderID string, req AmendOrde
 // order using the V2 request/response shape. Exactly one of `reduce_by` or
 // `reduce_to` must be provided.
 //
-// See https://trading-api.readme.io/reference/decreaseorderv2
+// See https://docs.kalshi.com/api-reference/orders/decrease-order-v2
 func (c *Client) DecreaseOrderV2(ctx context.Context, orderID string, req DecreaseOrderV2Request) (DecreaseOrderV2Response, error) {
 	path := fmt.Sprintf("%s/%s/decrease", pathEventOrders, orderID)
 	return postJSON[DecreaseOrderV2Response](c, ctx, path, req, 10.0)
@@ -109,9 +112,13 @@ func (p CancelOrderV2Params) toMap() map[string]string {
 //
 // DELETE /trade-api/v2/portfolio/events/orders
 //
-// Cancels every resting order for the account, or for a single subaccount when
-// one is given. Returns no body. Kalshi bills this as a single cancel rather
-// than one per order, which makes it the cheapest way to flatten quickly.
+// Cancels all resting event-market orders for the authenticated Direct member
+// across every exchange shard. If `subaccount` is omitted, matching orders may
+// come from any subaccount. If it is provided, only orders for that subaccount
+// are eligible. Newly placed orders may also be cancelled during the minute
+// after the request.
+//
+// See https://docs.kalshi.com/api-reference/orders/cancel-all-orders
 func (c *Client) CancelAllOrders(ctx context.Context, params CancelAllOrdersParams) error {
 	_, err := c.do(ctx, "DELETE", pathEventOrders, 0, 2.0, nil, params.toMap())
 	return err
