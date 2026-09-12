@@ -5,10 +5,8 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
-	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -559,44 +557,6 @@ func TestGetSeriesListParams_toMap_Empty(t *testing.T) {
 // Order-specific tests
 // ---------------------------------------------------------------------------
 
-func TestCreateOrder_PayloadSent(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, pathOrders, r.URL.Path)
-
-		body, _ := io.ReadAll(r.Body)
-		var payload map[string]any
-		require.NoError(t, json.Unmarshal(body, &payload))
-		assert.Equal(t, "TEST-TICKER", payload["ticker"])
-		assert.Equal(t, "buy", payload["action"])
-
-		fmt.Fprint(w, `{"order":{"order_id":"ord_123"}}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	resp, err := c.CreateOrder(context.Background(), CreateOrderRequest{
-		Ticker: "TEST-TICKER",
-		Action: "buy",
-		Side:   "yes",
-	})
-	require.NoError(t, err)
-	assert.Equal(t, "ord_123", resp.Order.OrderID)
-}
-
-func TestCancelOrder_Path(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodDelete, r.Method)
-		assert.Equal(t, pathOrders+"/order-456", r.URL.Path)
-		fmt.Fprint(w, `{"order":{"order_id":"order-456","status":"canceled"},"reduced_by_fp":"5.00"}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	_, err := c.CancelOrder(context.Background(), "order-456")
-	require.NoError(t, err)
-}
-
 func TestGetOrder_Path(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
@@ -625,79 +585,6 @@ func TestGetOrders_QueryParams(t *testing.T) {
 		Ticker: "TEST",
 		Status: "resting",
 		Limit:  50,
-	})
-	require.NoError(t, err)
-}
-
-func TestBatchCreateOrders_BodyFormat(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		var payload map[string]any
-		require.NoError(t, json.Unmarshal(body, &payload))
-
-		orders, ok := payload["orders"].([]any)
-		require.True(t, ok)
-		assert.Len(t, orders, 2)
-
-		fmt.Fprint(w, `{"orders":[{},{}]}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	_, err := c.BatchCreateOrders(context.Background(), []CreateOrderRequest{
-		{Ticker: "A", Action: "buy"},
-		{Ticker: "B", Action: "sell"},
-	})
-	require.NoError(t, err)
-}
-
-func TestBatchCancelOrders_BodyFormat(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		body, _ := io.ReadAll(r.Body)
-		var payload map[string]any
-		require.NoError(t, json.Unmarshal(body, &payload))
-
-		orders, ok := payload["orders"].([]any)
-		require.True(t, ok)
-		assert.Len(t, orders, 3)
-
-		fmt.Fprint(w, `{"orders":[]}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	_, err := c.BatchCancelOrders(context.Background(), []BatchCancelOrdersRequestOrder{
-		{OrderID: "a"}, {OrderID: "b"}, {OrderID: "c"},
-	})
-	require.NoError(t, err)
-}
-
-func TestAmendOrder_Path(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, pathOrders+"/ord-1/amend", r.URL.Path)
-		fmt.Fprint(w, `{"old_order":{"order_id":"ord-1"},"order":{"order_id":"ord-1"}}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	_, err := c.AmendOrder(context.Background(), "ord-1", AmendOrderRequest{
-		Ticker: "TEST", Side: "yes", Action: "buy", CountFP: ptr("5.00"),
-	})
-	require.NoError(t, err)
-}
-
-func TestDecreaseOrder_Path(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPost, r.Method)
-		assert.Equal(t, pathOrders+"/ord-2/decrease", r.URL.Path)
-		fmt.Fprint(w, `{"order":{"order_id":"ord-2"}}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	_, err := c.DecreaseOrder(context.Background(), "ord-2", DecreaseOrderRequest{
-		ReduceByFP: ptr("3.00"),
 	})
 	require.NoError(t, err)
 }
@@ -751,20 +638,6 @@ func TestUpgradeAPIUsageLevel(t *testing.T) {
 // ---------------------------------------------------------------------------
 // Exchange endpoint tests (missing 4)
 // ---------------------------------------------------------------------------
-
-func TestGetExchangeAnnouncements(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodGet, r.Method)
-		assert.Equal(t, "/trade-api/v2/exchange/announcements", r.URL.Path)
-		fmt.Fprint(w, `{"announcements":[]}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	resp, err := c.GetExchangeAnnouncements(context.Background())
-	require.NoError(t, err)
-	assert.NotNil(t, resp.Announcements)
-}
 
 func TestGetExchangeSchedule(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1625,18 +1498,6 @@ func TestGetMultivariateEventCollection(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestGetMultivariateEventCollectionLookupHistory(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "/trade-api/v2/multivariate_event_collections/COL-1/lookup", r.URL.Path)
-		fmt.Fprint(w, `{"lookup_history":[]}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	_, err := c.GetMultivariateEventCollectionLookupHistory(context.Background(), "COL-1", GetMVECollectionLookupParams{})
-	require.NoError(t, err)
-}
-
 func TestCreateMarketInMultivariateEventCollection(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodPost, r.Method)
@@ -1647,19 +1508,6 @@ func TestCreateMarketInMultivariateEventCollection(t *testing.T) {
 
 	c := newTestClient(t, srv.URL)
 	_, err := c.CreateMarketInMultivariateEventCollection(context.Background(), "COL-1", CreateMarketInMultivariateEventCollectionRequest{})
-	require.NoError(t, err)
-}
-
-func TestLookupTickersForMarketInMultivariateEventCollection(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, http.MethodPut, r.Method)
-		assert.Equal(t, "/trade-api/v2/multivariate_event_collections/COL-1/lookup", r.URL.Path)
-		fmt.Fprint(w, `{}`)
-	}))
-	defer srv.Close()
-
-	c := newTestClient(t, srv.URL)
-	_, err := c.LookupTickersForMarketInMultivariateEventCollection(context.Background(), "COL-1", LookupTickersForMarketInMultivariateEventCollectionRequest{})
 	require.NoError(t, err)
 }
 

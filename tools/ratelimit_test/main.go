@@ -244,13 +244,10 @@ func seqBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (*re
 	var ids []string
 	start := time.Now()
 	for i := 0; i < count; i++ {
-		resp, err := client.CreateOrder(ctx, gokalshi.CreateOrderRequest{
-			Ticker: testMarket, Side: gokalshi.SideYes, Action: gokalshi.ActionBuy,
-			CountFP: ptr("1.00"), YesPriceDollars: orderPrice,
-		})
+		resp, err := client.CreateOrderV2(ctx, newTestOrder())
 		r.record(err)
 		if err == nil {
-			ids = append(ids, resp.Order.OrderID)
+			ids = append(ids, resp.OrderID)
 		}
 	}
 	r.Duration = time.Since(start)
@@ -269,13 +266,10 @@ func seqSustainedWrite(ctx context.Context, client *gokalshi.Client, rps float64
 		case <-deadline:
 			return r, ids
 		case <-ticker.C:
-			resp, err := client.CreateOrder(ctx, gokalshi.CreateOrderRequest{
-				Ticker: testMarket, Side: gokalshi.SideYes, Action: gokalshi.ActionBuy,
-				CountFP: ptr("1.00"), YesPriceDollars: orderPrice,
-			})
+			resp, err := client.CreateOrderV2(ctx, newTestOrder())
 			r.record(err)
 			if err == nil {
-				ids = append(ids, resp.Order.OrderID)
+				ids = append(ids, resp.OrderID)
 			}
 		}
 	}
@@ -347,14 +341,11 @@ func concBurstWrite(ctx context.Context, client *gokalshi.Client, count int) (*r
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			resp, err := client.CreateOrder(ctx, gokalshi.CreateOrderRequest{
-				Ticker: testMarket, Side: gokalshi.SideYes, Action: gokalshi.ActionBuy,
-				CountFP: ptr("1.00"), YesPriceDollars: orderPrice,
-			})
+			resp, err := client.CreateOrderV2(ctx, newTestOrder())
 			r.record(err)
 			if err == nil {
 				mu.Lock()
-				ids = append(ids, resp.Order.OrderID)
+				ids = append(ids, resp.OrderID)
 				mu.Unlock()
 			}
 		}()
@@ -386,14 +377,11 @@ func concSustainedWrite(ctx context.Context, client *gokalshi.Client, rps float6
 			go func() {
 				defer wg.Done()
 				defer func() { <-sem }()
-				resp, err := client.CreateOrder(ctx, gokalshi.CreateOrderRequest{
-					Ticker: testMarket, Side: gokalshi.SideYes, Action: gokalshi.ActionBuy,
-					CountFP: ptr("1.00"), YesPriceDollars: orderPrice,
-				})
+				resp, err := client.CreateOrderV2(ctx, newTestOrder())
 				r.record(err)
 				if err == nil {
 					mu.Lock()
-					ids = append(ids, resp.Order.OrderID)
+					ids = append(ids, resp.OrderID)
 					mu.Unlock()
 				}
 			}()
@@ -528,14 +516,11 @@ func runMixedTest(ctx context.Context, client *gokalshi.Client, tier tierInfo, c
 		go func() {
 			defer writeWg.Done()
 			defer func() { <-writeSem }()
-			resp, err := client.CreateOrder(ctx, gokalshi.CreateOrderRequest{
-				Ticker: testMarket, Side: gokalshi.SideYes, Action: gokalshi.ActionBuy,
-				CountFP: ptr("1.00"), YesPriceDollars: orderPrice,
-			})
+			resp, err := client.CreateOrderV2(ctx, newTestOrder())
 			writeR.record(err)
 			if err == nil {
 				idsMu.Lock()
-				orderIDs = append(orderIDs, resp.Order.OrderID)
+				orderIDs = append(orderIDs, resp.OrderID)
 				idsMu.Unlock()
 			}
 		}()
@@ -587,29 +572,25 @@ func runBatchTest(ctx context.Context, client *gokalshi.Client, tier tierInfo, c
 
 		for i := 0; i < totalBatches; i++ {
 			// Build a batch of N identical orders
-			orders := make([]gokalshi.CreateOrderRequest, batchSize)
+			orders := make([]gokalshi.CreateOrderV2Request, batchSize)
 			for j := range orders {
-				orders[j] = gokalshi.CreateOrderRequest{
-					Ticker:          testMarket,
-					Side:            gokalshi.SideYes,
-					Action:          gokalshi.ActionBuy,
-					CountFP:         ptr("1.00"),
-					YesPriceDollars: orderPrice,
-				}
+				orders[j] = newTestOrder()
 			}
 
 			sem <- struct{}{}
 			wg.Add(1)
-			go func(batch []gokalshi.CreateOrderRequest) {
+			go func(batch []gokalshi.CreateOrderV2Request) {
 				defer wg.Done()
 				defer func() { <-sem }()
-				resp, err := client.BatchCreateOrders(ctx, batch)
+				resp, err := client.BatchCreateOrdersV2(ctx, gokalshi.BatchCreateOrdersV2Request{Orders: batch})
 				r.record(err)
 				if err == nil {
 					mu.Lock()
 					for _, o := range resp.Orders {
-						if o.Order != nil {
-							ids = append(ids, o.Order.OrderID)
+						// The batch V2 response items are untyped in the spec,
+						// so the order id has to be read out of the map.
+						if oid, ok := o["order_id"].(string); ok && oid != "" {
+							ids = append(ids, oid)
 						}
 					}
 					mu.Unlock()
@@ -709,7 +690,7 @@ func cleanupOrders(ctx context.Context, client *gokalshi.Client, orderIDs []stri
 		go func(oid string) {
 			defer wg.Done()
 			defer func() { <-sem }()
-			if _, err := client.CancelOrder(ctx, oid); err == nil {
+			if _, err := client.CancelOrderV2(ctx, oid, gokalshi.CancelOrderV2Params{}); err == nil {
 				cancelled.Add(1)
 			}
 		}(id)
@@ -757,6 +738,20 @@ func printResult(name string, r *result, expected int) {
 }
 
 func ptr(s string) *string { return &s }
+
+// newTestOrder builds the smallest valid V2 event order: one contract, priced
+// far from the market so it rests rather than filling. Rate-limit probing cares
+// about the cost of the request, not the trade.
+func newTestOrder() gokalshi.CreateOrderV2Request {
+	return gokalshi.CreateOrderV2Request{
+		Ticker:                  testMarket,
+		Side:                    gokalshi.BookSideBid,
+		Count:                   "1.00",
+		Price:                   orderPrice,
+		TimeInForce:             string(gokalshi.TimeInForceGTC),
+		SelfTradePreventionType: gokalshi.STPTakerAtCross,
+	}
+}
 
 func loadEnv() {
 	dir, err := os.Getwd()

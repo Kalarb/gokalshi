@@ -15,17 +15,6 @@ func (c *Client) GetExchangeStatus(ctx context.Context) (ExchangeStatus, error) 
 	return getJSON[ExchangeStatus](c, ctx, pathExchange+"/status", nil)
 }
 
-// GetExchangeAnnouncements — Get Exchange Announcements
-//
-// GET /trade-api/v2/exchange/announcements
-//
-// Endpoint for getting all exchange-wide announcements.
-//
-// See https://trading-api.readme.io/reference/getexchangeannouncements
-func (c *Client) GetExchangeAnnouncements(ctx context.Context) (GetExchangeAnnouncementsResponse, error) {
-	return getJSON[GetExchangeAnnouncementsResponse](c, ctx, pathExchange+"/announcements", nil)
-}
-
 // GetExchangeSchedule — Get Exchange Schedule
 //
 // GET /trade-api/v2/exchange/schedule
