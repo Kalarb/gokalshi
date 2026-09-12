@@ -1,6 +1,7 @@
 package gokalshi
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -123,4 +124,52 @@ func newIntegrationOrder(ticker, price, count string) CreateOrderV2Request {
 		TimeInForce:             TimeInForceGTC,
 		SelfTradePreventionType: STPTakerAtCross,
 	}
+}
+
+// weatherCityCandidates are probed in order by weatherCity.
+//
+// The API has no endpoint that enumerates weather index cities and the spec
+// names only `miami` as an example, so there is nothing to discover from. These
+// are probed rather than assumed: the first that answers is used, and the test
+// skips if none do, so Kalshi adding or retiring a city degrades to a skip
+// rather than a failure.
+var weatherCityCandidates = []string{"miami", "nyc", "chicago", "austin", "denver", "philadelphia", "la"}
+
+// weatherCity returns a city id whose weather index this account can read.
+func weatherCity(t *testing.T, c *Client, ctx context.Context) string {
+	t.Helper()
+	for _, city := range weatherCityCandidates {
+		if _, err := c.GetWeatherIndexCalibrations(ctx, city); err == nil {
+			t.Logf("using weather city %q", city)
+			return city
+		}
+	}
+	t.Skipf("no weather index city responded (probed %v)", weatherCityCandidates)
+	return ""
+}
+
+// liveDataSeries are series whose events carry live data — crypto price charts,
+// commodity timeseries and weather observations, per the spec. Probed in order.
+var liveDataSeries = []string{"KXBTCD", "KXBTC15M", "KXETHD"}
+
+// liveDataEvent returns an event ticker that actually has live data attached.
+// Most events do not, so GetEventLiveData 404s on a randomly chosen one.
+func liveDataEvent(t *testing.T, c *Client, ctx context.Context) string {
+	t.Helper()
+	for _, series := range liveDataSeries {
+		events, err := c.GetEvents(ctx, GetEventsParams{
+			Status: "open", SeriesTicker: series, Limit: 5,
+		})
+		if err != nil || len(events.Events) == 0 {
+			continue
+		}
+		for _, e := range events.Events {
+			if _, err := c.GetEventLiveData(ctx, e.EventTicker, GetEventLiveDataParams{}); err == nil {
+				t.Logf("using live-data event %s from series %s", e.EventTicker, series)
+				return e.EventTicker
+			}
+		}
+	}
+	t.Skipf("no event with live data found (probed series %v)", liveDataSeries)
+	return ""
 }
