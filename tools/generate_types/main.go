@@ -154,13 +154,20 @@ func main() {
 	fmt.Printf("Loaded %d schemas from spec\n", len(schemas))
 
 	enums, objects := categorize(schemas)
-	fmt.Printf("  Enums: %d (skipped — kept in enums.go), Objects: %d\n", len(enums), len(objects))
+	fmt.Printf("  Enums: %d (hand-written in enums.go, guarded by TestOpenAPISchemaCoverage), Objects: %d\n", len(enums), len(objects))
 
 	outDir := findPackageRoot()
 
-	// Skip enum generation — our hand-written enums.go has a superset
-	// (includes Side, Action, OrderType, TimeInForce, MarketStatus, etc.
-	// that are inline enums in the spec, not named schemas).
+	// Enums stay hand-written in enums.go rather than generated, because many
+	// of them (Side, Action, OrderType, TimeInForce, MarketStatus) are inline
+	// enums in the spec with no named schema to generate from, and the
+	// hand-written names read better than a mechanical transform of values
+	// like "read::block_trade_accept".
+	//
+	// That means enums.go must be kept in sync by hand. It is not a superset of
+	// the spec and must not be assumed to be: TestOpenAPISchemaCoverage fails
+	// when a named enum schema or any of its values is missing, which is the
+	// only thing keeping this honest.
 
 	// Build schema-to-group mapping from spec paths.
 	groups := buildSchemaGroups(spec)

@@ -109,9 +109,10 @@ const (
 type FeeType string
 
 const (
-	FeeTypeQuadratic          FeeType = "quadratic"
-	FeeTypeQuadraticWithMaker FeeType = "quadratic_with_maker_fees"
-	FeeTypeFlat               FeeType = "flat"
+	FeeTypeQuadratic               FeeType = "quadratic"
+	FeeTypeQuadraticWithMaker      FeeType = "quadratic_with_maker_fees"
+	FeeTypeQuadraticWithComboMaker FeeType = "quadratic_with_combo_maker_fees"
+	FeeTypeFlat                    FeeType = "flat"
 )
 
 // CollateralReturnType represents how collateral is returned for an event.
@@ -230,4 +231,58 @@ const (
 	WSRespOk           WSResponseType = "ok"
 	WSRespUnsubscribed WSResponseType = "unsubscribed"
 	WSRespError        WSResponseType = "error"
+)
+
+// ApiKeyScope is a permission granted to an API key.
+//
+// Parent scopes grant broad access — read covers every read endpoint, write
+// every write endpoint. Child scopes narrow that: write::trade grants order and
+// RFQ access without also granting write::transfer, so a trading key cannot
+// move funds.
+type ApiKeyScope string
+
+const (
+	ApiKeyScopeRead                  ApiKeyScope = "read"
+	ApiKeyScopeWrite                 ApiKeyScope = "write"
+	ApiKeyScopeReadBlockTradeAccept  ApiKeyScope = "read::block_trade_accept"
+	ApiKeyScopeReadPortfolioBalance  ApiKeyScope = "read::portfolio_balance"
+	ApiKeyScopeWriteTrade            ApiKeyScope = "write::trade"
+	ApiKeyScopeWriteTransfer         ApiKeyScope = "write::transfer"
+	ApiKeyScopeWriteBlockTradeAccept ApiKeyScope = "write::block_trade_accept"
+)
+
+// ExchangeInstance identifies which exchange instance a record belongs to.
+type ExchangeInstance string
+
+const (
+	ExchangeInstanceEventContract ExchangeInstance = "event_contract"
+	ExchangeInstanceMargined      ExchangeInstance = "margined"
+)
+
+// RestingMarginReservation is the collateral an automatic rebalance leaves
+// behind for resting orders.
+type RestingMarginReservation string
+
+const (
+	// RestingMarginReservationMax reserves the largest single market-side commitment.
+	RestingMarginReservationMax RestingMarginReservation = "max"
+	// RestingMarginReservationSum reserves the summed margin of every resting order.
+	RestingMarginReservationSum RestingMarginReservation = "sum"
+)
+
+// IntraExchangeInstanceTransferStatus is the state of a transfer between
+// exchange instances.
+type IntraExchangeInstanceTransferStatus string
+
+const (
+	IntraExchangeInstanceTransferStatusPending  IntraExchangeInstanceTransferStatus = "pending"
+	IntraExchangeInstanceTransferStatusComplete IntraExchangeInstanceTransferStatus = "complete"
+)
+
+// UserFilter narrows a listing to the authenticated user. Leave empty to
+// return all results.
+type UserFilter string
+
+const (
+	UserFilterSelf UserFilter = "self"
 )
