@@ -1,4 +1,7 @@
-// generate_types fetches the Kalshi OpenAPI spec and generates Go struct types.
+// generate_types reads the vendored Kalshi OpenAPI spec and generates Go struct types.
+//
+// The spec comes from specs/openapi.yaml, not the network, so regeneration is
+// reproducible. Refresh it with tools/vendor_spec.sh.
 //
 // Usage:
 //
@@ -9,21 +12,18 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"slices"
 	"sort"
 	"strings"
-	"time"
 	"unicode"
 
 	"gopkg.in/yaml.v3"
-)
 
-const specURL = "https://docs.kalshi.com/openapi.yaml"
+	"github.com/Kalarb/gokalshi/tools/internal/specsrc"
+)
 
 // skipPrefixes are schema name prefixes to exclude from generation.
 // IntraExchange schemas are internal and reference undefined enum types.
@@ -40,7 +40,7 @@ var typeAliases = map[string]string{
 // Note: array/map fields are not listed here because Go's json.Unmarshal
 // already handles null → nil slice/map without needing pointer types.
 var nullableOverrides = map[[2]string]bool{
-	{"Series", "contract_url"}:      true,
+	{"Series", "contract_url"}:       true,
 	{"Series", "contract_terms_url"}: true,
 }
 
@@ -48,14 +48,14 @@ var nullableOverrides = map[[2]string]bool{
 // Used for inline enums that should use our named enum types from enums.go.
 var fieldTypeOverrides = map[[2]string]string{
 	// Side: yes | no (used across many schemas)
-	{"CreateOrderRequest", "side"}:  "Side",
-	{"AmendOrderRequest", "side"}:   "Side",
-	{"Order", "side"}:               "Side",
-	{"Trade", "side"}:               "Side",
-	{"Trade", "taker_side"}:         "Side",
-	{"Fill", "side"}:                "Side",
-	{"MarketPosition", "side"}:      "Side",
-	{"MveSelectedLeg", "side"}:      "Side",
+	{"CreateOrderRequest", "side"}: "Side",
+	{"AmendOrderRequest", "side"}:  "Side",
+	{"Order", "side"}:              "Side",
+	{"Trade", "side"}:              "Side",
+	{"Trade", "taker_side"}:        "Side",
+	{"Fill", "side"}:               "Side",
+	{"MarketPosition", "side"}:     "Side",
+	{"MveSelectedLeg", "side"}:     "Side",
 
 	// Action: buy | sell
 	{"CreateOrderRequest", "action"}: "Action",
@@ -91,7 +91,7 @@ var fieldTypeOverrides = map[[2]string]string{
 
 	// Side (accepted_side fields)
 	{"AcceptQuoteRequest", "accepted_side"}: "Side",
-	{"Quote", "accepted_side"}:             "Side",
+	{"Quote", "accepted_side"}:              "Side",
 }
 
 // Spec is a minimal representation of the OpenAPI spec.
@@ -143,11 +143,12 @@ type Schema struct {
 }
 
 func main() {
-	spec, err := fetchSpec()
+	spec, snap, err := loadSpec()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "fetch spec: %v\n", err)
+		fmt.Fprintf(os.Stderr, "load spec: %v\n", err)
 		os.Exit(1)
 	}
+	fmt.Printf("Using vendored OpenAPI %s (fetched %s)\n", snap.OpenAPI.Version, snap.FetchedAt)
 
 	schemas := spec.Components.Schemas
 	fmt.Printf("Loaded %d schemas from spec\n", len(schemas))
@@ -166,35 +167,23 @@ func main() {
 	fmt.Printf("  Grouped schemas: %d (remainder = Core)\n", len(groups))
 
 	// Generate object types (core, requests, responses all in one file)
-	objectCode := generateObjects(objects, schemas, groups)
+	objectCode := generateObjects(objects, schemas, groups, snap)
 	writeFile(outDir, "types_generated.go", objectCode)
 
 	fmt.Println("Done!")
 }
 
-func fetchSpec() (*Spec, error) {
-	fmt.Printf("Fetching %s...\n", specURL)
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(specURL)
+func loadSpec() (*Spec, specsrc.Snapshot, error) {
+	body, snap, err := specsrc.Load(specsrc.OpenAPI)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, specURL)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
+		return nil, snap, err
 	}
 
 	var spec Spec
 	if err := yaml.Unmarshal(body, &spec); err != nil {
-		return nil, fmt.Errorf("parse YAML: %w", err)
+		return nil, snap, fmt.Errorf("parse vendored OpenAPI YAML: %w", err)
 	}
-	return &spec, nil
+	return &spec, snap, nil
 }
 
 func shouldSkip(name string) bool {
@@ -315,22 +304,22 @@ func groupNameFromPath(path string) string {
 
 	// Map top-level path segments to readable group names.
 	groupNames := map[string]string{
-		"account":                          "Account",
-		"api_keys":                         "API Keys",
-		"communications":                   "Communications",
-		"events":                           "Events",
-		"exchange":                         "Exchange",
-		"fcm":                              "FCM",
-		"historical":                       "Historical",
-		"incentive_programs":               "Incentive Programs",
-		"live_data":                        "Live Data",
-		"markets":                          "Markets",
-		"milestones":                       "Milestones",
-		"multivariate_event_collections":   "Multivariate Event Collections",
-		"portfolio":                        "Portfolio",
-		"search":                           "Search",
-		"series":                           "Series",
-		"structured_targets":               "Structured Targets",
+		"account":                        "Account",
+		"api_keys":                       "API Keys",
+		"communications":                 "Communications",
+		"events":                         "Events",
+		"exchange":                       "Exchange",
+		"fcm":                            "FCM",
+		"historical":                     "Historical",
+		"incentive_programs":             "Incentive Programs",
+		"live_data":                      "Live Data",
+		"markets":                        "Markets",
+		"milestones":                     "Milestones",
+		"multivariate_event_collections": "Multivariate Event Collections",
+		"portfolio":                      "Portfolio",
+		"search":                         "Search",
+		"series":                         "Series",
+		"structured_targets":             "Structured Targets",
 	}
 
 	if name, ok := groupNames[seg]; ok {
@@ -338,17 +327,17 @@ func groupNameFromPath(path string) string {
 		if seg == "portfolio" && len(parts) > 1 {
 			sub := strings.SplitN(parts[1], "/", 2)[0]
 			subGroups := map[string]string{
-				"orders":        "Orders",
-				"events":        "Event Orders",
-				"order_groups":  "Order Groups",
-				"subaccounts":   "Subaccounts",
-				"summary":       "Portfolio",
-				"balance":       "Portfolio",
-				"positions":     "Portfolio",
-				"fills":         "Portfolio",
-				"settlements":   "Portfolio",
-				"deposits":      "Portfolio",
-				"withdrawals":   "Portfolio",
+				"orders":       "Orders",
+				"events":       "Event Orders",
+				"order_groups": "Order Groups",
+				"subaccounts":  "Subaccounts",
+				"summary":      "Portfolio",
+				"balance":      "Portfolio",
+				"positions":    "Portfolio",
+				"fills":        "Portfolio",
+				"settlements":  "Portfolio",
+				"deposits":     "Portfolio",
+				"withdrawals":  "Portfolio",
 			}
 			if subName, ok := subGroups[sub]; ok {
 				return subName
@@ -473,9 +462,9 @@ func toGoFieldName(s string) string {
 	return result.String()
 }
 
-func generateEnums(names []string, schemas map[string]*Schema) string {
+func generateEnums(names []string, schemas map[string]*Schema, snap specsrc.Snapshot) string {
 	var buf bytes.Buffer
-	buf.WriteString(fileHeader("enums_generated.go"))
+	buf.WriteString(fileHeader(snap))
 
 	buf.WriteString("package gokalshi\n\n")
 
@@ -513,7 +502,7 @@ func enumConstName(typeName, value string) string {
 	return result.String()
 }
 
-func generateObjects(names []string, schemas map[string]*Schema, groups map[string]string) string {
+func generateObjects(names []string, schemas map[string]*Schema, groups map[string]string, snap specsrc.Snapshot) string {
 	sorted := topologicalSort(names, schemas)
 
 	// Secondary sort: group by domain while preserving dependency order within groups.
@@ -529,7 +518,7 @@ func generateObjects(names []string, schemas map[string]*Schema, groups map[stri
 	})
 
 	var buf bytes.Buffer
-	buf.WriteString(fileHeader("types_generated.go"))
+	buf.WriteString(fileHeader(snap))
 
 	buf.WriteString("package gokalshi\n\n")
 
@@ -717,8 +706,13 @@ func cleanDescription(s string) string {
 	return s
 }
 
-func fileHeader(filename string) string {
-	return fmt.Sprintf("// Code generated by tools/generate_types from %s — DO NOT EDIT.\n// Source: %s\n\n", specURL, filename)
+func fileHeader(snap specsrc.Snapshot) string {
+	url, version, sha := snap.Provenance(specsrc.OpenAPI)
+	return fmt.Sprintf(
+		"// Code generated by tools/generate_types — DO NOT EDIT.\n"+
+			"// Spec: %s (version %s, fetched %s)\n"+
+			"// sha256: %s\n\n",
+		url, version, snap.FetchedAt, sha)
 }
 
 func findPackageRoot() string {

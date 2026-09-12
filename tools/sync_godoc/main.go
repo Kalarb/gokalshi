@@ -13,19 +13,16 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
-	"time"
 
 	"gopkg.in/yaml.v3"
-)
 
-const specURL = "https://docs.kalshi.com/openapi.yaml"
+	"github.com/Kalarb/gokalshi/tools/internal/specsrc"
+)
 
 // Spec is a minimal representation of the OpenAPI spec.
 type Spec struct {
@@ -63,12 +60,12 @@ var methodToOperationID = map[string]string{
 	"GetQueuePosition":  "GetOrderQueuePosition",
 
 	// Markets
-	"GetMarketOrderbook":        "GetMarketOrderbook",
-	"GetMarketOrderbooks":       "GetMarketOrderbooks",
-	"GetTrades":                 "GetTrades",
-	"GetMarket":                 "GetMarket",
-	"GetMarkets":                "GetMarkets",
-	"GetMarketCandlesticks":     "GetMarketCandlesticks",
+	"GetMarketOrderbook":         "GetMarketOrderbook",
+	"GetMarketOrderbooks":        "GetMarketOrderbooks",
+	"GetTrades":                  "GetTrades",
+	"GetMarket":                  "GetMarket",
+	"GetMarkets":                 "GetMarkets",
+	"GetMarketCandlesticks":      "GetMarketCandlesticks",
 	"GetBatchMarketCandlesticks": "BatchGetMarketCandlesticks",
 
 	// Events
@@ -83,7 +80,7 @@ var methodToOperationID = map[string]string{
 	"GetExchangeStatus":        "GetExchangeStatus",
 	"GetExchangeAnnouncements": "GetExchangeAnnouncements",
 	"GetExchangeSchedule":      "GetExchangeSchedule",
-	"GetUserDataTimestamp":      "GetUserDataTimestamp",
+	"GetUserDataTimestamp":     "GetUserDataTimestamp",
 	"GetSeriesFeeChanges":      "GetSeriesFeeChanges",
 
 	// Portfolio
@@ -107,15 +104,15 @@ var methodToOperationID = map[string]string{
 	"GetAccountEndpointCosts": "GetAccountEndpointCosts",
 
 	// Portfolio
-	"GetDeposits":                       "GetDeposits",
-	"GetWithdrawals":                    "GetWithdrawals",
+	"GetDeposits":                        "GetDeposits",
+	"GetWithdrawals":                     "GetWithdrawals",
 	"GetPortfolioRestingOrderTotalValue": "GetPortfolioRestingOrderTotalValue",
 
 	// API Keys
-	"GetAPIKeys":    "GetApiKeys",
-	"CreateAPIKey":  "CreateApiKey",
+	"GetAPIKeys":     "GetApiKeys",
+	"CreateAPIKey":   "CreateApiKey",
 	"GenerateAPIKey": "GenerateApiKey",
-	"DeleteAPIKey":  "DeleteApiKey",
+	"DeleteAPIKey":   "DeleteApiKey",
 
 	// Event Orders (V2)
 	"CreateOrderV2":       "CreateOrderV2",
@@ -129,13 +126,13 @@ var methodToOperationID = map[string]string{
 	"GetEventFeeChanges": "GetEventFeeChanges",
 
 	// Historical
-	"GetHistoricalCutoff":              "GetHistoricalCutoff",
-	"GetHistoricalFills":               "GetHistoricalFills",
-	"GetHistoricalOrders":              "GetHistoricalOrders",
-	"GetHistoricalTrades":              "GetHistoricalTrades",
-	"GetHistoricalMarkets":             "GetHistoricalMarkets",
-	"GetHistoricalMarket":              "GetHistoricalMarket",
-	"GetHistoricalMarketCandlesticks":  "GetHistoricalMarketCandlesticks",
+	"GetHistoricalCutoff":             "GetHistoricalCutoff",
+	"GetHistoricalFills":              "GetHistoricalFills",
+	"GetHistoricalOrders":             "GetHistoricalOrders",
+	"GetHistoricalTrades":             "GetHistoricalTrades",
+	"GetHistoricalMarkets":            "GetHistoricalMarkets",
+	"GetHistoricalMarket":             "GetHistoricalMarket",
+	"GetHistoricalMarketCandlesticks": "GetHistoricalMarketCandlesticks",
 
 	// Incentive Programs
 	"GetIncentivePrograms": "GetIncentivePrograms",
@@ -151,11 +148,11 @@ var methodToOperationID = map[string]string{
 	"GetMilestone":  "GetMilestone",
 
 	// Multivariate Event Collections
-	"GetMultivariateEventCollections":                      "GetMultivariateEventCollections",
-	"GetMultivariateEventCollection":                       "GetMultivariateEventCollection",
-	"GetMultivariateEventCollectionLookupHistory":           "GetMultivariateEventCollectionLookupHistory",
-	"CreateMarketInMultivariateEventCollection":             "CreateMarketInMultivariateEventCollection",
-	"LookupTickersForMarketInMultivariateEventCollection":   "LookupTickersForMarketInMultivariateEventCollection",
+	"GetMultivariateEventCollections":                     "GetMultivariateEventCollections",
+	"GetMultivariateEventCollection":                      "GetMultivariateEventCollection",
+	"GetMultivariateEventCollectionLookupHistory":         "GetMultivariateEventCollectionLookupHistory",
+	"CreateMarketInMultivariateEventCollection":           "CreateMarketInMultivariateEventCollection",
+	"LookupTickersForMarketInMultivariateEventCollection": "LookupTickersForMarketInMultivariateEventCollection",
 
 	// Structured Targets
 	"GetStructuredTargets": "GetStructuredTargets",
@@ -193,7 +190,7 @@ var methodToOperationID = map[string]string{
 }
 
 func main() {
-	spec, err := fetchSpec()
+	spec, err := loadSpec()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "fetch spec: %v\n", err)
 		os.Exit(1)
@@ -235,27 +232,16 @@ func main() {
 	fmt.Printf("Done! Updated %d method comments.\n", total)
 }
 
-func fetchSpec() (*Spec, error) {
-	fmt.Printf("Fetching %s...\n", specURL)
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Get(specURL)
+func loadSpec() (*Spec, error) {
+	body, snap, err := specsrc.Load(specsrc.OpenAPI)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("HTTP %d from %s", resp.StatusCode, specURL)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
+	fmt.Printf("Using vendored OpenAPI %s (fetched %s)\n", snap.OpenAPI.Version, snap.FetchedAt)
 
 	var spec Spec
 	if err := yaml.Unmarshal(body, &spec); err != nil {
-		return nil, fmt.Errorf("parse YAML: %w", err)
+		return nil, fmt.Errorf("parse vendored OpenAPI YAML: %w", err)
 	}
 	return &spec, nil
 }

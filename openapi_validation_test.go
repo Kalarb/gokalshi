@@ -4,8 +4,6 @@ package gokalshi
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"regexp"
 	"sort"
@@ -20,6 +18,13 @@ import (
 var skippedPathPrefixes = []string{
 	"/trade-api/v2/fcm",
 }
+
+// knownExtraEndpoints are endpoints the SDK implements that the published spec
+// does not list, each with the reason it is kept. Anything absent from the spec
+// and absent from this map fails the test: Kalshi removes endpoints (and starts
+// answering them with 410) faster than a coverage-only check can notice, so an
+// unexplained extra is treated as dead code until proven otherwise.
+var knownExtraEndpoints = map[string]string{}
 
 func shouldSkipPath(path string) bool {
 	for _, prefix := range skippedPathPrefixes {
@@ -63,13 +68,7 @@ func parseImplementedEndpoints(t *testing.T) map[string]bool {
 }
 
 func TestOpenAPICoverage(t *testing.T) {
-	resp, err := http.Get("https://docs.kalshi.com/openapi.yaml")
-	require.NoError(t, err, "fetch OpenAPI spec")
-	defer resp.Body.Close()
-	require.Equal(t, 200, resp.StatusCode, "OpenAPI spec HTTP status")
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	body := loadVendoredSpec(t, "openapi")
 
 	var spec struct {
 		Paths map[string]map[string]any `yaml:"paths"`
@@ -106,13 +105,39 @@ func TestOpenAPICoverage(t *testing.T) {
 	}
 	sort.Strings(missing)
 
+	// Find endpoints the SDK ships that the spec no longer lists. Endpoints
+	// under a skipped prefix are excluded — the skip list means "not compared",
+	// not "must not exist".
+	var extra []string
+	for ep := range implemented {
+		if specEndpoints[ep] {
+			continue
+		}
+		path := ep[strings.Index(ep, " ")+1:]
+		if shouldSkipPath(path) {
+			continue
+		}
+		if _, known := knownExtraEndpoints[ep]; known {
+			continue
+		}
+		extra = append(extra, ep)
+	}
+	sort.Strings(extra)
+
 	t.Logf("OpenAPI spec endpoints: %d (after skipping %v)", len(specEndpoints), skippedPathPrefixes)
 	t.Logf("SDK implemented endpoints: %d", len(implemented))
 	t.Logf("Missing endpoints: %d", len(missing))
+	t.Logf("Extra endpoints (not in spec): %d", len(extra))
 
 	for _, ep := range missing {
 		t.Logf("  missing: %s", ep)
 	}
+	for _, ep := range extra {
+		t.Logf("  extra (not in spec): %s", ep)
+	}
 
 	assert.Empty(t, missing, fmt.Sprintf("%d spec endpoints not implemented in SDK", len(missing)))
+	assert.Empty(t, extra, fmt.Sprintf(
+		"%d SDK endpoints are absent from the spec — remove them, or add them to "+
+			"knownExtraEndpoints with a reason", len(extra)))
 }

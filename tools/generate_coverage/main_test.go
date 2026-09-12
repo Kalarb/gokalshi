@@ -50,12 +50,12 @@ func TestExtractMethodFromTestName(t *testing.T) {
 		{"TestGetExchangeStatus", "GetExchangeStatus"},
 		{"TestCreateOrder_PayloadSent", "CreateOrder"},
 		{"TestCancelOrder_Path", "CancelOrder"},
-		{"TestGetTradesParams_toMap_AllFields", ""},  // params test
-		{"TestClient_Get_Success", ""},                // client infra test
-		{"TestClient_Retry429", ""},                   // client infra test
-		{"TestWithHTTPClient", ""},                     // option test
-		{"TestWithMaxRetries", ""},                     // option test
-		{"TestAPIError_Error", ""},                     // error type test
+		{"TestGetTradesParams_toMap_AllFields", ""}, // params test
+		{"TestClient_Get_Success", ""},              // client infra test
+		{"TestClient_Retry429", ""},                 // client infra test
+		{"TestWithHTTPClient", ""},                  // option test
+		{"TestWithMaxRetries", ""},                  // option test
+		{"TestAPIError_Error", ""},                  // error type test
 		{"TestGetBatchMarketCandlesticks", "GetBatchMarketCandlesticks"},
 		{"TestLookupTickersForMarketInMultivariateEventCollection", "LookupTickersForMarketInMultivariateEventCollection"},
 		{"TestDeleteAPIKey", "DeleteAPIKey"},

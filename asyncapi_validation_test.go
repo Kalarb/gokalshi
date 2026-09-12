@@ -3,8 +3,6 @@
 package gokalshi
 
 import (
-	"io"
-	"net/http"
 	"reflect"
 	"sort"
 	"strings"
@@ -16,13 +14,7 @@ import (
 )
 
 func TestAsyncAPIWSChannelCoverage(t *testing.T) {
-	resp, err := http.Get("https://docs.kalshi.com/asyncapi.yaml")
-	require.NoError(t, err, "fetch AsyncAPI spec")
-	defer resp.Body.Close()
-	require.Equal(t, 200, resp.StatusCode, "AsyncAPI spec HTTP status")
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	body := loadVendoredSpec(t, "asyncapi")
 
 	var spec struct {
 		Channels map[string]struct {
@@ -103,25 +95,25 @@ func TestAsyncAPIWSChannelCoverage(t *testing.T) {
 
 // msgTypeToGoStruct maps WS message "name" → Go struct instance for reflection.
 var msgTypeToGoStruct = map[string]any{
-	"orderbook_snapshot":            OrderbookSnapshotData{},
-	"orderbook_delta":               OrderbookDeltaData{},
-	"ticker":                        TickerData{},
-	"trade":                         TradeData{},
-	"fill":                          FillData{},
-	"market_position":               MarketPositionData{},
-	"market_lifecycle_v2":           MarketLifecycleV2Data{},
-	"event_lifecycle":               EventLifecycleData{},
-	"multivariate_lookup":           MultivariateLookupData{},
-	"user_order":                    UserOrderData{},
-	"order_group_updates":           OrderGroupUpdateData{},
-	"rfq_created":                   RFQCreatedData{},
-	"rfq_deleted":                   RFQDeletedData{},
-	"quote_created":                 QuoteCreatedData{},
-	"quote_accepted":                QuoteAcceptedData{},
-	"quote_executed":                QuoteExecutedData{},
-	"event_fee_update":              EventFeeUpdateData{},
-	"cfbenchmarks_value":            CfbenchmarksValueData{},
-	"cfbenchmarks_value_indexlist":  CfbenchmarksValueIndexlistData{},
+	"orderbook_snapshot":           OrderbookSnapshotData{},
+	"orderbook_delta":              OrderbookDeltaData{},
+	"ticker":                       TickerData{},
+	"trade":                        TradeData{},
+	"fill":                         FillData{},
+	"market_position":              MarketPositionData{},
+	"market_lifecycle_v2":          MarketLifecycleV2Data{},
+	"event_lifecycle":              EventLifecycleData{},
+	"multivariate_lookup":          MultivariateLookupData{},
+	"user_order":                   UserOrderData{},
+	"order_group_updates":          OrderGroupUpdateData{},
+	"rfq_created":                  RFQCreatedData{},
+	"rfq_deleted":                  RFQDeletedData{},
+	"quote_created":                QuoteCreatedData{},
+	"quote_accepted":               QuoteAcceptedData{},
+	"quote_executed":               QuoteExecutedData{},
+	"event_fee_update":             EventFeeUpdateData{},
+	"cfbenchmarks_value":           CfbenchmarksValueData{},
+	"cfbenchmarks_value_indexlist": CfbenchmarksValueIndexlistData{},
 }
 
 // structJSONFields returns the set of JSON field names for a Go struct type.
@@ -140,13 +132,7 @@ func structJSONFields(v any) map[string]bool {
 }
 
 func TestAsyncAPIWSPayloadFieldCoverage(t *testing.T) {
-	resp, err := http.Get("https://docs.kalshi.com/asyncapi.yaml")
-	require.NoError(t, err, "fetch AsyncAPI spec")
-	defer resp.Body.Close()
-	require.Equal(t, 200, resp.StatusCode, "AsyncAPI spec HTTP status")
-
-	body, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
+	body := loadVendoredSpec(t, "asyncapi")
 
 	// Parse spec with enough depth to extract msg.properties field names.
 	var spec struct {
