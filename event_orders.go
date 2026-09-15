@@ -42,9 +42,11 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 // tier's write budget — see [Rate Limits and
 // Tiers](/getting_started/rate_limits).
 //
+// Each cancellation costs 2 write tokens.
+//
 // See https://docs.kalshi.com/api-reference/orders/batch-cancel-orders-v2
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
-	return deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
+	return deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*2.0)
 }
 
 // CancelOrderV2 — Cancel Order (V2)
