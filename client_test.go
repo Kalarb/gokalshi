@@ -1228,6 +1228,38 @@ func TestBatchCancelOrdersV2(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestBatchCancelOrdersV2UsesTwoTokensPerOrder(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		fmt.Fprint(w, `{"orders":[]}`)
+	}))
+	defer srv.Close()
+
+	limiter := NewReadWriteTokenBucket(TokenBucketConfig{
+		ReadRate: 100, WriteRate: 100,
+		ReadCapacity: 100, WriteCapacity: 20,
+		SafetyPadding: 0,
+	})
+	now := 100.0
+	limiter.clock = func() float64 { return now }
+	limiter.lastRefill = now
+
+	c, err := NewClient(
+		testClientConfig(t, srv.URL),
+		WithRateLimiter(limiter),
+		WithBaseDelay(time.Millisecond),
+	)
+	require.NoError(t, err)
+
+	_, err = c.BatchCancelOrdersV2(context.Background(), BatchCancelOrdersV2Request{
+		Orders: []map[string]any{
+			{"order_id": "ord-1"},
+			{"order_id": "ord-2"},
+		},
+	})
+	require.NoError(t, err)
+	assert.Equal(t, 16.0, limiter.Status().WriteTokens)
+}
+
 func TestCancelOrderV2(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
