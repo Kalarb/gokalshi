@@ -1,5 +1,42 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- **The rate limiter mis-billed most endpoints it was configured for.**
+  `GET /account/endpoint_costs` returns paths with Gin-style placeholders
+  (`/portfolio/events/orders/:order_id`), but the pattern builder only
+  recognised OpenAPI's `{param}`. Every parameterized entry compiled to a
+  literal regex that could never match a request, so it fell through to the
+  default cost — silently, since falling back is indistinguishable from an
+  endpoint that has no override. **Nine of the seventeen live entries were
+  dead**, including order cancellation, which billed 10 tokens against a real
+  cost of 2. Matching is now segment-wise and recognises every placeholder
+  syntax in circulation; all seventeen live entries resolve.
+- **Batch endpoints were billed as a single request.** `resolveCosts` replaced
+  the caller's figure with a flat per-request cost, discarding the per-item
+  multiplication a batch call site had already done. The cost table cannot
+  express a multiplier — `EndpointTokenCost` is a flat integer — so the count
+  has to come from the caller. A fifty-order batch create was billed 10 tokens
+  against a real cost of 500. Note `POST /portfolio/events/orders/batched` is
+  absent from the table entirely, because its per-item cost equals the default,
+  so the multiplier is the only thing that can make it correct.
+- `BatchCancelOrdersV2` used 10 tokens per order where the documented and
+  observed cost is 2, and `CancelOrderV2` used 1 where it is 2. These apply on
+  the degraded path, when auto-configuration fails — which is also when the
+  limiter falls back to Basic-tier bucket sizes, so accuracy matters most.
+- `ConfigureRateLimits` now warns when a cost entry contains a segment that
+  looks like an unrecognised path parameter, so a future syntax change surfaces
+  as a log line rather than as quietly mis-billed endpoints.
+
+### Changed
+
+- Cost tests now drive a captured live `endpoint_costs` payload through
+  `ConfigureRateLimits`. The previous tests hand-built patterns with
+  placeholders already substituted, so they exercised the matcher and never the
+  construction — which is where the defect was, and why it survived.
+
 ## v1.0.0 — unreleased
 
 Realigns the SDK with the Kalshi API as of OpenAPI 3.30.0. All 109 HTTP

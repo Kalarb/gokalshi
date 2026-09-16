@@ -53,7 +53,7 @@ func (c *Client) GetOrderGroup(ctx context.Context, orderGroupID string, params 
 // See https://docs.kalshi.com/api-reference/order-groups/delete-order-group
 func (c *Client) DeleteOrderGroup(ctx context.Context, orderGroupID string, params DeleteOrderGroupParams) error {
 	path := fmt.Sprintf("%s/%s", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "DELETE", path, 0, 10.0, nil, params.toMap())
+	_, err := c.do(ctx, "DELETE", path, 0, 10.0, 1, nil, params.toMap())
 	return err
 }
 
@@ -67,7 +67,7 @@ func (c *Client) DeleteOrderGroup(ctx context.Context, orderGroupID string, para
 // See https://docs.kalshi.com/api-reference/order-groups/reset-order-group
 func (c *Client) ResetOrderGroup(ctx context.Context, orderGroupID string, params OrderGroupActionParams) error {
 	path := fmt.Sprintf("%s/%s/reset", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "PUT", path, 0, 10.0, nil, params.toMap())
+	_, err := c.do(ctx, "PUT", path, 0, 10.0, 1, nil, params.toMap())
 	return err
 }
 
@@ -81,7 +81,7 @@ func (c *Client) ResetOrderGroup(ctx context.Context, orderGroupID string, param
 // See https://docs.kalshi.com/api-reference/order-groups/trigger-order-group
 func (c *Client) TriggerOrderGroup(ctx context.Context, orderGroupID string, params OrderGroupActionParams) error {
 	path := fmt.Sprintf("%s/%s/trigger", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "PUT", path, 0, 10.0, nil, params.toMap())
+	_, err := c.do(ctx, "PUT", path, 0, 10.0, 1, nil, params.toMap())
 	return err
 }
 
@@ -96,7 +96,7 @@ func (c *Client) TriggerOrderGroup(ctx context.Context, orderGroupID string, par
 // See https://docs.kalshi.com/api-reference/order-groups/update-order-group-limit
 func (c *Client) UpdateOrderGroupLimit(ctx context.Context, orderGroupID string, req UpdateOrderGroupLimitRequest, params UpdateOrderGroupLimitParams) error {
 	path := fmt.Sprintf("%s/%s/limit", pathOrderGroups, orderGroupID)
-	_, err := c.do(ctx, "PUT", path, 0, 10.0, req, params.toMap())
+	_, err := c.do(ctx, "PUT", path, 0, 10.0, 1, req, params.toMap())
 	return err
 }
 

@@ -218,7 +218,7 @@ func (p GetQuotesParams) toMap() map[string]string {
 //
 // See https://docs.kalshi.com/api-reference/communications/get-r-f-q-quote
 func (c *Client) GetRFQQuote(ctx context.Context, rfqID, quoteID string) (GetQuoteResponse, error) {
-	return doJSON[GetQuoteResponse](c, ctx, "GET", rfqQuotePath(rfqID, quoteID), 2.0, 0, nil, nil)
+	return doJSON[GetQuoteResponse](c, ctx, "GET", rfqQuotePath(rfqID, quoteID), 2.0, 0, 1, nil, nil)
 }
 
 // DeleteRFQQuote — Delete RFQ Quote
@@ -230,7 +230,7 @@ func (c *Client) GetRFQQuote(ctx context.Context, rfqID, quoteID string) (GetQuo
 //
 // See https://docs.kalshi.com/api-reference/communications/delete-r-f-q-quote
 func (c *Client) DeleteRFQQuote(ctx context.Context, rfqID, quoteID string) error {
-	_, err := c.do(ctx, "DELETE", rfqQuotePath(rfqID, quoteID), 0, 2.0, nil, nil)
+	_, err := c.do(ctx, "DELETE", rfqQuotePath(rfqID, quoteID), 0, 2.0, 1, nil, nil)
 	return err
 }
 
