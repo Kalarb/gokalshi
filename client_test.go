@@ -1645,7 +1645,7 @@ func TestNewClient_AutoConfigFailure(t *testing.T) {
 	cfg := testClientConfig(t, srv.URL)
 	c, err := NewClient(cfg)
 
-	// Should succeed despite API failure — non-fatal fallback to defaults
+	// Should succeed despite API failure â€” non-fatal fallback to defaults
 	require.NoError(t, err)
 	require.NotNil(t, c)
 	assert.NotNil(t, c.limiter, "should have default limiter")
@@ -1739,8 +1739,12 @@ func TestCancelOrderV2TickerRouting(t *testing.T) {
 			fmt.Fprint(w, `{"order_id":"order","reduced_by":"60"}`)
 		}))
 		c := newTestClient(t, srv.URL)
+		c.limiter = NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 100, WriteRate: 100, WriteCapacity: 2})
+		c.limiter.clock = func() float64 { return 100 }
+		c.limiter.lastRefill = 100
 		_, err := c.CancelOrderV2(context.Background(), "order", CancelOrderV2Params{MarketTicker: "MARKET", ExchangeIndex: index})
 		require.NoError(t, err)
+		assert.Equal(t, 0.0, c.limiter.Status().WriteTokens)
 		srv.Close()
 	}
 }
