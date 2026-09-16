@@ -203,13 +203,13 @@ func TestResolveCosts_BatchBillsPerItem(t *testing.T) {
 	})
 }
 
-// Without a table the caller's literals are authoritative, and they must still
-// account for units.
+// Without a table the caller's figure is authoritative — as a per-unit cost,
+// the same meaning it has when a table is loaded.
 func TestResolveCosts_NoTableUsesCallerCost(t *testing.T) {
 	c := &Client{}
 	read, write := c.resolveCosts(http.MethodPost, "/trade-api/v2/anything", 0, 40, 4)
 	assert.Equal(t, 0.0, read)
-	assert.Equal(t, 40.0, write, "the caller's figure is used as given")
+	assert.Equal(t, 160.0, write, "the caller's figure is per unit: 40 x 4")
 }
 
 func joinSegments(segments []string) string {
@@ -243,6 +243,41 @@ func TestConfigureRateLimits_FlagsUnrecognisedPlaceholders(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.segment, func(t *testing.T) {
 			assert.Equal(t, tt.suspect, suspectUnmarkedPlaceholder(tt.segment))
+		})
+	}
+}
+
+// The fallback path must scale by units exactly as the configured path does.
+// It previously returned the caller's figure unscaled, so a 50-order batch was
+// billed as one order whenever ConfigureRateLimits had failed — which is also
+// when the limiter drops to Basic-tier capacity, so it was the worst place to
+// under-count.
+func TestResolveCosts_UnitsApplyWithoutATable(t *testing.T) {
+	tests := []struct {
+		name   string
+		client *Client
+	}{
+		{"no cost table at all", &Client{}},
+		{"table loaded but no default cost", &Client{
+			costRoutes:  []costRoute{newCostRoute("GET", "/irrelevant", 5)},
+			defaultCost: 0,
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, write := tt.client.resolveCosts(http.MethodDelete,
+				"/trade-api/v2/portfolio/events/orders/batched", 0, costCancelOrder, 50)
+			assert.Equal(t, 100.0, write, "50 cancels at 2 tokens each")
+
+			_, write = tt.client.resolveCosts(http.MethodPost,
+				"/trade-api/v2/portfolio/events/orders/batched", 0, costCreateOrder, 50)
+			assert.Equal(t, 500.0, write, "50 creates at 10 tokens each")
+
+			// An empty batch still costs one request rather than nothing: a
+			// zero-cost write would bypass the limiter entirely.
+			_, write = tt.client.resolveCosts(http.MethodDelete,
+				"/trade-api/v2/portfolio/events/orders/batched", 0, costCancelOrder, 0)
+			assert.Equal(t, 2.0, write)
 		})
 	}
 }

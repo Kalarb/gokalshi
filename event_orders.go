@@ -42,9 +42,8 @@ func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (C
 //
 // See https://docs.kalshi.com/api-reference/orders/batch-create-orders-v2
 func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV2Request) (BatchCreateOrdersV2Response, error) {
-	// Fallback costs are totals; a configured table uses the separate units count.
 	return doJSON[BatchCreateOrdersV2Response](c, ctx, "POST", pathEventOrders+"/batched",
-		0, costCreateOrder*float64(max(1, len(req.Orders))), len(req.Orders), req, nil)
+		0, costCreateOrder, len(req.Orders), req, nil)
 }
 
 // BatchCancelOrdersV2 — Batch Cancel Orders (V2)
@@ -61,7 +60,7 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
 	// One logical call remains one HTTP request; oversized costs fail in Acquire.
 	return doJSON[BatchCancelOrdersV2Response](c, ctx, "DELETE", pathEventOrders+"/batched",
-		0, costCancelOrder*float64(max(1, len(req.Orders))), len(req.Orders), req, nil)
+		0, costCancelOrder, len(req.Orders), req, nil)
 }
 
 // CancelOrderV2 — Cancel Order (V2)
