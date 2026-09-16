@@ -9,6 +9,7 @@ import (
 	"crypto/x509"
 	"encoding/pem"
 	"fmt"
+	"net/http"
 	"testing"
 	"time"
 
@@ -16,16 +17,88 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+const (
+	// maxMarketPages bounds the search in fundableMarket.
+	maxMarketPages = 6
+
+	// stableMarketTicker is a far-dated market that will not close during a
+	// test run. TestHTTPIntegration_Orders uses it for the same reason.
+	stableMarketTicker = "KXELONMARS-99"
+)
+
+// fundableMarket returns an open market on a shard where the account actually
+// holds balance.
+//
+// Kalshi splits the exchange into shards (exchange_index) and balance does not
+// follow you across them: an order routes to the shard its market lives on, and
+// is rejected with insufficient_shard_balance if that shard is unfunded. Taking
+// the first open market returns whatever the API happens to list first, which
+// on DEMO is a cross-category multivariate market on an unfunded shard — so the
+// order test failed for reasons that had nothing to do with order placement.
+//
+// Auto-routing is not the problem and forcing exchange_index does not help:
+// omitting it, passing -1, and naming the shard explicitly all produce the same
+// rejection. The shard is chosen correctly; the money is simply elsewhere. The
+// fix is to trade where the funds are.
+func fundableMarket(t *testing.T, c *Client, ctx context.Context) string {
+	t.Helper()
+
+	balance, err := c.GetBalance(ctx)
+	require.NoError(t, err)
+
+	funded := map[int]bool{}
+	for _, b := range balance.BalanceBreakdown {
+		if b.Balance != "" && b.Balance != "0.0000" {
+			funded[int(b.ExchangeIndex)] = true
+		}
+	}
+	if len(funded) == 0 {
+		t.Skip("account holds no balance on any shard")
+	}
+
+	// Prefer a far-dated market. Short-lived markets — a sports game closing
+	// mid-run — produce market_closed between discovery and order placement,
+	// which is the flakiness the stable ticker exists to avoid.
+	if m, err := c.GetMarket(ctx, stableMarketTicker); err == nil {
+		if funded[int(m.Market.ExchangeIndex)] && m.Market.Status == "active" {
+			t.Logf("using stable market %s on funded shard %d",
+				stableMarketTicker, int(m.Market.ExchangeIndex))
+			return stableMarketTicker
+		}
+	}
+
+	// Otherwise scan. Markets are not grouped by shard and a single page can
+	// easily contain none from the funded one: on DEMO the first page is
+	// dominated by shards 1 and 3 even though ~157 open markets sit on shard 0.
+	cursor := ""
+	for page := 0; page < maxMarketPages; page++ {
+		markets, err := c.GetMarkets(ctx, GetMarketsParams{
+			Status: "open", Limit: 200, Cursor: cursor,
+		})
+		require.NoError(t, err)
+
+		for _, m := range markets.Markets {
+			if funded[int(m.ExchangeIndex)] {
+				t.Logf("using %s on funded shard %d", m.Ticker, int(m.ExchangeIndex))
+				return m.Ticker
+			}
+		}
+		if markets.Cursor == "" {
+			break
+		}
+		cursor = markets.Cursor
+	}
+
+	t.Skipf("no open market found on a funded shard within %d pages (funded shards: %v)",
+		maxMarketPages, funded)
+	return ""
+}
+
 func TestHTTPIntegration_EventOrdersV2(t *testing.T) {
 	c := integrationHTTPClient(t)
 	ctx := context.Background()
 
-	markets, err := c.GetMarkets(ctx, GetMarketsParams{Status: "open", Limit: 5})
-	require.NoError(t, err)
-	if len(markets.Markets) == 0 {
-		t.Skip("no active markets for V2 order test")
-	}
-	ticker := markets.Markets[0].Ticker
+	ticker := fundableMarket(t, c, ctx)
 
 	t.Run("CreateAndCancelV2", func(t *testing.T) {
 		clientID := fmt.Sprintf("integ-%d", time.Now().UnixNano())
@@ -207,6 +280,18 @@ func TestHTTPIntegration_OrderGroups(t *testing.T) {
 	})
 }
 
+const (
+	// subaccountCap is the per-account subaccount limit Kalshi enforces. It is
+	// not published in the spec; 64 is the count at which the DEMO account began
+	// returning 507 maximum_number_of_subaccounts_reached.
+	subaccountCap = 64
+
+	// subaccountHeadroom is how many slots to leave unused. Slots are
+	// unrecoverable, so the test stops well before the ceiling rather than
+	// consuming the last one.
+	subaccountHeadroom = 8
+)
+
 func TestHTTPIntegration_Subaccounts(t *testing.T) {
 	c := integrationHTTPClient(t)
 	ctx := context.Background()
@@ -231,12 +316,44 @@ func TestHTTPIntegration_Subaccounts(t *testing.T) {
 		require.NoError(t, err)
 	})
 
+	// Subaccounts are permanent: the API has no delete and no deactivate, so
+	// every run that creates one consumes a slot for good. This test ran
+	// unguarded for months and took the account to its cap of 64, after which
+	// CreateSubaccount could only ever return 507. Create one only when there is
+	// real headroom, and report the count so the ceiling is visible before it
+	// is reached rather than after.
 	t.Run("CreateSubaccount", func(t *testing.T) {
+		balances, err := c.GetSubaccountBalances(ctx)
+		skipOnAPIError(t, err, 400, 403)
+		require.NoError(t, err)
+
+		used := len(balances.SubaccountBalances)
+		t.Logf("subaccounts in use: %d of %d (headroom reserve %d)",
+			used, subaccountCap, subaccountHeadroom)
+
+		if used+subaccountHeadroom >= subaccountCap {
+			t.Skipf("skipping create: %d of %d subaccounts used and none can be "+
+				"deleted — the API has no delete or deactivate endpoint, so "+
+				"creating more is unrecoverable", used, subaccountCap)
+		}
+
 		resp, err := c.CreateSubaccount(ctx)
+
+		// 507 is a correct, expected answer once the account is full, not a
+		// defect: slots cannot be reclaimed, so a capped account can never
+		// succeed here again. Treat it as a terminal condition of the account
+		// rather than a failure of the client.
+		if isAPIErrorCode(err, http.StatusInsufficientStorage) {
+			t.Skipf("507 maximum_number_of_subaccounts_reached with %d subaccounts "+
+				"in use — this is the expected response for a full account and "+
+				"is not a failure (subaccountCap is %d, so the real cap is lower "+
+				"than assumed)", used, subaccountCap)
+		}
+
 		skipOnAPIError(t, err, 400, 403)
 		require.NoError(t, err)
 		assert.True(t, resp.SubaccountNumber >= 1)
-		t.Logf("created subaccount %d", resp.SubaccountNumber)
+		t.Logf("created subaccount %d — this slot cannot be reclaimed", resp.SubaccountNumber)
 	})
 
 	t.Run("UpdateSubaccountNetting", func(t *testing.T) {
