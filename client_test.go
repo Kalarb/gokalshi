@@ -5,14 +5,12 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1229,38 +1227,6 @@ func TestBatchCancelOrdersV2(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func TestBatchCancelOrdersV2UsesTwoTokensPerOrder(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		fmt.Fprint(w, `{"orders":[]}`)
-	}))
-	defer srv.Close()
-
-	limiter := NewReadWriteTokenBucket(TokenBucketConfig{
-		ReadRate: 100, WriteRate: 100,
-		ReadCapacity: 100, WriteCapacity: 20,
-		SafetyPadding: 0,
-	})
-	now := 100.0
-	limiter.clock = func() float64 { return now }
-	limiter.lastRefill = now
-
-	c, err := NewClient(
-		testClientConfig(t, srv.URL),
-		WithRateLimiter(limiter),
-		WithBaseDelay(time.Millisecond),
-	)
-	require.NoError(t, err)
-
-	_, err = c.BatchCancelOrdersV2(context.Background(), BatchCancelOrdersV2Request{
-		Orders: []map[string]any{
-			{"order_id": "ord-1"},
-			{"order_id": "ord-2"},
-		},
-	})
-	require.NoError(t, err)
-	assert.Equal(t, 16.0, limiter.Status().WriteTokens)
-}
-
 func TestCancelOrderV2(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodDelete, r.Method)
@@ -1576,64 +1542,6 @@ func TestGetStructuredTarget(t *testing.T) {
 // resolveCosts tests
 // ---------------------------------------------------------------------------
 
-func TestResolveCosts_ParameterizedPath(t *testing.T) {
-	c := &Client{
-		costPatterns: []endpointCostPattern{
-			{
-				method:  "DELETE",
-				pattern: regexp.MustCompile(`^/trade-api/v2/portfolio/orders/[^/]+$`),
-				cost:    20,
-			},
-			{
-				method:  "GET",
-				pattern: regexp.MustCompile(`^/trade-api/v2/markets/[^/]+$`),
-				cost:    5,
-			},
-		},
-		defaultCost: 10,
-	}
-
-	// Parameterized path should match the pattern
-	read, write := c.resolveCosts("DELETE", "/trade-api/v2/portfolio/orders/abc-123-def", 1, 1)
-	assert.Equal(t, 0.0, read, "DELETE should have zero read cost")
-	assert.Equal(t, 20.0, write, "DELETE should use matched pattern cost")
-
-	read, write = c.resolveCosts("GET", "/trade-api/v2/markets/KXBTC-100K", 1, 1)
-	assert.Equal(t, 5.0, read, "GET should use matched pattern cost")
-	assert.Equal(t, 0.0, write, "GET should have zero write cost")
-}
-
-func TestResolveCosts_DefaultCost(t *testing.T) {
-	c := &Client{
-		costPatterns: []endpointCostPattern{
-			{
-				method:  "GET",
-				pattern: regexp.MustCompile(`^/trade-api/v2/markets$`),
-				cost:    5,
-			},
-		},
-		defaultCost: 10,
-	}
-
-	// Unmatched path falls back to defaultCost
-	read, write := c.resolveCosts("GET", "/trade-api/v2/some/unknown/path", 1, 1)
-	assert.Equal(t, 10.0, read)
-	assert.Equal(t, 0.0, write)
-
-	read, write = c.resolveCosts("POST", "/trade-api/v2/some/unknown/path", 1, 1)
-	assert.Equal(t, 0.0, read)
-	assert.Equal(t, 10.0, write)
-}
-
-func TestResolveCosts_NilPatterns(t *testing.T) {
-	c := &Client{} // no costPatterns, no defaultCost
-
-	// Should passthrough caller defaults
-	read, write := c.resolveCosts("GET", "/trade-api/v2/exchange/status", 0.5, 0)
-	assert.Equal(t, 0.5, read)
-	assert.Equal(t, 0.0, write)
-}
-
 func TestNewClient_AutoConfigFailure(t *testing.T) {
 	// Mock server that returns 500 for all requests
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1684,48 +1592,6 @@ func TestConfigureRateLimits_Concurrent(t *testing.T) {
 	<-done
 }
 
-func TestBatchCancelOrdersV2SplitsWithinSDKCapacity(t *testing.T) {
-	for _, failSecond := range []bool{false, true} {
-		t.Run(fmt.Sprintf("failSecond=%v", failSecond), func(t *testing.T) {
-			var seen []string
-			requests := 0
-			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				requests++
-				var req BatchCancelOrdersV2Request
-				require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
-				require.LessOrEqual(t, len(req.Orders), 2)
-				for _, order := range req.Orders {
-					seen = append(seen, order["order_id"].(string))
-				}
-				if failSecond && requests == 2 {
-					w.WriteHeader(500)
-					return
-				}
-				require.NoError(t, json.NewEncoder(w).Encode(BatchCancelOrdersV2Response(req)))
-			}))
-			defer srv.Close()
-			limiter := NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 100, WriteRate: 100000, WriteCapacity: 4})
-			c, err := NewClient(testClientConfig(t, srv.URL), WithRateLimiter(limiter))
-			require.NoError(t, err)
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-			defer cancel()
-			resp, err := c.BatchCancelOrdersV2(ctx, BatchCancelOrdersV2Request{Orders: []map[string]any{
-				{"order_id": "a", "market_ticker": "MARKET"}, {"order_id": "b"}, {"order_id": "c"}, {"order_id": "d"}, {"order_id": "e"},
-			}})
-			if failSecond {
-				require.Error(t, err)
-				assert.Equal(t, []string{"a", "b", "c", "d"}, seen)
-				assert.Len(t, resp.Orders, 2)
-			} else {
-				require.NoError(t, err)
-				assert.Equal(t, []string{"a", "b", "c", "d", "e"}, seen)
-				assert.Len(t, resp.Orders, 5)
-				assert.Equal(t, "MARKET", resp.Orders[0]["market_ticker"])
-			}
-		})
-	}
-}
-
 func TestCancelOrderV2TickerRouting(t *testing.T) {
 	for _, index := range []*int{nil, new(int), func() *int { v := -1; return &v }(), func() *int { v := 3; return &v }()} {
 		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -1739,21 +1605,62 @@ func TestCancelOrderV2TickerRouting(t *testing.T) {
 			fmt.Fprint(w, `{"order_id":"order","reduced_by":"60"}`)
 		}))
 		c := newTestClient(t, srv.URL)
-		c.limiter = NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 100, WriteRate: 100, WriteCapacity: 2})
-		c.limiter.clock = func() float64 { return 100 }
-		c.limiter.lastRefill = 100
 		_, err := c.CancelOrderV2(context.Background(), "order", CancelOrderV2Params{MarketTicker: "MARKET", ExchangeIndex: index})
 		require.NoError(t, err)
-		assert.Equal(t, 0.0, c.limiter.Status().WriteTokens)
+		c.Close()
 		srv.Close()
 	}
 }
 
-func TestLimiterRejectsImpossibleCostImmediately(t *testing.T) {
-	b := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	err := b.Acquire(ctx, 0, 101)
-	require.ErrorContains(t, err, "exceeds bucket capacity")
-	require.NoError(t, ctx.Err())
+// #48 correctly multiplies per-order cost. The limiter must now reject a batch
+// that exceeds capacity without waiting for its deadline or sending a prefix.
+func TestBatchCapacityGuardWithPerItemCosts(t *testing.T) {
+	for _, configured := range []bool{false, true} {
+		for _, tc := range []struct {
+			name     string
+			create   bool
+			count    int
+			wantCost float64
+			fits     bool
+		}{
+			{"eleven cancellations", false, 11, 22, true},
+			{"fifty creates cannot fit", true, 50, 500, false},
+			{"fifty one cancellations cannot fit", false, 51, 102, false},
+		} {
+			t.Run(fmt.Sprintf("%s/configured=%v", tc.name, configured), func(t *testing.T) {
+				var requests atomic.Int32
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { requests.Add(1); fmt.Fprint(w, `{"orders":[]}`) }))
+				defer srv.Close()
+				bucket := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+				bucket.clock = func() float64 { return 100 }
+				bucket.lastRefill = 100
+				c, err := NewClient(testClientConfig(t, srv.URL), WithRateLimiter(bucket))
+				require.NoError(t, err)
+				defer c.Close()
+				if configured {
+					configured := configuredClient(t, liveEndpointCostsPayload)
+					c.costRoutes = configured.costRoutes
+					c.defaultCost = configured.defaultCost
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				if tc.create {
+					_, err = c.BatchCreateOrdersV2(ctx, BatchCreateOrdersV2Request{Orders: make([]CreateOrderV2Request, tc.count)})
+				} else {
+					_, err = c.BatchCancelOrdersV2(ctx, BatchCancelOrdersV2Request{Orders: make([]map[string]any, tc.count)})
+				}
+				require.NoError(t, ctx.Err(), "must finish before timeout")
+				if tc.fits {
+					require.NoError(t, err)
+					assert.Equal(t, int32(1), requests.Load())
+					assert.Equal(t, 100-tc.wantCost, bucket.Status().WriteTokens)
+				} else {
+					require.ErrorContains(t, err, "exceeds bucket capacity")
+					require.ErrorContains(t, err, fmt.Sprintf("write=%g", tc.wantCost))
+					assert.Zero(t, requests.Load(), "must not split or send a partial batch")
+					assert.Equal(t, 100.0, bucket.Status().WriteTokens)
+				}
+			})
+		}
+	}
 }

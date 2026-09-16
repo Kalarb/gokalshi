@@ -320,3 +320,23 @@ func TestNewReadWriteTokenBucket_PanicsOnZeroRate(t *testing.T) {
 		NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: -1, WriteRate: 1})
 	})
 }
+
+func TestAcquireRejectsImpossibleCosts(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		read, write float64
+	}{
+		{"read", 201, 0}, {"write", 0, 101}, {"both", 201, 101},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			bucket := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+			before := bucket.Status()
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			err := bucket.Acquire(ctx, tc.read, tc.write)
+			require.ErrorContains(t, err, "exceeds bucket capacity")
+			require.NoError(t, ctx.Err())
+			assert.Equal(t, before, bucket.Status())
+		})
+	}
+}

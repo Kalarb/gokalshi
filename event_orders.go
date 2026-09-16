@@ -5,6 +5,19 @@ import (
 	"fmt"
 )
 
+// Token costs for order operations, used when the endpoint-costs table is
+// unavailable. Both are billed per item on the batch endpoints.
+//
+// These are the documented values, confirmed against the live table: an order
+// create is the default 10, a cancel is 2. A successful ConfigureRateLimits
+// overrides them, so they only apply on the degraded path — which is exactly
+// when getting them right matters, since that path also falls back to
+// Basic-tier bucket sizes.
+const (
+	costCreateOrder = 10.0
+	costCancelOrder = 2.0
+)
+
 // CreateOrderV2 — Create Order (V2)
 //
 // POST /trade-api/v2/portfolio/events/orders
@@ -29,7 +42,9 @@ func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (C
 //
 // See https://docs.kalshi.com/api-reference/orders/batch-create-orders-v2
 func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV2Request) (BatchCreateOrdersV2Response, error) {
-	return postJSON[BatchCreateOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
+	// Fallback costs are totals; a configured table uses the separate units count.
+	return doJSON[BatchCreateOrdersV2Response](c, ctx, "POST", pathEventOrders+"/batched",
+		0, costCreateOrder*float64(max(1, len(req.Orders))), len(req.Orders), req, nil)
 }
 
 // BatchCancelOrdersV2 — Batch Cancel Orders (V2)
@@ -42,38 +57,11 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 // tier's write budget — see [Rate Limits and
 // Tiers](/getting_started/rate_limits).
 //
-// Each cancellation costs 2 write tokens.
-//
 // See https://docs.kalshi.com/api-reference/orders/batch-cancel-orders-v2
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
-	if len(req.Orders) == 0 {
-		return BatchCancelOrdersV2Response{}, fmt.Errorf("batch cancellation requires at least one order")
-	}
-	// The SDK owns the limiter and therefore the batch size. Each request must
-	// fit the bucket even when account-limit discovery fell back to Basic.
-	c.mu.RLock()
-	_, cost := c.resolveCosts("DELETE", pathEventOrders+"/batched", 0, 2)
-	capacity := c.limiter.cfg.writeCap()
-	c.mu.RUnlock()
-	if cost <= 0 || capacity < cost {
-		return BatchCancelOrdersV2Response{}, fmt.Errorf("cancellation cost %g exceeds write capacity %g", cost, capacity)
-	}
-	size := len(req.Orders)
-	if float64(size)*cost > capacity {
-		size = int(capacity / cost)
-	}
-	var result BatchCancelOrdersV2Response
-	for start := 0; start < len(req.Orders); start += size {
-		end := min(start+size, len(req.Orders))
-		part, err := deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", BatchCancelOrdersV2Request{Orders: req.Orders[start:end]}, 2)
-		result.Orders = append(result.Orders, part.Orders...)
-		if err != nil {
-			// Earlier chunks may already have succeeded. Return their results
-			// and stop; never replay a completed or uncertain cancellation.
-			return result, fmt.Errorf("batch cancellation orders[%d:%d]: %w", start, end, err)
-		}
-	}
-	return result, nil
+	// One logical call remains one HTTP request; oversized costs fail in Acquire.
+	return doJSON[BatchCancelOrdersV2Response](c, ctx, "DELETE", pathEventOrders+"/batched",
+		0, costCancelOrder*float64(max(1, len(req.Orders))), len(req.Orders), req, nil)
 }
 
 // CancelOrderV2 — Cancel Order (V2)
@@ -88,7 +76,7 @@ func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV
 // See https://docs.kalshi.com/api-reference/orders/cancel-order-v2
 func (c *Client) CancelOrderV2(ctx context.Context, orderID string, params CancelOrderV2Params) (CancelOrderV2Response, error) {
 	path := fmt.Sprintf("%s/%s", pathEventOrders, orderID)
-	return doJSON[CancelOrderV2Response](c, ctx, "DELETE", path, 0, 2.0, nil, params.toMap())
+	return doJSON[CancelOrderV2Response](c, ctx, "DELETE", path, 0, costCancelOrder, 1, nil, params.toMap())
 }
 
 // AmendOrderV2 — Amend Order (V2)
@@ -123,9 +111,9 @@ func (c *Client) DecreaseOrderV2(ctx context.Context, orderID string, req Decrea
 
 // CancelOrderV2Params are query parameters for CancelOrderV2.
 type CancelOrderV2Params struct {
-	Subaccount int
-	// MarketTicker lets Kalshi route the cancellation when ExchangeIndex is omitted.
+	// MarketTicker enables auto-routing when ExchangeIndex is omitted or -1.
 	MarketTicker string
+	Subaccount   int
 	// ExchangeIndex selects the exchange instance. 0 is the event-contract
 	// instance and -1 asks Kalshi to auto-route by market ticker, so it is a
 	// pointer: both are meaningful values that a zero-valued int cannot express.
@@ -134,9 +122,9 @@ type CancelOrderV2Params struct {
 
 func (p CancelOrderV2Params) toMap() map[string]string {
 	return NewQuery().
+		String("market_ticker", p.MarketTicker).
 		Int("subaccount", p.Subaccount).
 		IntPtr("exchange_index", p.ExchangeIndex).
-		String("market_ticker", p.MarketTicker).
 		Build()
 }
 
@@ -152,17 +140,23 @@ func (p CancelOrderV2Params) toMap() map[string]string {
 //
 // See https://docs.kalshi.com/api-reference/orders/cancel-all-orders
 func (c *Client) CancelAllOrders(ctx context.Context, params CancelAllOrdersParams) error {
-	_, err := c.do(ctx, "DELETE", pathEventOrders, 0, 2.0, nil, params.toMap())
+	_, err := c.do(ctx, "DELETE", pathEventOrders, 0, costCancelOrder, 1, nil, params.toMap())
 	return err
 }
 
 // CancelAllOrdersParams are the query parameters for CancelAllOrders.
 type CancelAllOrdersParams struct {
-	Subaccount int
+	// Subaccount scopes the cancel. 0 is the primary subaccount, 1-63 the
+	// others. It is a pointer because omitting it is not the same as naming
+	// subaccount 0: an omitted subaccount cancels resting orders from *every*
+	// subaccount, across every exchange shard. A plain int could not express
+	// "the primary subaccount only", and would silently widen the blast radius
+	// to the whole account.
+	Subaccount *int
 }
 
 func (p CancelAllOrdersParams) toMap() map[string]string {
 	return NewQuery().
-		Int("subaccount", p.Subaccount).
+		IntPtr("subaccount", p.Subaccount).
 		Build()
 }

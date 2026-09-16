@@ -9,19 +9,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"regexp"
-	"strings"
+	"sort"
 	"sync"
 	"time"
 )
-
-// endpointCostPattern maps an HTTP method + path pattern to a token cost.
-// Patterns use regex to match parameterized paths (e.g. /orders/{order_id}).
-type endpointCostPattern struct {
-	method  string
-	pattern *regexp.Regexp
-	cost    float64
-}
 
 // Client is the Kalshi HTTP API client.
 // It wraps net/http with authentication, rate limiting, and retry logic.
@@ -35,10 +26,10 @@ type Client struct {
 	baseDelay      time.Duration
 	skipAutoConfig bool
 
-	mu           sync.RWMutex // guards limiter, costPatterns, defaultCost
-	limiter      *ReadWriteTokenBucket
-	costPatterns []endpointCostPattern // nil = use caller defaults
-	defaultCost  float64               // fallback cost when no pattern matches; 0 = use caller defaults
+	mu          sync.RWMutex // guards limiter, costRoutes, defaultCost
+	limiter     *ReadWriteTokenBucket
+	costRoutes  []costRoute // nil = use caller defaults
+	defaultCost float64     // fallback cost when no route matches; 0 = use caller defaults
 }
 
 // ClientOption configures a Client.
@@ -107,9 +98,6 @@ func (c *Client) Close() {
 	c.httpClient.CloseIdleConnections()
 }
 
-// paramRe matches {param} placeholders in API paths.
-var paramRe = regexp.MustCompile(`\{[^}]+\}`)
-
 // ConfigureRateLimits fetches account API limits and endpoint costs from the
 // Kalshi API and configures the client's rate limiter and cost map accordingly.
 // Called automatically during NewClient. Can be called again to refresh.
@@ -134,24 +122,35 @@ func (c *Client) ConfigureRateLimits(ctx context.Context) error {
 		return fmt.Errorf("fetch endpoint costs: %w", err)
 	}
 
-	var patterns []endpointCostPattern
+	routes := make([]costRoute, 0, len(endpointCosts.EndpointCosts))
 	for _, ec := range endpointCosts.EndpointCosts {
-		path := ec.Path
-		if !strings.HasPrefix(path, "/trade-api") {
-			path = "/trade-api/v2" + path
+		routes = append(routes, newCostRoute(ec.Method, ec.Path, float64(ec.Cost)))
+	}
+
+	// Most specific first, so a literal route wins over one whose placeholder
+	// would also match. Without this, "/portfolio/events/orders/:order_id"
+	// could claim "/portfolio/events/orders/batched" purely by declaration
+	// order, and the two do not have to share a cost.
+	sort.SliceStable(routes, func(i, j int) bool {
+		return routes[i].literals > routes[j].literals
+	})
+
+	// A route this code cannot match does not fail — it falls through to the
+	// default cost, which is indistinguishable from an endpoint that has no
+	// override. Say so, so the next syntax change is a log line rather than a
+	// year of quietly mis-billed cancels.
+	for _, r := range routes {
+		if suspects := r.suspiciousSegments(); len(suspects) > 0 {
+			log.Printf("gokalshi: endpoint cost %s %s has segments %v that look like "+
+				"unrecognised path parameters — this entry may never match, and its "+
+				"endpoint will bill at the default cost of %.0f",
+				r.method, r.rawPath, suspects, float64(endpointCosts.DefaultCost))
 		}
-		regexStr := regexp.QuoteMeta(path)
-		regexStr = paramRe.ReplaceAllString(regexStr, `[^/]+`)
-		patterns = append(patterns, endpointCostPattern{
-			method:  strings.ToUpper(ec.Method),
-			pattern: regexp.MustCompile("^" + regexStr + "$"),
-			cost:    float64(ec.Cost),
-		})
 	}
 
 	c.mu.Lock()
 	c.limiter = newLimiter
-	c.costPatterns = patterns
+	c.costRoutes = routes
 	c.defaultCost = float64(endpointCosts.DefaultCost)
 	c.mu.Unlock()
 
@@ -161,39 +160,53 @@ func (c *Client) ConfigureRateLimits(ctx context.Context) error {
 // resolveCosts returns the effective read/write costs for a request.
 // If a cost pattern matches, it overrides the caller's values.
 // Must be called with c.mu held for reading (or from a non-concurrent context).
-func (c *Client) resolveCosts(method, path string, readCost, writeCost float64) (float64, float64) {
-	if c.costPatterns == nil {
+// resolveCosts determines what to debit from the rate limiter for one request.
+//
+// The server's endpoint-costs table is authoritative for the cost of a single
+// request, so a matching route replaces the caller's figure. The caller keeps
+// ownership of units: batch endpoints are billed per item, and the table has no
+// way to say so — EndpointTokenCost is a flat integer. Previously the resolved
+// cost replaced the total, which discarded the multiplication a batch call site
+// had already done, and a fifty-order batch was billed as one request.
+func (c *Client) resolveCosts(method, path string, readCost, writeCost float64, units int) (float64, float64) {
+	if units < 1 {
+		units = 1
+	}
+	if c.costRoutes == nil {
+		// No table: the caller's literals already account for units.
 		return readCost, writeCost
 	}
-	var cost float64
-	matched := false
-	for _, p := range c.costPatterns {
-		if p.method == method && p.pattern.MatchString(path) {
-			cost = p.cost
-			matched = true
-			break
-		}
-	}
+
+	unit, matched := c.lookupCost(method, path)
 	if !matched {
-		if c.defaultCost > 0 {
-			cost = c.defaultCost
-		} else {
+		if c.defaultCost <= 0 {
 			return readCost, writeCost
 		}
+		unit = c.defaultCost
 	}
+
+	cost := unit * float64(units)
 	if method == http.MethodGet {
 		return cost, 0
 	}
 	return 0, cost
 }
 
-// do executes an HTTP request with rate limiting, auth headers, and 429 retry.
-func (c *Client) do(ctx context.Context, method, path string, readCost, writeCost float64, body any, params map[string]string) (json.RawMessage, error) {
-	c.mu.RLock()
-	readCost, writeCost = c.resolveCosts(method, path, readCost, writeCost)
-	if batch, ok := body.(BatchCancelOrdersV2Request); ok {
-		writeCost *= float64(len(batch.Orders))
+// lookupCost returns the per-request cost for an endpoint, if the table
+// overrides it.
+func (c *Client) lookupCost(method, path string) (float64, bool) {
+	for _, r := range c.costRoutes {
+		if r.matches(method, path) {
+			return r.cost, true
+		}
 	}
+	return 0, false
+}
+
+// do executes an HTTP request with rate limiting, auth headers, and 429 retry.
+func (c *Client) do(ctx context.Context, method, path string, readCost, writeCost float64, units int, body any, params map[string]string) (json.RawMessage, error) {
+	c.mu.RLock()
+	readCost, writeCost = c.resolveCosts(method, path, readCost, writeCost, units)
 	limiter := c.limiter
 	c.mu.RUnlock()
 
@@ -316,8 +329,8 @@ func (c *Client) handleRetry(ctx context.Context, method, path string, retries i
 }
 
 // doJSON executes an HTTP request and unmarshals the response into T.
-func doJSON[T any](c *Client, ctx context.Context, method, path string, readCost, writeCost float64, body any, params map[string]string) (T, error) {
-	raw, err := c.do(ctx, method, path, readCost, writeCost, body, params)
+func doJSON[T any](c *Client, ctx context.Context, method, path string, readCost, writeCost float64, units int, body any, params map[string]string) (T, error) {
+	raw, err := c.do(ctx, method, path, readCost, writeCost, units, body, params)
 	var result T
 	if err != nil {
 		return result, err
@@ -331,29 +344,25 @@ func doJSON[T any](c *Client, ctx context.Context, method, path string, readCost
 // Convenience methods for HTTP verbs.
 
 func (c *Client) get(ctx context.Context, path string, params map[string]string) (json.RawMessage, error) {
-	return c.do(ctx, http.MethodGet, path, 10.0, 0, nil, params)
+	return c.do(ctx, http.MethodGet, path, 10.0, 0, 1, nil, params)
 }
 
 func getJSON[T any](c *Client, ctx context.Context, path string, params map[string]string) (T, error) {
-	return doJSON[T](c, ctx, http.MethodGet, path, 10.0, 0, nil, params)
+	return doJSON[T](c, ctx, http.MethodGet, path, 10.0, 0, 1, nil, params)
 }
 
 func (c *Client) post(ctx context.Context, path string, body any, writeCost float64) (json.RawMessage, error) {
-	return c.do(ctx, http.MethodPost, path, 0, writeCost, body, nil)
+	return c.do(ctx, http.MethodPost, path, 0, writeCost, 1, body, nil)
 }
 
 func postJSON[T any](c *Client, ctx context.Context, path string, body any, writeCost float64) (T, error) {
-	return doJSON[T](c, ctx, http.MethodPost, path, 0, writeCost, body, nil)
+	return doJSON[T](c, ctx, http.MethodPost, path, 0, writeCost, 1, body, nil)
 }
 
 func (c *Client) delete(ctx context.Context, path string, body any, writeCost float64) (json.RawMessage, error) {
-	return c.do(ctx, http.MethodDelete, path, 0, writeCost, body, nil)
-}
-
-func deleteJSON[T any](c *Client, ctx context.Context, path string, body any, writeCost float64) (T, error) {
-	return doJSON[T](c, ctx, http.MethodDelete, path, 0, writeCost, body, nil)
+	return c.do(ctx, http.MethodDelete, path, 0, writeCost, 1, body, nil)
 }
 
 func (c *Client) put(ctx context.Context, path string, body any, writeCost float64) (json.RawMessage, error) {
-	return c.do(ctx, http.MethodPut, path, 0, writeCost, body, nil)
+	return c.do(ctx, http.MethodPut, path, 0, writeCost, 1, body, nil)
 }

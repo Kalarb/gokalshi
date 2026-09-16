@@ -14,6 +14,14 @@ import (
 )
 
 // skipOnAPIError skips the test if the error is an APIError with one of the given status codes.
+// isAPIErrorCode reports whether err is an *APIError with the given status.
+// Use it when a specific status is an expected outcome worth naming, rather
+// than one more entry in a skipOnAPIError list.
+func isAPIErrorCode(err error, code int) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == code
+}
+
 func skipOnAPIError(t *testing.T, err error, codes ...int) {
 	t.Helper()
 	if err == nil {

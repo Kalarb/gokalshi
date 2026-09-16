@@ -85,6 +85,7 @@ func defaultClock() float64 {
 }
 
 // Acquire blocks until tokens are available, then consumes them.
+// Costs above bucket capacity fail immediately without consuming tokens.
 // For read requests: readCost > 0, writeCost = 0.
 // For write requests: readCost = 0, writeCost > 0.
 func (b *ReadWriteTokenBucket) Acquire(ctx context.Context, readCost, writeCost float64) error {
