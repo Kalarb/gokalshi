@@ -5,6 +5,19 @@ import (
 	"fmt"
 )
 
+// Token costs for order operations, used when the endpoint-costs table is
+// unavailable. Both are billed per item on the batch endpoints.
+//
+// These are the documented values, confirmed against the live table: an order
+// create is the default 10, a cancel is 2. A successful ConfigureRateLimits
+// overrides them, so they only apply on the degraded path — which is exactly
+// when getting them right matters, since that path also falls back to
+// Basic-tier bucket sizes.
+const (
+	costCreateOrder = 10.0
+	costCancelOrder = 2.0
+)
+
 // CreateOrderV2 — Create Order (V2)
 //
 // POST /trade-api/v2/portfolio/events/orders
@@ -29,7 +42,8 @@ func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (C
 //
 // See https://docs.kalshi.com/api-reference/orders/batch-create-orders-v2
 func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV2Request) (BatchCreateOrdersV2Response, error) {
-	return postJSON[BatchCreateOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
+	return doJSON[BatchCreateOrdersV2Response](c, ctx, "POST", pathEventOrders+"/batched",
+		0, costCreateOrder, len(req.Orders), req, nil)
 }
 
 // BatchCancelOrdersV2 — Batch Cancel Orders (V2)
@@ -44,7 +58,8 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 //
 // See https://docs.kalshi.com/api-reference/orders/batch-cancel-orders-v2
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
-	return deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
+	return doJSON[BatchCancelOrdersV2Response](c, ctx, "DELETE", pathEventOrders+"/batched",
+		0, costCancelOrder, len(req.Orders), req, nil)
 }
 
 // CancelOrderV2 — Cancel Order (V2)
@@ -59,7 +74,7 @@ func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV
 // See https://docs.kalshi.com/api-reference/orders/cancel-order-v2
 func (c *Client) CancelOrderV2(ctx context.Context, orderID string, params CancelOrderV2Params) (CancelOrderV2Response, error) {
 	path := fmt.Sprintf("%s/%s", pathEventOrders, orderID)
-	return doJSON[CancelOrderV2Response](c, ctx, "DELETE", path, 0, 1.0, nil, params.toMap())
+	return doJSON[CancelOrderV2Response](c, ctx, "DELETE", path, 0, costCancelOrder, 1, nil, params.toMap())
 }
 
 // AmendOrderV2 — Amend Order (V2)
@@ -120,7 +135,7 @@ func (p CancelOrderV2Params) toMap() map[string]string {
 //
 // See https://docs.kalshi.com/api-reference/orders/cancel-all-orders
 func (c *Client) CancelAllOrders(ctx context.Context, params CancelAllOrdersParams) error {
-	_, err := c.do(ctx, "DELETE", pathEventOrders, 0, 2.0, nil, params.toMap())
+	_, err := c.do(ctx, "DELETE", pathEventOrders, 0, costCancelOrder, 1, nil, params.toMap())
 	return err
 }
 

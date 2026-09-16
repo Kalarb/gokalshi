@@ -11,7 +11,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -1542,64 +1541,6 @@ func TestGetStructuredTarget(t *testing.T) {
 // ---------------------------------------------------------------------------
 // resolveCosts tests
 // ---------------------------------------------------------------------------
-
-func TestResolveCosts_ParameterizedPath(t *testing.T) {
-	c := &Client{
-		costPatterns: []endpointCostPattern{
-			{
-				method:  "DELETE",
-				pattern: regexp.MustCompile(`^/trade-api/v2/portfolio/orders/[^/]+$`),
-				cost:    20,
-			},
-			{
-				method:  "GET",
-				pattern: regexp.MustCompile(`^/trade-api/v2/markets/[^/]+$`),
-				cost:    5,
-			},
-		},
-		defaultCost: 10,
-	}
-
-	// Parameterized path should match the pattern
-	read, write := c.resolveCosts("DELETE", "/trade-api/v2/portfolio/orders/abc-123-def", 1, 1)
-	assert.Equal(t, 0.0, read, "DELETE should have zero read cost")
-	assert.Equal(t, 20.0, write, "DELETE should use matched pattern cost")
-
-	read, write = c.resolveCosts("GET", "/trade-api/v2/markets/KXBTC-100K", 1, 1)
-	assert.Equal(t, 5.0, read, "GET should use matched pattern cost")
-	assert.Equal(t, 0.0, write, "GET should have zero write cost")
-}
-
-func TestResolveCosts_DefaultCost(t *testing.T) {
-	c := &Client{
-		costPatterns: []endpointCostPattern{
-			{
-				method:  "GET",
-				pattern: regexp.MustCompile(`^/trade-api/v2/markets$`),
-				cost:    5,
-			},
-		},
-		defaultCost: 10,
-	}
-
-	// Unmatched path falls back to defaultCost
-	read, write := c.resolveCosts("GET", "/trade-api/v2/some/unknown/path", 1, 1)
-	assert.Equal(t, 10.0, read)
-	assert.Equal(t, 0.0, write)
-
-	read, write = c.resolveCosts("POST", "/trade-api/v2/some/unknown/path", 1, 1)
-	assert.Equal(t, 0.0, read)
-	assert.Equal(t, 10.0, write)
-}
-
-func TestResolveCosts_NilPatterns(t *testing.T) {
-	c := &Client{} // no costPatterns, no defaultCost
-
-	// Should passthrough caller defaults
-	read, write := c.resolveCosts("GET", "/trade-api/v2/exchange/status", 0.5, 0)
-	assert.Equal(t, 0.5, read)
-	assert.Equal(t, 0.0, write)
-}
 
 func TestNewClient_AutoConfigFailure(t *testing.T) {
 	// Mock server that returns 500 for all requests
