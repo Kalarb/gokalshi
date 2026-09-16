@@ -5,41 +5,41 @@ import (
 	"fmt"
 )
 
-// CreateOrderV2 â€” Create Order (V2)
+// CreateOrderV2 — Create Order (V2)
 //
 // POST /trade-api/v2/portfolio/events/orders
 //
 // Endpoint for submitting event-market orders using the V2 request/response
 // shape (single-book `bid`/`ask` side and fixed-point dollar prices). The
 // legacy `/portfolio/orders` endpoint will be deprecated no earlier than May
-// 6, 2026 â€” clients should migrate to this path.
+// 6, 2026 — clients should migrate to this path.
 //
 // See https://docs.kalshi.com/api-reference/orders/create-order-v2
 func (c *Client) CreateOrderV2(ctx context.Context, req CreateOrderV2Request) (CreateOrderV2Response, error) {
 	return postJSON[CreateOrderV2Response](c, ctx, pathEventOrders, req, 10.0)
 }
 
-// BatchCreateOrdersV2 â€” Batch Create Orders (V2)
+// BatchCreateOrdersV2 — Batch Create Orders (V2)
 //
 // POST /trade-api/v2/portfolio/events/orders/batched
 //
 // Endpoint for submitting a batch of event-market orders using the V2
 // request/response shape. The maximum batch size scales with your tier's write
-// budget â€” see [Rate Limits and Tiers](/getting_started/rate_limits).
+// budget — see [Rate Limits and Tiers](/getting_started/rate_limits).
 //
 // See https://docs.kalshi.com/api-reference/orders/batch-create-orders-v2
 func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV2Request) (BatchCreateOrdersV2Response, error) {
 	return postJSON[BatchCreateOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*10.0)
 }
 
-// BatchCancelOrdersV2 â€” Batch Cancel Orders (V2)
+// BatchCancelOrdersV2 — Batch Cancel Orders (V2)
 //
 // DELETE /trade-api/v2/portfolio/events/orders/batched
 //
 // Endpoint for cancelling a batch of event-market orders using the V2 response
 // shape. To auto-route a cancellation, provide its `market_ticker` and omit
 // `exchange_index` or set it to `-1`. The maximum batch size scales with your
-// tier's write budget â€” see [Rate Limits and
+// tier's write budget — see [Rate Limits and
 // Tiers](/getting_started/rate_limits).
 //
 // Each cancellation costs 2 write tokens.
@@ -76,7 +76,7 @@ func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV
 	return result, nil
 }
 
-// CancelOrderV2 â€” Cancel Order (V2)
+// CancelOrderV2 — Cancel Order (V2)
 //
 // DELETE /trade-api/v2/portfolio/events/orders/{order_id}
 //
@@ -91,7 +91,7 @@ func (c *Client) CancelOrderV2(ctx context.Context, orderID string, params Cance
 	return doJSON[CancelOrderV2Response](c, ctx, "DELETE", path, 0, 2.0, nil, params.toMap())
 }
 
-// AmendOrderV2 â€” Amend Order (V2)
+// AmendOrderV2 — Amend Order (V2)
 //
 // POST /trade-api/v2/portfolio/events/orders/{order_id}/amend
 //
@@ -107,7 +107,7 @@ func (c *Client) AmendOrderV2(ctx context.Context, orderID string, req AmendOrde
 	return postJSON[AmendOrderV2Response](c, ctx, path, req, 10.0)
 }
 
-// DecreaseOrderV2 â€” Decrease Order (V2)
+// DecreaseOrderV2 — Decrease Order (V2)
 //
 // POST /trade-api/v2/portfolio/events/orders/{order_id}/decrease
 //
@@ -140,7 +140,7 @@ func (p CancelOrderV2Params) toMap() map[string]string {
 		Build()
 }
 
-// CancelAllOrders â€” Cancel All Orders
+// CancelAllOrders — Cancel All Orders
 //
 // DELETE /trade-api/v2/portfolio/events/orders
 //
