@@ -1701,7 +1701,7 @@ func TestBatchCancelOrdersV2SplitsWithinSDKCapacity(t *testing.T) {
 					w.WriteHeader(500)
 					return
 				}
-				require.NoError(t, json.NewEncoder(w).Encode(BatchCancelOrdersV2Response{Orders: req.Orders}))
+				require.NoError(t, json.NewEncoder(w).Encode(BatchCancelOrdersV2Response(req)))
 			}))
 			defer srv.Close()
 			limiter := NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 100, WriteRate: 100000, WriteCapacity: 4})
