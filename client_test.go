@@ -1591,3 +1591,76 @@ func TestConfigureRateLimits_Concurrent(t *testing.T) {
 	}
 	<-done
 }
+
+func TestCancelOrderV2TickerRouting(t *testing.T) {
+	for _, index := range []*int{nil, new(int), func() *int { v := -1; return &v }(), func() *int { v := 3; return &v }()} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodDelete, r.Method)
+			assert.Equal(t, "MARKET", r.URL.Query().Get("market_ticker"))
+			if index == nil {
+				assert.False(t, r.URL.Query().Has("exchange_index"))
+			} else {
+				assert.Equal(t, fmt.Sprint(*index), r.URL.Query().Get("exchange_index"))
+			}
+			fmt.Fprint(w, `{"order_id":"order","reduced_by":"60"}`)
+		}))
+		c := newTestClient(t, srv.URL)
+		_, err := c.CancelOrderV2(context.Background(), "order", CancelOrderV2Params{MarketTicker: "MARKET", ExchangeIndex: index})
+		require.NoError(t, err)
+		c.Close()
+		srv.Close()
+	}
+}
+
+// #48 correctly multiplies per-order cost. The limiter must now reject a batch
+// that exceeds capacity without waiting for its deadline or sending a prefix.
+func TestBatchCapacityGuardWithPerItemCosts(t *testing.T) {
+	for _, configured := range []bool{false, true} {
+		for _, tc := range []struct {
+			name     string
+			create   bool
+			count    int
+			wantCost float64
+			fits     bool
+		}{
+			{"eleven cancellations", false, 11, 22, true},
+			{"fifty creates cannot fit", true, 50, 500, false},
+			{"fifty one cancellations cannot fit", false, 51, 102, false},
+		} {
+			t.Run(fmt.Sprintf("%s/configured=%v", tc.name, configured), func(t *testing.T) {
+				var requests atomic.Int32
+				srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { requests.Add(1); fmt.Fprint(w, `{"orders":[]}`) }))
+				defer srv.Close()
+				bucket := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+				bucket.clock = func() float64 { return 100 }
+				bucket.lastRefill = 100
+				c, err := NewClient(testClientConfig(t, srv.URL), WithRateLimiter(bucket))
+				require.NoError(t, err)
+				defer c.Close()
+				if configured {
+					configured := configuredClient(t, liveEndpointCostsPayload)
+					c.costRoutes = configured.costRoutes
+					c.defaultCost = configured.defaultCost
+				}
+				ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+				defer cancel()
+				if tc.create {
+					_, err = c.BatchCreateOrdersV2(ctx, BatchCreateOrdersV2Request{Orders: make([]CreateOrderV2Request, tc.count)})
+				} else {
+					_, err = c.BatchCancelOrdersV2(ctx, BatchCancelOrdersV2Request{Orders: make([]map[string]any, tc.count)})
+				}
+				require.NoError(t, ctx.Err(), "must finish before timeout")
+				if tc.fits {
+					require.NoError(t, err)
+					assert.Equal(t, int32(1), requests.Load())
+					assert.Equal(t, 100-tc.wantCost, bucket.Status().WriteTokens)
+				} else {
+					require.ErrorContains(t, err, "exceeds bucket capacity")
+					require.ErrorContains(t, err, fmt.Sprintf("write=%g", tc.wantCost))
+					assert.Zero(t, requests.Load(), "must not split or send a partial batch")
+					assert.Equal(t, 100.0, bucket.Status().WriteTokens)
+				}
+			})
+		}
+	}
+}

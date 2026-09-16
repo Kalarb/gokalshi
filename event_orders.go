@@ -58,6 +58,7 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 //
 // See https://docs.kalshi.com/api-reference/orders/batch-cancel-orders-v2
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
+	// One logical call remains one HTTP request; oversized costs fail in Acquire.
 	return doJSON[BatchCancelOrdersV2Response](c, ctx, "DELETE", pathEventOrders+"/batched",
 		0, costCancelOrder, len(req.Orders), req, nil)
 }
@@ -109,7 +110,9 @@ func (c *Client) DecreaseOrderV2(ctx context.Context, orderID string, req Decrea
 
 // CancelOrderV2Params are query parameters for CancelOrderV2.
 type CancelOrderV2Params struct {
-	Subaccount int
+	// MarketTicker enables auto-routing when ExchangeIndex is omitted or -1.
+	MarketTicker string
+	Subaccount   int
 	// ExchangeIndex selects the exchange instance. 0 is the event-contract
 	// instance and -1 asks Kalshi to auto-route by market ticker, so it is a
 	// pointer: both are meaningful values that a zero-valued int cannot express.
@@ -118,6 +121,7 @@ type CancelOrderV2Params struct {
 
 func (p CancelOrderV2Params) toMap() map[string]string {
 	return NewQuery().
+		String("market_ticker", p.MarketTicker).
 		Int("subaccount", p.Subaccount).
 		IntPtr("exchange_index", p.ExchangeIndex).
 		Build()

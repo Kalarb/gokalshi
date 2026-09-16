@@ -172,15 +172,19 @@ func (c *Client) resolveCosts(method, path string, readCost, writeCost float64, 
 	if units < 1 {
 		units = 1
 	}
+	// The caller's figures are per unit, exactly like the table's, so every
+	// path scales by the same count. Returning them unscaled here would mean
+	// writeCost silently changed meaning — per-unit with a cost table loaded,
+	// total without one — and which applied depended on whether an HTTP call
+	// at startup had succeeded.
 	if c.costRoutes == nil {
-		// No table: the caller's literals already account for units.
-		return readCost, writeCost
+		return readCost * float64(units), writeCost * float64(units)
 	}
 
 	unit, matched := c.lookupCost(method, path)
 	if !matched {
 		if c.defaultCost <= 0 {
-			return readCost, writeCost
+			return readCost * float64(units), writeCost * float64(units)
 		}
 		unit = c.defaultCost
 	}
