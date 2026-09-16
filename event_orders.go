@@ -46,7 +46,34 @@ func (c *Client) BatchCreateOrdersV2(ctx context.Context, req BatchCreateOrdersV
 //
 // See https://docs.kalshi.com/api-reference/orders/batch-cancel-orders-v2
 func (c *Client) BatchCancelOrdersV2(ctx context.Context, req BatchCancelOrdersV2Request) (BatchCancelOrdersV2Response, error) {
-	return deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", req, float64(len(req.Orders))*2.0)
+	if len(req.Orders) == 0 {
+		return BatchCancelOrdersV2Response{}, fmt.Errorf("batch cancellation requires at least one order")
+	}
+	// The SDK owns the limiter and therefore the batch size. Each request must
+	// fit the bucket even when account-limit discovery fell back to Basic.
+	c.mu.RLock()
+	_, cost := c.resolveCosts("DELETE", pathEventOrders+"/batched", 0, 2)
+	capacity := c.limiter.cfg.writeCap()
+	c.mu.RUnlock()
+	if cost <= 0 || capacity < cost {
+		return BatchCancelOrdersV2Response{}, fmt.Errorf("cancellation cost %g exceeds write capacity %g", cost, capacity)
+	}
+	size := len(req.Orders)
+	if float64(size)*cost > capacity {
+		size = int(capacity / cost)
+	}
+	var result BatchCancelOrdersV2Response
+	for start := 0; start < len(req.Orders); start += size {
+		end := min(start+size, len(req.Orders))
+		part, err := deleteJSON[BatchCancelOrdersV2Response](c, ctx, pathEventOrders+"/batched", BatchCancelOrdersV2Request{Orders: req.Orders[start:end]}, 2)
+		result.Orders = append(result.Orders, part.Orders...)
+		if err != nil {
+			// Earlier chunks may already have succeeded. Return their results
+			// and stop; never replay a completed or uncertain cancellation.
+			return result, fmt.Errorf("batch cancellation orders[%d:%d]: %w", start, end, err)
+		}
+	}
+	return result, nil
 }
 
 // CancelOrderV2 — Cancel Order (V2)
@@ -97,6 +124,8 @@ func (c *Client) DecreaseOrderV2(ctx context.Context, orderID string, req Decrea
 // CancelOrderV2Params are query parameters for CancelOrderV2.
 type CancelOrderV2Params struct {
 	Subaccount int
+	// MarketTicker lets Kalshi route the cancellation when ExchangeIndex is omitted.
+	MarketTicker string
 	// ExchangeIndex selects the exchange instance. 0 is the event-contract
 	// instance and -1 asks Kalshi to auto-route by market ticker, so it is a
 	// pointer: both are meaningful values that a zero-valued int cannot express.
@@ -107,6 +136,7 @@ func (p CancelOrderV2Params) toMap() map[string]string {
 	return NewQuery().
 		Int("subaccount", p.Subaccount).
 		IntPtr("exchange_index", p.ExchangeIndex).
+		String("market_ticker", p.MarketTicker).
 		Build()
 }
 

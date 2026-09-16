@@ -191,6 +191,9 @@ func (c *Client) resolveCosts(method, path string, readCost, writeCost float64) 
 func (c *Client) do(ctx context.Context, method, path string, readCost, writeCost float64, body any, params map[string]string) (json.RawMessage, error) {
 	c.mu.RLock()
 	readCost, writeCost = c.resolveCosts(method, path, readCost, writeCost)
+	if batch, ok := body.(BatchCancelOrdersV2Request); ok {
+		writeCost *= float64(len(batch.Orders))
+	}
 	limiter := c.limiter
 	c.mu.RUnlock()
 

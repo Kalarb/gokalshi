@@ -88,6 +88,9 @@ func defaultClock() float64 {
 // For read requests: readCost > 0, writeCost = 0.
 // For write requests: readCost = 0, writeCost > 0.
 func (b *ReadWriteTokenBucket) Acquire(ctx context.Context, readCost, writeCost float64) error {
+	if readCost > b.cfg.readCap() || writeCost > b.cfg.writeCap() {
+		return fmt.Errorf("request token cost (read=%g, write=%g) exceeds bucket capacity (read=%g, write=%g)", readCost, writeCost, b.cfg.readCap(), b.cfg.writeCap())
+	}
 	for {
 		if err := ctx.Err(); err != nil {
 			return fmt.Errorf("rate limiter acquire cancelled: %w", err)

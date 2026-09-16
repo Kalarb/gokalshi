@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
+	"encoding/json"
 	"encoding/pem"
 	"fmt"
 	"net/http"
@@ -1681,4 +1682,74 @@ func TestConfigureRateLimits_Concurrent(t *testing.T) {
 		_, _ = c.GetExchangeStatus(context.Background())
 	}
 	<-done
+}
+
+func TestBatchCancelOrdersV2SplitsWithinSDKCapacity(t *testing.T) {
+	for _, failSecond := range []bool{false, true} {
+		t.Run(fmt.Sprintf("failSecond=%v", failSecond), func(t *testing.T) {
+			var seen []string
+			requests := 0
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				requests++
+				var req BatchCancelOrdersV2Request
+				require.NoError(t, json.NewDecoder(r.Body).Decode(&req))
+				require.LessOrEqual(t, len(req.Orders), 2)
+				for _, order := range req.Orders {
+					seen = append(seen, order["order_id"].(string))
+				}
+				if failSecond && requests == 2 {
+					w.WriteHeader(500)
+					return
+				}
+				require.NoError(t, json.NewEncoder(w).Encode(BatchCancelOrdersV2Response{Orders: req.Orders}))
+			}))
+			defer srv.Close()
+			limiter := NewReadWriteTokenBucket(TokenBucketConfig{ReadRate: 100, WriteRate: 100000, WriteCapacity: 4})
+			c, err := NewClient(testClientConfig(t, srv.URL), WithRateLimiter(limiter))
+			require.NoError(t, err)
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			resp, err := c.BatchCancelOrdersV2(ctx, BatchCancelOrdersV2Request{Orders: []map[string]any{
+				{"order_id": "a", "market_ticker": "MARKET"}, {"order_id": "b"}, {"order_id": "c"}, {"order_id": "d"}, {"order_id": "e"},
+			}})
+			if failSecond {
+				require.Error(t, err)
+				assert.Equal(t, []string{"a", "b", "c", "d"}, seen)
+				assert.Len(t, resp.Orders, 2)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, []string{"a", "b", "c", "d", "e"}, seen)
+				assert.Len(t, resp.Orders, 5)
+				assert.Equal(t, "MARKET", resp.Orders[0]["market_ticker"])
+			}
+		})
+	}
+}
+
+func TestCancelOrderV2TickerRouting(t *testing.T) {
+	for _, index := range []*int{nil, new(int), func() *int { v := -1; return &v }(), func() *int { v := 3; return &v }()} {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			assert.Equal(t, http.MethodDelete, r.Method)
+			assert.Equal(t, "MARKET", r.URL.Query().Get("market_ticker"))
+			if index == nil {
+				assert.False(t, r.URL.Query().Has("exchange_index"))
+			} else {
+				assert.Equal(t, fmt.Sprint(*index), r.URL.Query().Get("exchange_index"))
+			}
+			fmt.Fprint(w, `{"order_id":"order","reduced_by":"60"}`)
+		}))
+		c := newTestClient(t, srv.URL)
+		_, err := c.CancelOrderV2(context.Background(), "order", CancelOrderV2Params{MarketTicker: "MARKET", ExchangeIndex: index})
+		require.NoError(t, err)
+		srv.Close()
+	}
+}
+
+func TestLimiterRejectsImpossibleCostImmediately(t *testing.T) {
+	b := NewReadWriteTokenBucket(DefaultTokenBucketConfig())
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	err := b.Acquire(ctx, 0, 101)
+	require.ErrorContains(t, err, "exceeds bucket capacity")
+	require.NoError(t, ctx.Err())
 }
