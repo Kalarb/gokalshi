@@ -40,6 +40,20 @@ var typeAliases = map[string]string{
 // but the real API returns null. Discovered via pykalshi's production testing.
 // Note: array/map fields are not listed here because Go's json.Unmarshal
 // already handles null → nil slice/map without needing pointer types.
+// meaningfulZeroOverrides are (schema, field) pairs where zero is a meaningful
+// value distinct from "unset", so the field must be a pointer. With a plain int
+// plus omitempty, zero is dropped from the body and the server applies whatever
+// omission means — which is rarely the same thing.
+//
+// exchange_index is the case that matters: 0 selects the event-contract shard
+// while omitting the field requests auto-routing, and auto-routing bills every
+// shard's write bucket rather than one.
+var meaningfulZeroOverrides = map[[2]string]bool{
+	{"CreateOrderV2Request", "exchange_index"}:   true,
+	{"AmendOrderV2Request", "exchange_index"}:    true,
+	{"DecreaseOrderV2Request", "exchange_index"}: true,
+}
+
 var nullableOverrides = map[[2]string]bool{
 	{"Series", "contract_url"}:       true,
 	{"Series", "contract_terms_url"}: true,
@@ -371,7 +385,8 @@ func resolveGoType(schemaName, fieldName string, prop *Schema, required bool, sc
 	if override, ok := fieldTypeOverrides[[2]string{schemaName, fieldName}]; ok {
 		goType := override
 		forceNullable := nullableOverrides[[2]string{schemaName, fieldName}]
-		if prop.Nullable || forceNullable {
+		meaningfulZero := meaningfulZeroOverrides[[2]string{schemaName, fieldName}]
+		if prop.Nullable || forceNullable || meaningfulZero {
 			return "*" + goType
 		}
 		return goType
@@ -382,7 +397,8 @@ func resolveGoType(schemaName, fieldName string, prop *Schema, required bool, sc
 	// Only use pointer when explicitly nullable or forced nullable.
 	// Non-required fields just get omitempty on the json tag.
 	forceNullable := nullableOverrides[[2]string{schemaName, fieldName}]
-	needsPointer := (prop.Nullable || forceNullable) &&
+	meaningfulZero := meaningfulZeroOverrides[[2]string{schemaName, fieldName}]
+	needsPointer := (prop.Nullable || forceNullable || meaningfulZero) &&
 		!strings.HasPrefix(goType, "[]") &&
 		!strings.HasPrefix(goType, "map[")
 	if needsPointer {

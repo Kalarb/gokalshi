@@ -1589,7 +1589,7 @@ type AmendOrderV2Request struct {
 	// Updated total/max fillable count for the order. Set this to the order's already filled count plus...
 	Count string `json:"count"`
 	// Exchange shard index. If omitted, auto-routes when ticker is provided; otherwise defaults to 0. U...
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	ExchangeIndex *ExchangeIndex `json:"exchange_index,omitempty"`
 	// Updated price for the order in fixed-point dollars.
 	Price string `json:"price"`
 	// Side of the order
@@ -1635,7 +1635,7 @@ type CreateOrderV2Request struct {
 	// String representation of the order quantity in contracts.
 	Count string `json:"count"`
 	// Exchange shard index. If omitted, auto-routes when ticker is provided; otherwise defaults to 0. U...
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	ExchangeIndex *ExchangeIndex `json:"exchange_index,omitempty"`
 	// Optional Unix timestamp in seconds for when the order expires. To place
 	ExpirationTime int64 `json:"expiration_time,omitempty"`
 	// The order group this order is part of
@@ -1693,7 +1693,7 @@ type CreateOrderV2Response struct {
 // DecreaseOrderV2Request is a generated type from the Kalshi OpenAPI spec.
 type DecreaseOrderV2Request struct {
 	// Exchange shard index. If omitted, auto-routes when market_ticker is provided; otherwise defaults ...
-	ExchangeIndex ExchangeIndex `json:"exchange_index,omitempty"`
+	ExchangeIndex *ExchangeIndex `json:"exchange_index,omitempty"`
 	// Market ticker used for auto-routing when exchange_index is omitted or -1.
 	MarketTicker string `json:"market_ticker,omitempty"`
 	// String representation of the number of contracts to reduce by. Exactly one of `reduce_by` or `red...

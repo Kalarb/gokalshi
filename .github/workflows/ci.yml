@@ -102,6 +102,10 @@ jobs:
     timeout-minutes: 5
     env:
       KALSHI_ENVIRONMENT: DEMO
+      # Opts in to tests that move balance between subaccounts and cancel
+      # resting orders. Safe here because this runs only against DEMO, whose
+      # account holds nothing that matters. Never set this for a PROD key.
+      KALSHI_ALLOW_DESTRUCTIVE: "1"
       KALSHI_DEMO_API_KEY_ID: ${{ secrets.KALSHI_DEMO_API_KEY_ID }}
       KALSHI_DEMO_PRIVATE_KEY_PEM: ${{ secrets.KALSHI_DEMO_PRIVATE_KEY_PEM }}
       KALSHI_DEMO_PRIVATE_KEY_FILE: /tmp/demo-key.pem

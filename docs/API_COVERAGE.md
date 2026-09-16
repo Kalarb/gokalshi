@@ -4,31 +4,35 @@
 
 ## Summary
 
-| Category | Endpoints | Unit Tests | Integration Tests |
-|----------|:---------:|:----------:|:-----------------:|
-| Account | 4 | 4/4 | 2/4 |
-| Exchange | 4 | 4/4 | 4/4 |
-| Orders | 4 | 4/4 | 4/4 |
-| Event Orders (V2) | 7 | 7/7 | 6/7 |
-| Portfolio | 9 | 9/9 | 7/9 |
-| Subaccounts | 6 | 6/6 | 6/6 |
-| Order Groups | 7 | 7/7 | 7/7 |
-| Markets | 7 | 7/7 | 7/7 |
-| Events | 7 | 7/7 | 7/7 |
-| Series | 2 | 2/2 | 2/2 |
-| Search | 2 | 2/2 | 2/2 |
-| Communications | 15 | 15/15 | 11/15 |
-| API Keys | 4 | 4/4 | 4/4 |
-| Historical | 8 | 8/8 | 7/8 |
-| Incentive Programs | 1 | 1/1 | 1/1 |
-| Live Data | 7 | 7/7 | 4/7 |
-| Milestones | 2 | 2/2 | 2/2 |
-| Multivariate Event Collections | 3 | 3/3 | 3/3 |
-| Structured Targets | 2 | 2/2 | 2/2 |
-| Intra Exchange Transfers | 3 | 3/3 | 0/3 |
-| Block Trades | 3 | 3/3 | 0/3 |
-| FCM | 2 | 2/2 | 0/2 |
-| **Total** | **109** | **109/109** | **88/109** |
+`Y` the endpoint is exercised **and** something about it is asserted. `~` it is called, but no assertion verifies the request or response. `—` no test.
+
+The `Asserted` column is the one worth reading: a method counts as tested merely by being called, so a test that invokes an endpoint and checks nothing scores the same in `Unit` as one that verifies the request body and decodes the response.
+
+| Category | Endpoints | Unit Tests | Integration Tests | Asserted |
+|----------|:---------:|:----------:|:-----------------:|:--------:|
+| Account | 4 | 4/4 | 3/4 | 2/4 |
+| Exchange | 4 | 4/4 | 4/4 | 4/4 |
+| Orders | 4 | 4/4 | 4/4 | 4/4 |
+| Event Orders (V2) | 7 | 7/7 | 7/7 | 4/7 |
+| Portfolio | 9 | 9/9 | 9/9 | 4/9 |
+| Subaccounts | 6 | 6/6 | 6/6 | 6/6 |
+| Order Groups | 7 | 7/7 | 7/7 | 2/7 |
+| Markets | 7 | 7/7 | 7/7 | 5/7 |
+| Events | 7 | 7/7 | 7/7 | 5/7 |
+| Series | 2 | 2/2 | 2/2 | 1/2 |
+| Search | 2 | 2/2 | 2/2 | 2/2 |
+| Communications | 15 | 15/15 | 15/15 | 9/15 |
+| API Keys | 4 | 4/4 | 4/4 | 3/4 |
+| Historical | 8 | 8/8 | 8/8 | 5/8 |
+| Incentive Programs | 1 | 1/1 | 1/1 | 1/1 |
+| Live Data | 7 | 7/7 | 7/7 | 3/7 |
+| Milestones | 2 | 2/2 | 2/2 | 2/2 |
+| Multivariate Event Collections | 3 | 3/3 | 3/3 | 2/3 |
+| Structured Targets | 2 | 2/2 | 2/2 | 2/2 |
+| Intra Exchange Transfers | 3 | 3/3 | 3/3 | 3/3 |
+| Block Trades | 3 | 3/3 | 2/3 | 3/3 |
+| FCM | 2 | 2/2 | 2/2 | 2/2 |
+| **Total** | **109** | **109/109** | **107/109** | **74/109** |
 
 ## HTTP Endpoints
 
@@ -37,9 +41,9 @@
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
 | `GetAccountAPILimits` | `GET /account/limits` | Y | Y | |
-| `GetAccountEndpointCosts` | `GET /account/endpoint_costs` | Y | Y | |
-| `UpgradeAPIUsageLevel` | `POST /account/api_usage_level/upgrade` | Y | — | |
-| `GetAccountAPIUsageLevelVolumeProgress` | `GET /account/api_usage_level/volume_progress` | Y | — | |
+| `GetAccountEndpointCosts` | `GET /account/endpoint_costs` | ~ | ~ | |
+| `UpgradeAPIUsageLevel` | `POST /account/api_usage_level/upgrade` | ~ | — | |
+| `GetAccountAPIUsageLevelVolumeProgress` | `GET /account/api_usage_level/volume_progress` | Y | Y | |
 
 ### Exchange
 
@@ -64,26 +68,26 @@
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
 | `CreateOrderV2` | `POST /portfolio/events/orders` | Y | Y | |
-| `BatchCreateOrdersV2` | `POST /portfolio/events/orders/batched` | Y | Y | |
-| `BatchCancelOrdersV2` | `DELETE /portfolio/events/orders/batched` | Y | Y | |
+| `BatchCreateOrdersV2` | `POST /portfolio/events/orders/batched` | ~ | ~ | |
+| `BatchCancelOrdersV2` | `DELETE /portfolio/events/orders/batched` | ~ | ~ | |
 | `CancelOrderV2` | `DELETE /portfolio/events/orders/{order_id}` | Y | Y | |
 | `AmendOrderV2` | `POST /portfolio/events/orders/{order_id}/amend` | Y | Y | |
 | `DecreaseOrderV2` | `POST /portfolio/events/orders/{order_id}/decrease` | Y | Y | |
-| `CancelAllOrders` | `DELETE /portfolio/events/orders` | Y | — | |
+| `CancelAllOrders` | `DELETE /portfolio/events/orders` | ~ | ~ | |
 
 ### Portfolio
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
-| `GetBalance` | `GET /portfolio/balance` | Y | Y | |
-| `GetPositions` | `GET /portfolio/positions` | Y | Y | |
-| `GetFills` | `GET /portfolio/fills` | Y | Y | |
+| `GetBalance` | `GET /portfolio/balance` | ~ | ~ | |
+| `GetPositions` | `GET /portfolio/positions` | ~ | ~ | |
+| `GetFills` | `GET /portfolio/fills` | ~ | ~ | |
 | `GetSettlements` | `GET /portfolio/settlements` | Y | Y | |
-| `GetDeposits` | `GET /portfolio/deposits` | Y | Y | |
-| `GetWithdrawals` | `GET /portfolio/withdrawals` | Y | Y | |
+| `GetDeposits` | `GET /portfolio/deposits` | ~ | ~ | |
+| `GetWithdrawals` | `GET /portfolio/withdrawals` | ~ | ~ | |
 | `GetPortfolioRestingOrderTotalValue` | `GET /portfolio/summary/total_resting_order_value` | Y | Y | |
-| `GetTargetBalanceAllocation` | `GET /portfolio/target_balance_allocation` | Y | — | |
-| `SetTargetBalanceAllocation` | `POST /portfolio/target_balance_allocation` | Y | — | |
+| `GetTargetBalanceAllocation` | `GET /portfolio/target_balance_allocation` | Y | Y | |
+| `SetTargetBalanceAllocation` | `POST /portfolio/target_balance_allocation` | Y | Y | |
 
 ### Subaccounts
 
@@ -101,12 +105,12 @@
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
 | `CreateOrderGroup` | `POST /portfolio/order_groups/create` | Y | Y | |
-| `GetOrderGroups` | `GET /portfolio/order_groups` | Y | Y | |
+| `GetOrderGroups` | `GET /portfolio/order_groups` | ~ | ~ | |
 | `GetOrderGroup` | `GET /portfolio/order_groups/{order_group_id}` | Y | Y | |
-| `DeleteOrderGroup` | `DELETE /portfolio/order_groups/{order_group_id}` | Y | Y | |
-| `ResetOrderGroup` | `PUT /portfolio/order_groups/{order_group_id}/reset` | Y | Y | |
-| `TriggerOrderGroup` | `PUT /portfolio/order_groups/{order_group_id}/trigger` | Y | Y | |
-| `UpdateOrderGroupLimit` | `PUT /portfolio/order_groups/{order_group_id}/limit` | Y | Y | |
+| `DeleteOrderGroup` | `DELETE /portfolio/order_groups/{order_group_id}` | ~ | ~ | |
+| `ResetOrderGroup` | `PUT /portfolio/order_groups/{order_group_id}/reset` | ~ | ~ | |
+| `TriggerOrderGroup` | `PUT /portfolio/order_groups/{order_group_id}/trigger` | ~ | ~ | |
+| `UpdateOrderGroupLimit` | `PUT /portfolio/order_groups/{order_group_id}/limit` | ~ | ~ | |
 
 ### Markets
 
@@ -114,9 +118,9 @@
 |--------|----------|:----:|:-----------:|-------|
 | `GetMarketOrderbook` | `GET /markets/{ticker}/orderbook` | Y | Y | |
 | `GetMarketOrderbooks` | `GET /markets/orderbooks` | Y | Y | |
-| `GetTrades` | `GET /markets/trades` | Y | Y | |
+| `GetTrades` | `GET /markets/trades` | ~ | ~ | |
 | `GetMarket` | `GET /markets/{ticker}` | Y | Y | |
-| `GetMarkets` | `GET /markets` | Y | Y | |
+| `GetMarkets` | `GET /markets` | ~ | ~ | |
 | `GetMarketCandlesticks` | `GET /series/{series_ticker}/markets/{ticker}/candlesticks` | Y | Y | |
 | `GetBatchMarketCandlesticks` | `GET /markets/candlesticks` | Y | Y | |
 
@@ -125,10 +129,10 @@
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
 | `GetEvent` | `GET /events/{event_ticker}` | Y | Y | |
-| `GetEvents` | `GET /events` | Y | Y | |
+| `GetEvents` | `GET /events` | ~ | ~ | |
 | `GetEventMetadata` | `GET /events/{event_ticker}/metadata` | Y | Y | |
 | `GetMultivariateEvents` | `GET /events/multivariate` | Y | Y | |
-| `GetEventCandlesticks` | `GET /series/{series_ticker}/events/{ticker}/candlesticks` | Y | Y | |
+| `GetEventCandlesticks` | `GET /series/{series_ticker}/events/{ticker}/candlesticks` | ~ | ~ | |
 | `GetEventForecastPercentileHistory` | `GET /series/{series_ticker}/events/{ticker}/forecast_percentile_history` | Y | Y | |
 | `GetEventFeeChanges` | `GET /events/fee_changes` | Y | Y | |
 
@@ -137,7 +141,7 @@
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
 | `GetSeries` | `GET /series/{series_ticker}` | Y | Y | |
-| `GetSeriesList` | `GET /series` | Y | Y | |
+| `GetSeriesList` | `GET /series` | ~ | ~ | |
 
 ### Search
 
@@ -152,19 +156,19 @@
 |--------|----------|:----:|:-----------:|-------|
 | `GetCommunicationsID` | `GET /communications/id` | Y | Y | |
 | `CreateRFQ` | `POST /communications/rfqs` | Y | Y | |
-| `GetRFQs` | `GET /communications/rfqs` | Y | Y | |
+| `GetRFQs` | `GET /communications/rfqs` | ~ | ~ | |
 | `GetRFQ` | `GET /communications/rfqs/{rfq_id}` | Y | Y | |
-| `DeleteRFQ` | `DELETE /communications/rfqs/{rfq_id}` | Y | Y | |
+| `DeleteRFQ` | `DELETE /communications/rfqs/{rfq_id}` | ~ | ~ | |
 | `CreateQuote` | `POST /communications/quotes` | Y | Y | |
-| `GetQuotes` | `GET /communications/quotes` | Y | Y | |
+| `GetQuotes` | `GET /communications/quotes` | ~ | ~ | |
 | `GetQuote` | `GET /communications/quotes/{quote_id}` | Y | Y | |
-| `DeleteQuote` | `DELETE /communications/quotes/{quote_id}` | Y | Y | |
-| `AcceptQuote` | `PUT /communications/quotes/{quote_id}/accept` | Y | Y | |
-| `ConfirmQuote` | `PUT /communications/quotes/{quote_id}/confirm` | Y | Y | |
-| `GetRFQQuote` | `GET /communications/rfqs/{rfq_id}/quotes/{quote_id}` | Y | — | |
-| `DeleteRFQQuote` | `DELETE /communications/rfqs/{rfq_id}/quotes/{quote_id}` | Y | — | |
-| `AcceptRFQQuote` | `PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/accept` | Y | — | |
-| `ConfirmRFQQuote` | `PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/confirm` | Y | — | |
+| `DeleteQuote` | `DELETE /communications/quotes/{quote_id}` | ~ | ~ | |
+| `AcceptQuote` | `PUT /communications/quotes/{quote_id}/accept` | ~ | ~ | |
+| `ConfirmQuote` | `PUT /communications/quotes/{quote_id}/confirm` | ~ | ~ | |
+| `GetRFQQuote` | `GET /communications/rfqs/{rfq_id}/quotes/{quote_id}` | Y | Y | |
+| `DeleteRFQQuote` | `DELETE /communications/rfqs/{rfq_id}/quotes/{quote_id}` | Y | Y | |
+| `AcceptRFQQuote` | `PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/accept` | Y | Y | |
+| `ConfirmRFQQuote` | `PUT /communications/rfqs/{rfq_id}/quotes/{quote_id}/confirm` | Y | Y | |
 
 ### API Keys
 
@@ -173,20 +177,20 @@
 | `GetAPIKeys` | `GET /api_keys` | Y | Y | |
 | `CreateAPIKey` | `POST /api_keys` | Y | Y | |
 | `GenerateAPIKey` | `POST /api_keys/generate` | Y | Y | |
-| `DeleteAPIKey` | `DELETE /api_keys/{api_key}` | Y | Y | |
+| `DeleteAPIKey` | `DELETE /api_keys/{api_key}` | ~ | ~ | |
 
 ### Historical
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
 | `GetHistoricalCutoff` | `GET /historical/cutoff` | Y | Y | |
-| `GetHistoricalFills` | `GET /historical/fills` | Y | Y | |
-| `GetHistoricalOrders` | `GET /historical/orders` | Y | Y | |
-| `GetHistoricalTrades` | `GET /historical/trades` | Y | Y | |
+| `GetHistoricalFills` | `GET /historical/fills` | ~ | ~ | |
+| `GetHistoricalOrders` | `GET /historical/orders` | ~ | ~ | |
+| `GetHistoricalTrades` | `GET /historical/trades` | ~ | ~ | |
 | `GetHistoricalMarkets` | `GET /historical/markets` | Y | Y | |
 | `GetHistoricalMarket` | `GET /historical/markets/{ticker}` | Y | Y | |
 | `GetHistoricalMarketCandlesticks` | `GET /historical/markets/{ticker}/candlesticks` | Y | Y | |
-| `GetHistoricalPositions` | `GET /historical/positions` | Y | — | |
+| `GetHistoricalPositions` | `GET /historical/positions` | Y | Y | |
 
 ### Incentive Programs
 
@@ -198,13 +202,13 @@
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
-| `GetLiveDataBatch` | `GET /live_data/batch` | Y | Y | |
-| `GetLiveDataByMilestone` | `GET /live_data/milestone/{milestone_id}` | Y | Y | |
-| `GetMilestoneGameStats` | `GET /live_data/milestone/{milestone_id}/game_stats` | Y | Y | |
-| `GetLiveData` | `GET /live_data/{type}/milestone/{milestone_id}` | Y | Y | |
-| `GetEventLiveData` | `GET /live_data/events/{event_ticker}` | Y | — | |
-| `GetWeatherIndex` | `GET /live_data/weather/{city}` | Y | — | |
-| `GetWeatherIndexCalibrations` | `GET /live_data/weather/{city}/calibrations` | Y | — | |
+| `GetLiveDataBatch` | `GET /live_data/batch` | ~ | ~ | |
+| `GetLiveDataByMilestone` | `GET /live_data/milestone/{milestone_id}` | ~ | ~ | |
+| `GetMilestoneGameStats` | `GET /live_data/milestone/{milestone_id}/game_stats` | ~ | ~ | |
+| `GetLiveData` | `GET /live_data/{type}/milestone/{milestone_id}` | ~ | ~ | |
+| `GetEventLiveData` | `GET /live_data/events/{event_ticker}` | Y | Y | |
+| `GetWeatherIndex` | `GET /live_data/weather/{city}` | Y | Y | |
+| `GetWeatherIndexCalibrations` | `GET /live_data/weather/{city}/calibrations` | Y | Y | |
 
 ### Milestones
 
@@ -219,7 +223,7 @@
 |--------|----------|:----:|:-----------:|-------|
 | `GetMultivariateEventCollections` | `GET /multivariate_event_collections` | Y | Y | |
 | `GetMultivariateEventCollection` | `GET /multivariate_event_collections/{collection_ticker}` | Y | Y | |
-| `CreateMarketInMultivariateEventCollection` | `POST /multivariate_event_collections/{collection_ticker}` | Y | Y | |
+| `CreateMarketInMultivariateEventCollection` | `POST /multivariate_event_collections/{collection_ticker}` | ~ | ~ | |
 
 ### Structured Targets
 
@@ -232,24 +236,24 @@
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
-| `IntraExchangeInstanceTransfer` | `POST /portfolio/intra_exchange_instance_transfer` | Y | — | |
-| `GetIntraExchangeInstanceTransfers` | `GET /portfolio/intra_exchange_instance_transfers` | Y | — | |
-| `GetIntraExchangeInstanceTransfer` | `GET /portfolio/intra_exchange_instance_transfers/{transfer_id}` | Y | — | |
+| `IntraExchangeInstanceTransfer` | `POST /portfolio/intra_exchange_instance_transfer` | Y | Y | |
+| `GetIntraExchangeInstanceTransfers` | `GET /portfolio/intra_exchange_instance_transfers` | Y | Y | |
+| `GetIntraExchangeInstanceTransfer` | `GET /portfolio/intra_exchange_instance_transfers/{transfer_id}` | Y | Y | |
 
 ### Block Trades
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
-| `GetBlockTradeProposals` | `GET /communications/block-trade-proposals` | Y | — | |
+| `GetBlockTradeProposals` | `GET /communications/block-trade-proposals` | Y | Y | |
 | `ProposeBlockTrade` | `POST /communications/block-trade-proposals` | Y | — | |
-| `AcceptBlockTradeProposal` | `POST /communications/block-trade-proposals/{block_trade_proposal_id}/accept` | Y | — | |
+| `AcceptBlockTradeProposal` | `POST /communications/block-trade-proposals/{block_trade_proposal_id}/accept` | Y | Y | |
 
 ### FCM
 
 | Method | Endpoint | Unit | Integration | Notes |
 |--------|----------|:----:|:-----------:|-------|
-| `GetFCMOrders` | `GET /fcm/orders` | Y | — | |
-| `GetFCMPositions` | `GET /fcm/positions` | Y | — | |
+| `GetFCMOrders` | `GET /fcm/orders` | Y | Y | |
+| `GetFCMPositions` | `GET /fcm/positions` | Y | Y | |
 
 ## WebSocket Channels
 
